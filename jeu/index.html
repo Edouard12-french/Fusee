@@ -57,7 +57,10 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 .score { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .score b { color: var(--muted); font-weight: 500; margin-right: 4px; }
 .hudbtns { display: flex; gap: 6px; }
-#mute, #pauseBtn { pointer-events: auto; margin-top: 4px; background: none; border: 1px solid var(--edge); color: var(--muted); font: 600 11px var(--hud); letter-spacing: .14em; text-transform: uppercase; padding: 5px 9px; border-radius: 3px; cursor: pointer; }
+#radio { position: fixed; z-index: 2; pointer-events: none; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(64px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 4px; width: min(430px, calc(100vw - 140px)); }
+.rl { --c: #9cc6ff; font-size: 13px; line-height: 1.35; background: rgba(6, 10, 22, .66); border-left: 3px solid var(--c); padding: 5px 9px; border-radius: 2px; transition: opacity .6s; }
+.rl b { color: var(--c); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; margin-right: 8px; }
+#mute, #pauseBtn, #viewBtn, #voiceBtn { pointer-events: auto; margin-top: 4px; background: none; border: 1px solid var(--edge); color: var(--muted); font: 600 11px var(--hud); letter-spacing: .14em; text-transform: uppercase; padding: 5px 9px; border-radius: 3px; cursor: pointer; }
 
 #banner {
   position: fixed; left: 50%; top: 22%; transform: translate(-50%, 8px); z-index: 2; pointer-events: none;
@@ -111,7 +114,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 .ghost { font: 600 13px var(--hud); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: rgba(6,10,22,.5); border: 1px solid var(--edge); border-radius: 3px; padding: 14px 18px; cursor: pointer; }
 @keyframes pulse { 70% { box-shadow: 0 0 0 14px rgba(255,138,42,0); } 100% { box-shadow: 0 0 0 0 rgba(255,138,42,0); } }
 .go:hover { filter: brightness(1.08); }
-.go:focus-visible, .ghost:focus-visible, .site:focus-visible, #boost:focus-visible, #mute:focus-visible, #pauseBtn:focus-visible, #skip:focus-visible { outline: 3px solid var(--line); outline-offset: 3px; }
+.go:focus-visible, .ghost:focus-visible, .site:focus-visible, #boost:focus-visible, #mute:focus-visible, #pauseBtn:focus-visible, #viewBtn:focus-visible, #voiceBtn:focus-visible, #skip:focus-visible { outline: 3px solid var(--line); outline-offset: 3px; }
 .rec { font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--fuel); }
 #err { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; line-height: 1.5; background: #02040a; }
 @media (prefers-reduced-motion: reduce) { .go { animation: none; } #fuelbar.low { animation: none; } }
@@ -135,7 +138,8 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
     <div class="gauge"><div id="fuelbar"></div></div>
     <div class="shields" id="shields" aria-label="Boucliers">Boucliers <span class="shield"></span><span class="shield"></span><span class="shield"></span></div>
     <div class="score"><b>Score</b><span id="scorev">0</span></div>
-    <div class="hudbtns"><button id="pauseBtn" type="button">Pause</button><button id="mute" type="button">Son : oui</button></div>
+    <div class="hudbtns"><button id="viewBtn" type="button">Vue : poursuite</button><button id="pauseBtn" type="button">Pause</button></div>
+    <div class="hudbtns"><button id="voiceBtn" type="button">Voix : oui</button><button id="mute" type="button">Son : oui</button></div>
   </div>
 </div>
 
@@ -143,6 +147,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 <div id="count" hidden></div>
 <div id="hint" hidden></div>
 <div id="fade"></div>
+<div id="radio" aria-live="polite"></div>
 <button id="boost" type="button" hidden>BOOST</button>
 <button id="skip" type="button" hidden>Passer l'intro</button>
 
@@ -961,7 +966,7 @@ function doSeparation(ev) {
     const a = rnd(0, Math.PI * 2), l = rnd(0.85, 1);
     smoke.emit({ x: tmpV.x + Math.cos(a) * 0.4, y: tmpV.y + Math.sin(a) * 0.4, z: tmpV.z + rnd(-1, 1), vx: Math.cos(a) * rnd(2, 5), vy: Math.sin(a) * rnd(2, 5), vz: rnd(2, 8), drag: 1.5, max: rnd(0.8, 1.6), s0: 0.4, s1: rnd(2, 3.5), a: 0.5, cr: l, cg: l, cb: l, chase: true });
   }
-  banner(ev.t, ev.n); tone(180, 90, 0.25, 'square', 0.07); tone(600, 300, 0.12, 'triangle', 0.05, 0.05);
+  banner(ev.t, ev.n); if (ev.t) radio('Propulsion', ev.t + '. ' + ev.n + '.'); tone(180, 90, 0.25, 'square', 0.07); tone(600, 300, 0.12, 'triangle', 0.05, 0.05);
 }
 function updateSepParts(dt) {
   for (let i = sepParts.length - 1; i >= 0; i--) {
@@ -1738,7 +1743,7 @@ function resetMission() {
   issSpawned = false; gwSpawned = false; docked = { iss: false, gateway: false };
   tr = { s: 0, u: 0, P0: new T.Vector3(), P1: new T.Vector3(), marks: new Set() };
   mo = { phi: -0.75, h: 100, tau: 0 };
-  landResult = null; score = 0; bonus = 0; lowFuelWarned = false; lives = 3; invuln = 0; threat = null; lastThreat = null;
+  landResult = null; score = 0; bonus = 0; lowFuelWarned = false; towerCleared = false; landCalls = new Set(); clearRadio(); if (synth) try { synth.cancel(); } catch (e) {} lives = 3; invuln = 0; threat = null; lastThreat = null;
   rocket.visible = true; ground.visible = true; moonSite.visible = false;
   setupVehicle();
   applyPadAnims(-10);
@@ -1782,6 +1787,8 @@ addEventListener('keydown', e => {
     else if (state === 'pad' && tCount < -3.2) skipIntro();
   }
   if (e.code === 'KeyM') $('mute').click();
+  if (e.code === 'KeyC') $('viewBtn').click();
+  if (e.code === 'KeyV') $('voiceBtn').click();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -1822,6 +1829,7 @@ function setPause(on) {
   for (const k in keys) keys[k] = false;
   bOff(); joy.id = null;
   if (ac) { if (on) ac.suspend(); else ac.resume(); }
+  if (synth) try { if (on) synth.pause(); else synth.resume(); } catch (e) {}
   if (on) $('resumeBtn').focus({ preventScroll: true });
 }
 $('pauseBtn').addEventListener('click', () => setPause(true));
@@ -1834,7 +1842,7 @@ $('fsBtn').addEventListener('click', () => {
   else if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
 });
 $('skip').addEventListener('click', skipIntro);
-function skipIntro() { if (state === 'pad' && tCount < -3.2) tCount = -3.2; }
+function skipIntro() { if (state === 'pad' && tCount < -3.2) { tCount = -3.2; if (synth) try { synth.cancel(); } catch (e) {} } }
 
 function startMission(t0) {
   initAudio();
@@ -2024,6 +2032,7 @@ function endMission(won, title, text) {
   bb.hidden = true; bOff(); $('skip').hidden = true;
 }
 function die(reason) {
+  if (state === 'play') radio('Contrôle', 'Nous avons perdu le signal… ' + reason + '.', true, true);
   if (state !== 'play') return;
   tmpV.set(0, 0, 0); rocket.localToWorld(tmpV);
   explode(tmpV.x, tmpV.y, tmpV.z);
@@ -2046,6 +2055,7 @@ function hitShield(o, i) {
   }
   tone(140, 60, 0.5, 'sawtooth', 0.1);
   banner('Bouclier touché', lives === 1 ? 'Dernier bouclier : fais attention !' : 'Plus que ' + lives + ' boucliers', 'warn');
+  radio('Contrôle', 'Impact détecté. Bouclier endommagé.');
   if (o.kind !== 'station') { scene.remove(m); objs.splice(i, 1); return true; }
   return false;
 }
@@ -2090,6 +2100,183 @@ function drawArrow(x, y, dx, dy, len, color) {
   uctx.moveTo(len, 0); uctx.lineTo(len - 22, -18); uctx.lineTo(len - 22, -7); uctx.lineTo(18, -7); uctx.lineTo(18, 7); uctx.lineTo(len - 22, 7); uctx.lineTo(len - 22, 18); uctx.closePath();
   uctx.fill(); uctx.stroke();
   uctx.restore();
+}
+
+/* ---------- Contrôle de mission (radio + voix) ---------- */
+let towerCleared = false, landCalls = new Set(), voiceOn = true;
+const synth = window.speechSynthesis || null;
+let frVoice = null;
+function pickVoice() { try { const vs = synth.getVoices(); frVoice = vs.find(v => /^fr/i.test(v.lang)) || null; } catch (e) {} }
+if (synth) { pickVoice(); try { synth.onvoiceschanged = pickVoice; } catch (e) {} }
+function say(text, urgent) {
+  if (!synth || !voiceOn || muted || !text) return;
+  try {
+    if (urgent) synth.cancel(); else if (synth.pending) return;
+    const u = new SpeechSynthesisUtterance(text.replace(/…/g, '...'));
+    u.lang = 'fr-FR'; if (frVoice) u.voice = frVoice; u.rate = 1.12; u.pitch = 0.95; u.volume = 0.95;
+    synth.speak(u);
+  } catch (e) {}
+}
+const ROLE_COL = { Directeur: '#ffcf5a', Propulsion: '#ff8a2a', Guidage: '#9cc6ff', Météo: '#7fe0ff', Sauvegarde: '#ff4a5c', Contrôle: '#d6e4ff', ISS: '#5dff9a', Gateway: '#5dff9a', Sol: '#b9c2cf', Compte: '#ffffff' };
+function radio(role, text, speak = true, urgent = false) {
+  const box = $('radio');
+  const line = document.createElement('div');
+  line.className = 'rl';
+  line.style.setProperty('--c', ROLE_COL[role] || '#9cc6ff');
+  const b = document.createElement('b');
+  b.textContent = role === 'Directeur' && SITES[siteIdx].rocket === 'ariane' ? 'Dir. des opérations' : role;
+  line.appendChild(b); line.appendChild(document.createTextNode(text));
+  box.appendChild(line);
+  while (box.children.length > 4) box.removeChild(box.firstChild);
+  setTimeout(() => { line.style.opacity = 0; }, 7000);
+  setTimeout(() => { if (line.parentNode) line.parentNode.removeChild(line); }, 7700);
+  if (speak) say(text, urgent);
+}
+function clearRadio() { $('radio').textContent = ''; }
+$('voiceBtn').addEventListener('click', () => {
+  voiceOn = !voiceOn; $('voiceBtn').textContent = voiceOn ? 'Voix : oui' : 'Voix : non';
+  if (!voiceOn && synth) try { synth.cancel(); } catch (e) {}
+});
+
+/* ---------- Vues : poursuite, cockpit, caméra embarquée, extérieure ---------- */
+const VIEWS = ['poursuite', 'cockpit', 'embarquée', 'extérieure'];
+let view = 0;
+try { view = clamp(Number(localStorage.getItem('fusee-view')) || 0, 0, 3); } catch (e) {}
+$('viewBtn').textContent = 'Vue : ' + VIEWS[view];
+$('viewBtn').addEventListener('click', () => {
+  view = (view + 1) % VIEWS.length;
+  $('viewBtn').textContent = 'Vue : ' + VIEWS[view];
+  try { localStorage.setItem('fusee-view', String(view)); } catch (e) {}
+});
+const _vA = new T.Vector3(), _vB = new T.Vector3(), _vF = new T.Vector3(), _vU = new T.Vector3();
+function applyView(dt, earthPhase) {
+  if (view === 0 || !(state === 'pad' || state === 'play' || state === 'win')) return;
+  if (state === 'play' && phase === 'climb' && tP < 1) return;
+  const cf = veh.cfgs[vehCfg], len = cf.yMax - cf.yMin;
+  veh.root.updateMatrixWorld(true);
+  _vF.set(0, 1, 0).transformDirection(veh.root.matrixWorld);
+  _vU.set(0, 0, 1).transformDirection(veh.root.matrixWorld);
+  const lander = vehCfg === 'E';
+  if (view === 1) {
+    veh.root.localToWorld(_vA.set(0, lander ? cf.yMin + len * 0.72 : cf.yMax - len * 0.05 - 0.05, lander ? 0.12 : 0));
+    camera.position.copy(_vA);
+    if (shake > 0) { camera.position.x += rnd(-1, 1) * shake * 0.05; camera.position.y += rnd(-1, 1) * shake * 0.05; }
+    if (state === 'pad' && tCount > -3 && tCount < 8) { camera.position.x += rnd(-0.012, 0.012); camera.position.z += rnd(-0.012, 0.012); }
+    camera.up.copy(_vU);
+    if (lander) _vB.copy(_vA).add(_vU).addScaledVector(_vF, -0.75); else _vB.copy(_vA).add(_vF);
+    camera.lookAt(_vB);
+    camera.up.set(0, 1, 0);
+    camera.fov = W < H ? 84 : 72;
+  } else if (view === 2) {
+    const upper = vehCfg === 'C' || vehCfg === 'D';
+    const y = lander ? cf.yMin + len * 0.6 : cf.yMin + (upper ? 0.45 : len * 0.45);
+    const r = lander ? len * 0.95 : cf.r * 0.5 + 0.12;
+    veh.root.localToWorld(_vA.set(0, y, r));
+    veh.root.localToWorld(_vB.set(0, cf.yMin - 8, r * (lander ? 1.5 : 2.4)));
+    camera.position.copy(_vA);
+    camera.up.copy(_vU);
+    camera.lookAt(_vB);
+    camera.up.set(0, 1, 0);
+    camera.fov = W < H ? 80 : 68;
+  } else {
+    if (earthPhase && alt < 25) {
+      const gpos = _vA.set(26, 6, -32).add(ground.position);
+      camera.position.copy(gpos);
+      const d = gpos.distanceTo(rocket.position);
+      camera.lookAt(rocket.position);
+      camera.fov = clamp(2 * Math.atan(5.5 / d) * 180 / Math.PI, 2.5, 50);
+    } else if (phase === 'landing' || state === 'win') {
+      camera.position.set(LD.x + 9, Math.max(1.2, LD.y * 0.4 + 1.5), LD.z + 3);
+      camera.lookAt(LD.x, LD.y * 0.7, LD.z);
+      camera.fov = 50;
+    } else {
+      const k = Math.max(camF, 0.35);
+      camera.position.set(R.x + 9 * k + 1.5, R.y + 1.6 * k, 2.5 * k);
+      camera.lookAt(R.x, R.y, -3 * k);
+      camera.fov = 52;
+    }
+  }
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+}
+function gForce() {
+  if (state === 'pad') return tCount < 0 ? 1 : 1 + 0.5 * sstep(0, 3, tCount);
+  if (state !== 'play') return phase === 'landing' || state === 'win' ? 0.17 : 1;
+  if (phase === 'climb' || phase === 'ascent') return fuel > 0 ? (1.3 + 2.1 * sstep(0, 90, alt)) * (boosting ? 1.25 : 1) : 0;
+  if (phase === 'tli') return 1.1;
+  if (phase === 'transfer') return boosting ? 0.6 : 0;
+  if (phase === 'landing') return 0.17 + (LD.thrust ? 0.45 : 0);
+  return 0.05;
+}
+let gShown = 1;
+function gauge(x, y, r, v, label, val, col) {
+  const g = uctx;
+  g.fillStyle = '#0c0e12'; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#4a4f58'; g.lineWidth = 3; g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5;
+  for (let i = 0; i <= 10; i++) { const a = Math.PI * 0.75 + i / 10 * Math.PI * 1.5; g.beginPath(); g.moveTo(x + Math.cos(a) * r * 0.78, y + Math.sin(a) * r * 0.78); g.lineTo(x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9); g.stroke(); }
+  const a = Math.PI * 0.75 + clamp(v, 0, 1) * Math.PI * 1.5;
+  g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * r * 0.75, y + Math.sin(a) * r * 0.75); g.stroke();
+  g.fillStyle = '#9fb0c8'; g.font = `600 ${Math.round(r * 0.22)}px "Chakra Petch", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(label, x, y + r * 0.42);
+  g.fillStyle = '#edf2fa'; g.font = `700 ${Math.round(r * 0.3)}px "Chakra Petch", sans-serif`;
+  g.fillText(val, x, y + r * 0.72);
+}
+function drawCockpit() {
+  const g = uctx, u = Math.min(W, H);
+  const top = H * 0.05, bot = H * 0.64, tw = W * 0.74, bw = W * 0.9, cx = W / 2, rr = u * 0.06;
+  g.save();
+  const grad = g.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#22252b'); grad.addColorStop(1, '#14161a');
+  g.fillStyle = grad;
+  g.beginPath(); g.rect(0, 0, W, H);
+  g.moveTo(cx - tw / 2 + rr, top); g.lineTo(cx + tw / 2 - rr, top); g.quadraticCurveTo(cx + tw / 2, top, cx + tw / 2 + rr * 0.2, top + rr);
+  g.lineTo(cx + bw / 2, bot - rr); g.quadraticCurveTo(cx + bw / 2, bot, cx + bw / 2 - rr, bot);
+  g.lineTo(cx - bw / 2 + rr, bot); g.quadraticCurveTo(cx - bw / 2, bot, cx - bw / 2, bot - rr);
+  g.lineTo(cx - tw / 2 - rr * 0.2, top + rr); g.quadraticCurveTo(cx - tw / 2, top, cx - tw / 2 + rr, top); g.closePath();
+  g.fill('evenodd');
+  g.strokeStyle = 'rgba(160,175,200,.35)'; g.lineWidth = 3; g.stroke();
+  g.fillStyle = '#5a606a';
+  for (let i = 0; i <= 12; i++) { const t = i / 12; g.beginPath(); g.arc(lerp(cx - tw / 2, cx + tw / 2, t), top - 9, 2.5, 0, Math.PI * 2); g.arc(lerp(cx - bw / 2, cx + bw / 2, t), bot + 9, 2.5, 0, Math.PI * 2); g.fill(); }
+  const refl = g.createLinearGradient(cx - tw / 2, top, cx + tw / 2, bot);
+  refl.addColorStop(0, 'rgba(255,255,255,0)'); refl.addColorStop(0.45, 'rgba(255,255,255,.035)'); refl.addColorStop(0.55, 'rgba(255,255,255,0)');
+  g.fillStyle = refl; g.fillRect(cx - bw / 2, top, bw, bot - top);
+  const py = bot + 22, ph = H - py - 8;
+  g.fillStyle = '#1b1e23'; g.fillRect(16, py, W - 32, ph);
+  g.strokeStyle = '#353a42'; g.lineWidth = 2; g.strokeRect(16, py, W - 32, ph);
+  const gr = clamp(Math.min(ph * 0.42, W * 0.07), 22, 62), gy = py + ph * 0.5;
+  gShown += (gForce() - gShown) * 0.1;
+  const spdNow = phase === 'landing' || state === 'win' ? Math.hypot(LD.vx, LD.vy, LD.vz) * 36 : (state === 'pad' ? vv * 3600 : spd);
+  gauge(W * 0.16, gy, gr, gShown / 5, 'FORCE G', fmt1(gShown) + ' g', '#ffcf5a');
+  gauge(W * 0.3, gy, gr, fuel / 100, 'CARBURANT', Math.ceil(fuel) + ' %', fuel < 25 ? '#ff4a5c' : '#5dff9a');
+  gauge(W * 0.7, gy, gr, clamp(spdNow / 30000, 0, 1), 'VITESSE', fmt0(spdNow), '#9cc6ff');
+  const ax = W * 0.5, ar = gr * 1.05;
+  g.save(); g.beginPath(); g.arc(ax, gy, ar, 0, Math.PI * 2); g.clip();
+  const pitch = state === 'play' && earthPhaseNow() ? pitchAsc(alt) : 0;
+  g.translate(ax, gy); g.rotate(R.vx * 0.07);
+  const hy = clamp(pitch * ar * 1.4, -ar, ar);
+  g.fillStyle = '#2d6cb3'; g.fillRect(-ar, -ar * 2 + hy, ar * 2, ar * 2);
+  g.fillStyle = '#6b4a2c'; g.fillRect(-ar, hy, ar * 2, ar * 2);
+  g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(-ar, hy); g.lineTo(ar, hy); g.stroke();
+  g.restore();
+  g.strokeStyle = '#ffcf5a'; g.lineWidth = 3; g.beginPath(); g.moveTo(ax - ar * 0.5, gy); g.lineTo(ax - ar * 0.15, gy); g.lineTo(ax, gy + ar * 0.12); g.lineTo(ax + ar * 0.15, gy); g.lineTo(ax + ar * 0.5, gy); g.stroke();
+  g.strokeStyle = '#4a4f58'; g.lineWidth = 3; g.beginPath(); g.arc(ax, gy, ar, 0, Math.PI * 2); g.stroke();
+  const sx = W * 0.82, sw = W * 0.14;
+  g.fillStyle = '#081018'; g.fillRect(sx, py + ph * 0.18, sw, ph * 0.64);
+  g.strokeStyle = '#353a42'; g.strokeRect(sx, py + ph * 0.18, sw, ph * 0.64);
+  g.fillStyle = '#5dff9a'; g.font = `600 ${Math.round(clamp(ph * 0.12, 9, 14))}px "Chakra Petch", monospace`; g.textAlign = 'left'; g.textBaseline = 'top';
+  const lines = [STAGE_NAMES[phase] || 'Pas de tir', 'Boucliers ' + lives + '/3', 'Score ' + fmt0(score), state === 'pad' ? 'T' + (tCount < 0 ? '-' : '+') + Math.abs(Math.ceil(tCount)) : (phase === 'transfer' ? 'J+' + fmt1(tr.u * 3) : '')];
+  lines.forEach((l, i) => g.fillText(l, sx + 8, py + ph * 0.22 + i * ph * 0.15));
+  for (let i = 0; i < 8; i++) { g.fillStyle = (Math.floor(time * 2 + i * 1.7) % 3 === 0) ? '#ff8a2a' : '#3a3f47'; g.fillRect(W * 0.38 + i * W * 0.03, py + ph * 0.86, W * 0.018, 5); }
+  g.restore();
+}
+let _earthPhase = true;
+const earthPhaseNow = () => _earthPhase;
+function rocketScreen() {
+  if (view === 1) return [W / 2, H * 0.42];
+  tmpV.set(R.x, R.y, 0).project(camera);
+  if (tmpV.z > 1 || view === 2) return [W / 2, H * 0.45];
+  return [(tmpV.x * 0.5 + 0.5) * W, (-tmpV.y * 0.5 + 0.5) * H];
 }
 
 /* ---------- Boucle principale ---------- */
@@ -2155,10 +2342,18 @@ function update(dt) {
       if (c.textContent !== label) { c.textContent = label; tone(880, 880, 0.15, 'square', 0.05); }
     } else c.textContent = '';
     const at = v => prev < v && tCount >= v;
+    if (at(-9.6)) radio('Directeur', 'Tour des postes pour le lancement.');
+    if (at(-9.0)) radio('Propulsion', 'Propulsion : GO.');
+    if (at(-8.4)) radio('Guidage', 'Guidage : GO.');
+    if (at(-7.8)) radio('Météo', 'Météo : GO.');
+    if (at(-7.2)) radio('Sauvegarde', 'Sauvegarde vol : GO.');
+    if (at(-6.6)) radio('Directeur', 'Nous sommes GO pour le lancement.');
     if (at(-8)) banner('Séquence automatique', 'Les ordinateurs de bord prennent la main');
-    if (at(-6)) banner('Déluge d\'eau', 'Protection du pas de tir activée');
-    if (at(-3)) { banner('Allumage', 'Montée en poussée des moteurs'); $('skip').hidden = true; }
-    if (at(0)) { banner('Décollage !', SITES[siteIdx].where, 'gold'); tone(220, 660, 0.8, 'sawtooth', 0.06); }
+    if (at(-6)) { banner('Déluge d\'eau', 'Protection du pas de tir activée'); radio('Sol', 'Déluge d\'eau activé.', false); }
+    for (const n of [5, 4, 2, 1]) if (at(-n)) say(['', 'un', 'deux', 'trois', 'quatre', 'cinq'][n], true);
+    if (at(-3)) { banner('Allumage', 'Montée en poussée des moteurs'); $('skip').hidden = true; radio('Propulsion', 'Trois… Allumage !', true, true); }
+    if (at(0)) { banner('Décollage !', SITES[siteIdx].where, 'gold'); tone(220, 660, 0.8, 'sawtooth', 0.06); radio('Compte', 'Top. Décollage !', true, true); }
+    if (tCount > 0 && alt / U > 11 && !towerCleared) { towerCleared = true; radio('Contrôle', 'La fusée a dégagé la tour.'); }
     applyPadAnims(tCount);
     if (tCount > -6 && tCount < 1 && Math.random() < dt * 25) {
       const s = Math.random() < 0.5 ? -1 : 1;
@@ -2176,6 +2371,7 @@ function update(dt) {
     shake = Math.max(shake, tCount > -2.5 && tCount < 9 ? 0.08 * sstep(-2.5, 0, tCount) * (1 - sstep(3, 9, tCount)) : 0);
     if (tCount >= 11) {
       state = 'play'; phase = 'climb'; tP = 0;
+      radio('Guidage', 'Début de la manœuvre de bascule.');
       camStartOffset = camera.position.clone().sub(rocket.position);
       $('count').hidden = true; $('skip').hidden = true;
       if (coarse) bb.hidden = false;
@@ -2220,7 +2416,7 @@ function update(dt) {
         const target = Math.min(3.6, 0.9 * (1 + alt / 110)) * (boosting ? 1.6 : 1);
         vv += (target - vv) * Math.min(1, dt * 1.3);
         fuel = Math.max(0, fuel - (boosting ? 4.5 : 1.1) * dt);
-        if (fuel < 25 && !lowFuelWarned) { lowFuelWarned = true; banner('Carburant bas', 'Attrape les bidons jaunes : suis la flèche', 'warn'); tone(660, 440, 0.3, 'square', 0.06); }
+        if (fuel < 25 && !lowFuelWarned) { lowFuelWarned = true; banner('Carburant bas', 'Attrape les bidons jaunes : suis la flèche', 'warn'); radio('Propulsion', 'Carburant bas, récupère des réservoirs.'); tone(660, 440, 0.3, 'square', 0.06); }
         if (fuel > 50) lowFuelWarned = false;
         if (fuel === 0 && !mecoDone) { mecoDone = true; banner('MECO', 'Extinction des moteurs : plus de carburant', 'warn'); tone(400, 100, 0.8, 'sawtooth', 0.06); }
       } else {
@@ -2233,10 +2429,12 @@ function update(dt) {
       S += (targetS - S) * Math.min(1, dt * 2);
       spd = speedAt(alt) * (boosting ? 1.06 : 1);
       if (phase === 'ascent') {
-        if (!machDone && spd >= soundSpeed(alt)) { machDone = true; banner('Mach 1', 'Tu viens de franchir le mur du son'); }
-        if (!maxqDone && alt >= 13) { maxqDone = true; banner('Max-Q', 'Pression aérodynamique maximale sur la fusée'); }
+        if (!machDone && spd >= soundSpeed(alt)) { machDone = true; banner('Mach 1', 'Tu viens de franchir le mur du son'); radio('Contrôle', 'Vitesse du son dépassée.'); }
+        if (!maxqDone && alt >= 13) { maxqDone = true; banner('Max-Q', 'Pression aérodynamique maximale sur la fusée'); radio('Contrôle', 'Max-Q. Pression aérodynamique maximale.'); }
         while (layerIdx + 1 < LAYERS.length && alt >= LAYERS[layerIdx + 1].at) {
           layerIdx++; const L = LAYERS[layerIdx]; banner(L.name, L.note, L.gold ? 'gold' : ''); chime();
+          if (L.at === 100) radio('Contrôle', 'Ligne de Kármán franchie. Nous sommes dans l\'espace.');
+          if (L.at === 408) radio('ISS', 'Ici la Station spatiale. Nous vous voyons, l\'anneau d\'amarrage est prêt.');
         }
         for (const ev of veh.seq) if (!ev.done && alt >= ev.alt) { ev.done = true; doSeparation(ev); }
         const tA = -SPAWN_Z / Math.max(20, S);
@@ -2249,6 +2447,7 @@ function update(dt) {
         if (alt >= 600) {
           phase = 'tli'; tP = 0;
           banner('Injection trans-lunaire', 'Cap sur la Lune : 384 400 km', 'gold'); fanfare();
+          radio('Directeur', 'Vous êtes GO pour l\'injection trans-lunaire.');
           fuel = Math.max(fuel, 60);
         }
       }
@@ -2262,7 +2461,7 @@ function update(dt) {
       S += ((boosting ? 80 : 55) - S) * Math.min(1, dt * 2);
       const dMoon = P.distanceTo(MC) - RM;
       spd = lerp(39000, 3600, sstep(0, 0.85, tr.u)) + 5200 * sstep(0.85, 1, tr.u);
-      const mark = (id, cond, a, b, cls) => { if (cond && !tr.marks.has(id)) { tr.marks.add(id); banner(a, b, cls); chime(); } };
+      const mark = (id, cond, a, b, cls) => { if (cond && !tr.marks.has(id)) { tr.marks.add(id); banner(a, b, cls); chime(); radio('Contrôle', a + '. ' + b + '.'); } };
       mark('va', tr.u > 0.004, 'Ceintures de Van Allen', 'Traversée rapide de la zone de radiations');
       mark('mid', tr.u > 0.5, 'Mi-chemin', '192 000 km de la Terre');
       mark('soi', dMoon < 66000, 'Sphère d\'influence lunaire', 'La Lune t\'attire maintenant');
@@ -2276,6 +2475,7 @@ function update(dt) {
           clearWorld();
           phase = 'orbit'; tP = 0; mo.phi = -0.75; mo.h = 100;
           banner('Orbite lunaire', 'Bienvenue autour de la Lune', 'gold'); fanfare();
+          radio('Contrôle', 'Insertion en orbite lunaire confirmée. Bravo !');
         });
       }
     } else if (phase === 'orbit' || phase === 'descent') {
@@ -2285,7 +2485,7 @@ function update(dt) {
         mo.phi += dt * 0.02;
         spd = 5800;
         if (!gwSpawned && tP > 2) { gwSpawned = true; spawnStation('gateway'); }
-        if (mo.phi >= -0.3) { phase = 'descent'; tP = 0; mo.tau = 0; banner('Descente vers la surface', 'Prépare-toi à alunir'); }
+        if (mo.phi >= -0.3) { phase = 'descent'; tP = 0; mo.tau = 0; banner('Descente vers la surface', 'Prépare-toi à alunir'); radio('Directeur', 'Vous êtes GO pour la descente.'); }
       } else {
         power = 0.6;
         mo.tau = Math.min(0.86, mo.tau + dt * (1 / 6) * Math.max(0.15, 1 - mo.tau));
@@ -2309,6 +2509,9 @@ function update(dt) {
       if (ix || iy) fuel = Math.max(0, fuel - 0.8 * dt);
       LD.x += LD.vx * dt; LD.y += LD.vy * dt; LD.z += LD.vz * dt;
       const legH = LD.y - veh.legOff;
+      for (const [hU, txt] of [[50, '500 mètres.'], [20, '200 mètres.'], [10, '100 mètres. Ralentis.'], [3, '30 mètres. Doucement…']]) {
+        if (legH < hU && !landCalls.has(hU)) { landCalls.add(hU); radio('Contrôle', txt + (-LD.vy * 10 > 3 ? ' Trop rapide !' : '')); }
+      }
       if (thrust) emitDust(dt, legH);
       if (legH <= 0) {
         const vh = Math.hypot(LD.vx, LD.vz), dist = Math.hypot(LD.x, LD.z);
@@ -2319,6 +2522,7 @@ function update(dt) {
           landResult = { dist, prec };
           state = 'win'; tP = 0; LD.vx = LD.vy = LD.vz = 0; LD.thrust = false;
           banner(dist < 5 ? 'Alunissage parfait !' : 'Alunissage réussi !', dist < 5 ? 'Pile sur la cible' : 'à ' + fmt0(dist * 10) + ' m de la cible', 'ok');
+          radio('Contrôle', 'Contact ! Le module est posé. Félicitations, vous êtes sur la Lune !', true, true);
           fanfare();
         } else {
           die(-LD.vy >= 0.35 ? 'Écrasé sur la Lune : trop rapide' : 'Basculé : trop de vitesse horizontale');
@@ -2345,6 +2549,7 @@ function update(dt) {
 
   // Sol terrestre : suit l'altitude et la distance parcourue
   const earthPhase = state === 'menu' || state === 'pad' || ['climb', 'ascent', 'tli'].includes(phase) || (state === 'dead' && ['pad', 'climb', 'ascent', 'tli'].includes(phase));
+  _earthPhase = earthPhase;
   if (earthPhase) {
     const gs = state === 'menu' || state === 'pad' ? 0 : speedAt(alt) / 3600 * sstep(0, 60, alt) + 0.12 * sstep(0, 3, alt);
     if (state === 'play') D += gs * dt;
@@ -2385,7 +2590,7 @@ function update(dt) {
     rocket.rotation.set(R.vy * 0.035 * (1 - vertK) + vertK * Math.PI / 2, -R.vx * 0.025, -R.vx * 0.07);
   }
   if (invuln > 0) invuln = Math.max(0, invuln - dt);
-  veh.root.visible = invuln <= 0 || (time * 10 % 1) < 0.55;
+  veh.root.visible = (invuln <= 0 || (time * 10 % 1) < 0.55) && !(view === 1 && (state === 'pad' || state === 'play' || state === 'win'));
   camF += (camFT - camF) * Math.min(1, dt * 1.5);
   vehShift += (vehShiftT - vehShift) * Math.min(1, dt * 1.5);
   veh.root.position.y = vehShift;
@@ -2415,6 +2620,7 @@ function update(dt) {
 
   // Caméra
   updateCamera(dt, camMode, visibleBoost);
+  applyView(dt, earthPhase);
 
   // Repère du fond (Terre/Lune) et position de l'observateur
   updateView(dt, earthPhase);
@@ -2511,6 +2717,8 @@ function initLanding() {
   R.x = R.y = R.vx = R.vy = 0;
   fuel = Math.max(fuel, 70);
   banner('Alunissage manuel', 'Espace pour freiner · Flèches pour viser la cible verte', 'gold');
+  radio('Contrôle', 'Descente manuelle. Freine avant le sol et vise la cible verte.');
+  landCalls = new Set();
   const h = $('hint');
   h.textContent = coarse ? 'BOOST : freiner · Glisse : viser la cible' : 'Espace : freiner · Flèches : viser la cible · moins de 3 m/s';
   h.hidden = false; h.style.opacity = 1;
@@ -2539,6 +2747,7 @@ function updateObjects(dt) {
         fuel = 100;
         if (lives < 3) lives++;
         banner('Amarrage réussi', `Station ${name} : plein de carburant effectué`, 'ok'); fanfare();
+        radio(o.station === 'iss' ? 'ISS' : 'Gateway', 'Amarrage confirmé. Plein de carburant effectué, bouclier réparé.');
         for (let k = 0; k < 60; k++) { const th = rnd(0, Math.PI * 2); fire.emit({ x: m.position.x + Math.cos(th) * 2, y: m.position.y + Math.sin(th) * 2, z: 0, vx: Math.cos(th) * 4, vy: Math.sin(th) * 4, vz: S * 0.5, drag: 2, max: 0.6, s0: 0.5, s1: 0.1, a: 1, kind: 1 }); }
       } else {
         banner('Amarrage manqué', 'Vise le centre de l\'anneau vert', 'warn');
@@ -2729,6 +2938,10 @@ function missionProgress() {
 const MARKS = [[0, 'Terre'], [0.45 * Math.sqrt(100 / 600), '100 km'], [0.45 * Math.sqrt(408 / 600), 'ISS'], [0.45, 'Départ Lune'], [0.87, 'Orbite lunaire'], [1, 'Lune']];
 function drawUI() {
   uctx.clearRect(0, 0, W, H);
+  const cockpitOn = view === 1 && (state === 'play' || state === 'pad');
+  const uiVis = cockpitOn || state === 'play' ? 'visible' : 'hidden';
+  if (ui.style.visibility !== uiVis) ui.style.visibility = uiVis;
+  if (cockpitOn) drawCockpit();
   if (state !== 'play') return;
   if (phase !== 'landing') {
     for (const o of objs) {
@@ -2759,8 +2972,7 @@ function drawUI() {
       for (const o of objs) if (o.kind === 'can' && o.mesh.position.z < -3 && o.mesh.position.z > bz) { bz = o.mesh.position.z; can = o; }
       if (can) {
         const dx = can.mesh.position.x - R.x, dy = can.mesh.position.y - R.y, d = Math.hypot(dx, dy);
-        tmpV.set(R.x, R.y, 0).project(camera);
-        const rx = (tmpV.x * 0.5 + 0.5) * W, ry = (-tmpV.y * 0.5 + 0.5) * H;
+        const [rx, ry] = rocketScreen();
         uctx.font = '700 15px "Chakra Petch", sans-serif'; uctx.textAlign = 'center'; uctx.textBaseline = 'middle';
         uctx.fillStyle = '#ffd23f'; uctx.strokeStyle = 'rgba(0,0,0,.7)'; uctx.lineWidth = 4;
         if (d > 0.8) {
@@ -2774,8 +2986,7 @@ function drawUI() {
       }
     }
     if (threat) {
-      tmpV.set(R.x, R.y, 0).project(camera);
-      const rx = (tmpV.x * 0.5 + 0.5) * W, ry = (-tmpV.y * 0.5 + 0.5) * H;
+      const [rx, ry] = rocketScreen();
       const [dx, dy] = threat.dir;
       const pulse = 0.75 + 0.25 * Math.sin(time * 16);
       uctx.globalAlpha = pulse;
@@ -2795,7 +3006,7 @@ function drawUI() {
       drawBrackets(sx, sy, 16, '#5dff9a', 0.7 + 0.3 * Math.sin(time * 6));
     }
   }
-  const x = 26, y0 = H * 0.8, y1 = H * 0.3;
+  const x = 26, y0 = H * (cockpitOn ? 0.58 : 0.66), y1 = H * 0.24;
   const sc = p => lerp(y0, y1, p);
   uctx.strokeStyle = 'rgba(237,242,250,.45)'; uctx.lineWidth = 1;
   uctx.beginPath(); uctx.moveTo(x, y0); uctx.lineTo(x, y1); uctx.stroke();
