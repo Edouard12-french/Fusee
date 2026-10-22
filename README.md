@@ -13,7 +13,7 @@ Jeu 3D dans le navigateur (Three.js + WebGL), une mission complète de la Terre 
 
 La Terre, la Lune, l'atmosphère et les nuages sont calculés en temps réel dans un shader.
 
-Commandes : flèches ou ZQSD/WASD pour piloter, Espace pour le boost (et la poussée pendant l'alunissage), M pour couper le son. Sur mobile : glisser le doigt, bouton BOOST.
+Commandes : flèches ou ZQSD/WASD pour piloter, Espace pour le boost (et la poussée pendant l'alunissage), M pour couper le son, P ou Échap pour la pause. Sur mobile : glisser le doigt, bouton BOOST.
 
 Pour y jouer en local, ouvre `jeu/index.html` dans un navigateur.
 
