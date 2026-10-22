@@ -51,6 +51,9 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 #fuelbar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff9a2a, var(--fuel)); }
 #fuelbar.low { background: var(--danger); animation: blink .5s steps(2) infinite; }
 @keyframes blink { 50% { opacity: .35; } }
+.shields { display: flex; gap: 5px; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.shield { width: 13px; height: 15px; background: var(--line); clip-path: polygon(50% 0, 100% 18%, 92% 68%, 50% 100%, 8% 68%, 0 18%); }
+.shield.off { background: rgba(237,242,250,.18); }
 .score { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .score b { color: var(--muted); font-weight: 500; margin-right: 4px; }
 .hudbtns { display: flex; gap: 6px; }
@@ -130,6 +133,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
     <div class="lbl">Carburant</div>
     <div class="fuelv" id="fuelv">100 %</div>
     <div class="gauge"><div id="fuelbar"></div></div>
+    <div class="shields" id="shields" aria-label="Boucliers">Boucliers <span class="shield"></span><span class="shield"></span><span class="shield"></span></div>
     <div class="score"><b>Score</b><span id="scorev">0</span></div>
     <div class="hudbtns"><button id="pauseBtn" type="button">Pause</button><button id="mute" type="button">Son : oui</button></div>
   </div>
@@ -1734,7 +1738,7 @@ function resetMission() {
   issSpawned = false; gwSpawned = false; docked = { iss: false, gateway: false };
   tr = { s: 0, u: 0, P0: new T.Vector3(), P1: new T.Vector3(), marks: new Set() };
   mo = { phi: -0.75, h: 100, tau: 0 };
-  landResult = null; score = 0; bonus = 0;
+  landResult = null; score = 0; bonus = 0; lives = 3; invuln = 0; threat = null; lastThreat = null;
   rocket.visible = true; ground.visible = true; moonSite.visible = false;
   setupVehicle();
   applyPadAnims(-10);
@@ -1850,7 +1854,7 @@ function place(o, x, y, extraVz, vx, vy) {
   scene.add(o.mesh); objs.push(o);
 }
 function aimPoint(spread) {
-  if (Math.random() < 0.4) return [clamp(R.x + rnd(-1.2, 1.2), -BX, BX), clamp(R.y + rnd(-1, 1), -BY, BY)];
+  if (Math.random() < 0.22) return [clamp(R.x + rnd(-1.2, 1.2), -BX, BX), clamp(R.y + rnd(-1, 1), -BY, BY)];
   return [rnd(-BX - spread, BX + spread), rnd(-BY - spread * 0.6, BY + spread * 0.6)];
 }
 function spawnObstacle() {
@@ -2024,6 +2028,66 @@ function die(reason) {
   endMission(false, reason);
 }
 
+/* ---------- Boucliers et aide à l'esquive ---------- */
+let lives = 3, invuln = 0, threat = null, lastThreat = null;
+function hitShield(o, i) {
+  if (invuln > 0) return o.kind !== 'station';
+  lives--;
+  if (lives <= 0) { die(DEATH[o.kind]); return false; }
+  invuln = 2.2; shake = Math.max(shake, 0.7);
+  const m = o.mesh;
+  for (let k = 0; k < 90; k++) {
+    const th = rnd(0, Math.PI * 2), ph = Math.acos(rnd(-1, 1)), v = rnd(3, 14);
+    fire.emit({ x: m.position.x, y: m.position.y, z: m.position.z, vx: Math.sin(ph) * Math.cos(th) * v, vy: Math.sin(ph) * Math.sin(th) * v, vz: Math.cos(ph) * v + S * 0.6, drag: 1.8, max: rnd(0.4, 1.0), s0: rnd(0.6, 1.4), s1: rnd(2, 4), a: 0.6 });
+  }
+  tone(140, 60, 0.5, 'sawtooth', 0.1);
+  banner('Bouclier touché', lives === 1 ? 'Dernier bouclier : fais attention !' : 'Plus que ' + lives + ' boucliers', 'warn');
+  if (o.kind !== 'station') { scene.remove(m); objs.splice(i, 1); return true; }
+  return false;
+}
+const DODGE = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+function findThreat() {
+  threat = null;
+  if (state !== 'play' || phase === 'landing' || phase === 'climb') return;
+  const rr = veh.cfgs[vehCfg].r * 0.75 + 0.45;
+  let bestT = 3.2;
+  for (const o of objs) {
+    if (!o.spheres.length || o.kind === 'can') continue;
+    const m = o.mesh, vz = S + o.vz;
+    if (m.position.z > 0.5 || vz <= 1) continue;
+    const t = -m.position.z / vz;
+    if (t > bestT) continue;
+    const pts = [];
+    let hitNow = false;
+    for (const [sx, sy, sz, sr] of o.spheres) {
+      tmpV.set(sx, sy, sz); m.localToWorld(tmpV);
+      const px = tmpV.x + o.vx * t, py = tmpV.y + o.vy * t, r = sr * (o.scale || 1) * 0.85 + rr;
+      pts.push([px, py, r]);
+      if (Math.hypot(px - R.x, py - R.y) < r) hitNow = true;
+    }
+    if (!hitNow) continue;
+    let best = null, bestM = -1e9;
+    for (const [dx, dy] of DODGE) {
+      const x = clamp(R.x + dx * 2.8, -BX, BX), y = clamp(R.y + dy * 2.8, -BY, BY);
+      let margin = 1e9;
+      for (const [px, py, r] of pts) margin = Math.min(margin, Math.hypot(px - x, py - y) - r);
+      if (margin > bestM) { bestM = margin; best = [dx, dy]; }
+    }
+    bestT = t; threat = { o, t, dir: best };
+  }
+  if (threat && threat.o !== lastThreat) { tone(988, 988, 0.08, 'square', 0.05); tone(988, 988, 0.08, 'square', 0.05, 0.12); }
+  lastThreat = threat ? threat.o : null;
+}
+function drawArrow(x, y, dx, dy, len, color) {
+  const ang = Math.atan2(-dy, dx);
+  uctx.save(); uctx.translate(x, y); uctx.rotate(ang);
+  uctx.fillStyle = color; uctx.strokeStyle = 'rgba(0,0,0,.55)'; uctx.lineWidth = 2;
+  uctx.beginPath();
+  uctx.moveTo(len, 0); uctx.lineTo(len - 22, -18); uctx.lineTo(len - 22, -7); uctx.lineTo(18, -7); uctx.lineTo(18, 7); uctx.lineTo(len - 22, 7); uctx.lineTo(len - 22, 18); uctx.closePath();
+  uctx.fill(); uctx.stroke();
+  uctx.restore();
+}
+
 /* ---------- Boucle principale ---------- */
 let last = performance.now(), hudT = 0;
 let perfT = 0, perfN = 0;
@@ -2128,7 +2192,7 @@ function update(dt) {
       if (tP >= 3.5) {
         phase = 'ascent'; tP = 0;
         const h = $('hint');
-        h.textContent = coarse ? 'Glisse le doigt pour piloter · BOOST à droite' : 'Flèches ou ZQSD pour piloter · Espace : boost';
+        h.textContent = coarse ? 'Glisse le doigt · Suis la flèche quand un obstacle arrive' : 'Flèches : piloter · Suis la flèche quand un obstacle arrive · Espace : boost';
         h.hidden = false; h.style.opacity = 1;
         setTimeout(() => { h.style.opacity = 0; }, 5000);
       }
@@ -2174,7 +2238,7 @@ function update(dt) {
         if (!issSpawned && alt + vv * (-SPAWN_Z / Math.max(20, S * 0.45)) >= 408) { issSpawned = true; spawnStation('iss'); }
         travel += S * dt;
         const density = Math.min(2.4, 1 + alt / 120);
-        while (travel >= nextObs) { spawnObstacle(); nextObs += rnd(34, 62) / density; }
+        while (travel >= nextObs) { spawnObstacle(); nextObs += rnd(34, 62) / density * (alt < 8 ? 1.5 : 1); }
         while (travel >= nextCan) { spawnCan(); nextCan += Math.max(S, 60) * rnd(10, 13) * (1 + alt / 400); }
         if (alt >= 600) {
           phase = 'tli'; tP = 0;
@@ -2287,6 +2351,7 @@ function update(dt) {
   // Objets du monde
   updateObjects(dt);
   updateSepParts(dt);
+  findThreat();
 
   // Nuages traversés vers 7 km
   const band = earthPhase ? Math.exp(-Math.pow((alt - 7) / 1.6, 2)) : 0;
@@ -2313,6 +2378,8 @@ function update(dt) {
     rocket.position.set(R.x, R.y, 0);
     rocket.rotation.set(R.vy * 0.035 * (1 - vertK) + vertK * Math.PI / 2, -R.vx * 0.025, -R.vx * 0.07);
   }
+  if (invuln > 0) invuln = Math.max(0, invuln - dt);
+  veh.root.visible = invuln <= 0 || (time * 10 % 1) < 0.55;
   camF += (camFT - camF) * Math.min(1, dt * 1.5);
   vehShift += (vehShiftT - vehShift) * Math.min(1, dt * 1.5);
   veh.root.position.y = vehShift;
@@ -2464,6 +2531,7 @@ function updateObjects(dt) {
         docked[o.station] = true;
         bonus += o.station === 'iss' ? 1500 : 2000;
         fuel = 100;
+        if (lives < 3) lives++;
         banner('Amarrage réussi', `Station ${name} : plein de carburant effectué`, 'ok'); fanfare();
         for (let k = 0; k < 60; k++) { const th = rnd(0, Math.PI * 2); fire.emit({ x: m.position.x + Math.cos(th) * 2, y: m.position.y + Math.sin(th) * 2, z: 0, vx: Math.cos(th) * 4, vy: Math.sin(th) * 4, vz: S * 0.5, drag: 2, max: 0.6, s0: 0.5, s1: 0.1, a: 1, kind: 1 }); }
       } else {
@@ -2476,7 +2544,7 @@ function updateObjects(dt) {
       let hit = false;
       for (const [sx, sy, sz, sr] of o.spheres) {
         tmpV.set(sx, sy, sz); m.localToWorld(tmpV);
-        const r = sr * (o.scale || 1);
+        const r = sr * (o.scale || 1) * 0.85;
         const rr = r + veh.cfgs[vehCfg].r * 0.75;
         for (let ci = 0; ci < colN; ci++) {
           if (tmpV.distanceToSquared(colPts[ci]) < rr * rr) { hit = true; break; }
@@ -2489,7 +2557,7 @@ function updateObjects(dt) {
           tone(660, 990, 0.12, 'sine', 0.12); tone(990, 1480, 0.18, 'sine', 0.1, 0.08);
           for (let k = 0; k < 50; k++) { const th = rnd(0, Math.PI * 2); fire.emit({ x: m.position.x, y: m.position.y, z: m.position.z, vx: Math.cos(th) * rnd(4, 12), vy: Math.sin(th) * rnd(4, 12), vz: rnd(-4, 4) + S * 0.5, drag: 2, max: rnd(0.4, 0.8), s0: 0.4, s1: 0.1, a: 1, kind: 1 }); }
           scene.remove(m); objs.splice(i, 1);
-        } else { die(DEATH[o.kind]); }
+        } else if (hitShield(o, i)) { continue; }
       }
     }
   }
@@ -2624,6 +2692,8 @@ function updateHUD(earthPhase) {
     set('l3', 'Mach'); set('v3', alt < 80 ? fmt1((state === 'pad' ? vv * 3600 : spd) / soundSpeed(alt)) : '—');
     set('layer', state === 'pad' ? SITES[siteIdx].where : (phase === 'tli' ? 'Injection trans-lunaire' : layerAt(alt).name));
   }
+  const sh = $('shields').querySelectorAll('.shield');
+  for (let i = 0; i < sh.length; i++) sh[i].classList.toggle('off', i >= lives);
   set('fuelv', Math.ceil(fuel) + ' %');
   $('fuelbar').style.width = fuel + '%';
   $('fuelbar').classList.toggle('low', fuel < 25);
@@ -2660,20 +2730,38 @@ function drawUI() {
       if (p.z > 2 || p.z < -260) continue;
       const isCan = o.kind === 'can', isDock = o.kind === 'dock';
       if (o.kind === 'station') continue;
-      if (!isCan && !isDock) {
-        let near = false;
-        for (const [sx, sy, sz, sr] of o.spheres) {
-          tmpV.set(sx, sy, sz); o.mesh.localToWorld(tmpV);
-          if (Math.abs(tmpV.x - R.x) < sr + 1.0 && Math.abs(tmpV.y - R.y) < sr + 0.9) { near = true; break; }
-        }
-        if (!near || p.z < -170) continue;
-      }
+      const isThreat = threat && threat.o === o;
+      if (!isCan && !isDock && !isThreat) continue;
       tmpV.copy(p).project(camera);
       if (tmpV.z > 1) continue;
       const sx = (tmpV.x * 0.5 + 0.5) * W, sy = (-tmpV.y * 0.5 + 0.5) * H;
       tmpV2.copy(p); tmpV2.y += isCan ? 1.4 : (isDock ? 2.1 : 2.2); tmpV2.project(camera);
       const s = clamp(Math.abs((-tmpV2.y * 0.5 + 0.5) * H - sy), 10, 140);
-      drawBrackets(sx, sy, s, isCan ? '#ffd23f' : (isDock ? '#5dff9a' : '#ff4a5c'), isCan || isDock ? 0.85 : 0.55 + 0.45 * Math.sin(time * 14));
+      drawBrackets(sx, sy, s, isCan ? '#ffd23f' : (isDock ? '#5dff9a' : '#ff4a5c'), isCan || isDock ? 0.85 : 0.6 + 0.4 * Math.sin(time * 14));
+    }
+    tmpV.set(R.x, R.y, -45).project(camera);
+    tmpV2.set(R.x + veh.cfgs[vehCfg].r * 0.75 + 0.9, R.y, -45).project(camera);
+    if (tmpV.z < 1) {
+      const cx = (tmpV.x * 0.5 + 0.5) * W, cy = (-tmpV.y * 0.5 + 0.5) * H;
+      const cr = clamp(Math.abs((tmpV2.x - tmpV.x) * 0.5 * W), 14, 90);
+      uctx.strokeStyle = threat ? '#ff4a5c' : 'rgba(237,242,250,.55)'; uctx.lineWidth = 2;
+      uctx.setLineDash([6, 6]); uctx.beginPath(); uctx.arc(cx, cy, cr, 0, Math.PI * 2); uctx.stroke(); uctx.setLineDash([]);
+      uctx.beginPath(); uctx.moveTo(cx - 5, cy); uctx.lineTo(cx + 5, cy); uctx.moveTo(cx, cy - 5); uctx.lineTo(cx, cy + 5); uctx.stroke();
+    }
+    if (threat) {
+      tmpV.set(R.x, R.y, 0).project(camera);
+      const rx = (tmpV.x * 0.5 + 0.5) * W, ry = (-tmpV.y * 0.5 + 0.5) * H;
+      const [dx, dy] = threat.dir;
+      const pulse = 0.75 + 0.25 * Math.sin(time * 16);
+      uctx.globalAlpha = pulse;
+      drawArrow(rx + dx * 70, ry - dy * 70, dx, dy, 96, '#ffcf5a');
+      uctx.globalAlpha = 1;
+      uctx.font = '700 15px "Chakra Petch", sans-serif'; uctx.textAlign = 'center'; uctx.textBaseline = 'middle';
+      uctx.fillStyle = '#ffcf5a'; uctx.strokeStyle = 'rgba(0,0,0,.7)'; uctx.lineWidth = 4;
+      const lab = 'ESQUIVE ' + (dy > 0 ? '↑' : dy < 0 ? '↓' : dx < 0 ? '←' : '→');
+      const lx = rx + dx * 200 + (dy ? 70 : 0), ly = ry - dy * 120 + (dx ? -30 : 0);
+      uctx.strokeText(lab, lx, ly); uctx.fillText(lab, lx, ly);
+      uctx.textAlign = 'left';
     }
   } else {
     tmpV.set(0, 0.2, 0).project(camera);
