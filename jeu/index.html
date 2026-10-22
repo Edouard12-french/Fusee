@@ -2166,15 +2166,15 @@ function update(dt) {
     }
     power = sstep(-3, -2.2, tCount) * (tCount < 0 ? 0.8 : 1.15);
     if (tCount >= 0) {
-      const t = tCount, au = 0.5 * 1.6 * t * t;
+      const t = tCount, au = 0.25 * t * t + 0.02 * t * t * t;
       const newAlt = au * U;
       groundDy = -(newAlt - alt) / U;
-      alt = newAlt; vv = 1.6 * t * U;
+      alt = newAlt; vv = (0.5 * t + 0.06 * t * t) * U;
     }
     const near = 1 - sstep(20, 40, alt / U);
     if (tCount > -3) emitPadSmoke(dt, near * sstep(-3, -2, tCount));
-    shake = Math.max(shake, tCount > -2.5 && tCount < 6 ? 0.08 * sstep(-2.5, 0, tCount) * (1 - sstep(2, 6, tCount)) : 0);
-    if (tCount >= 8) {
+    shake = Math.max(shake, tCount > -2.5 && tCount < 9 ? 0.08 * sstep(-2.5, 0, tCount) * (1 - sstep(3, 9, tCount)) : 0);
+    if (tCount >= 11) {
       state = 'play'; phase = 'climb'; tP = 0;
       camStartOffset = camera.position.clone().sub(rocket.position);
       $('count').hidden = true; $('skip').hidden = true;
@@ -2188,7 +2188,7 @@ function update(dt) {
       const target = 0.9;
       vv += (target - vv) * Math.min(1, dt * 0.6);
       const dA = vv * dt; alt += dA; groundDy = -dA / U;
-      S = lerp(0, 60, k);
+      S = lerp(0, 45, k);
       spd = speedAt(alt);
       const ctl = sstep(0.5, 1, k);
       R.vx += (ix * 11 * ctl - R.vx) * Math.min(1, dt * 6); R.vy += (iy * 9 * ctl - R.vy) * Math.min(1, dt * 6);
@@ -2229,7 +2229,7 @@ function update(dt) {
       }
       const dA = vv * dt; alt += dA; groundDy = -dA / U;
       maxAlt = Math.max(maxAlt, alt);
-      const targetS = 72 * (1 + Math.min(alt / 140, 1.4)) * (boosting ? 1.5 : 1) * (fuel > 0 || phase === 'tli' ? 1 : clamp(vv, 0.35, 1));
+      const targetS = 50 * (1 + Math.min(alt / 200, 1.0)) * (boosting ? 1.4 : 1) * (fuel > 0 || phase === 'tli' ? 1 : clamp(vv, 0.35, 1));
       S += (targetS - S) * Math.min(1, dt * 2);
       spd = speedAt(alt) * (boosting ? 1.06 : 1);
       if (phase === 'ascent') {
@@ -2245,7 +2245,7 @@ function update(dt) {
         travel += S * dt;
         const density = Math.min(2.4, 1 + alt / 120);
         while (travel >= nextObs) { spawnObstacle(); nextObs += rnd(34, 62) / density * (alt < 8 ? 1.5 : 1); }
-        while (travel >= nextCan) { spawnCan(); nextCan += Math.max(S, 60) * rnd(8, 11) * (1 + alt / 600) * (fuel < 40 ? 0.6 : 1); }
+        while (travel >= nextCan) { spawnCan(); nextCan += Math.max(S, 40) * rnd(8, 11) * (1 + alt / 600) * (fuel < 40 ? 0.6 : 1); }
         if (alt >= 600) {
           phase = 'tli'; tP = 0;
           banner('Injection trans-lunaire', 'Cap sur la Lune : 384 400 km', 'gold'); fanfare();
@@ -2259,7 +2259,7 @@ function update(dt) {
       if (boosting) fuel = Math.max(0, fuel - 4 * dt); else fuel = Math.max(0, fuel - 0.3 * dt);
       tr.s = Math.min(1, tr.s + dt / 70 * (boosting ? 1.6 : 1));
       tr.u = 1 - Math.pow(1 - tr.s, 2.2);
-      S += ((boosting ? 110 : 75) - S) * Math.min(1, dt * 2);
+      S += ((boosting ? 80 : 55) - S) * Math.min(1, dt * 2);
       const dMoon = P.distanceTo(MC) - RM;
       spd = lerp(39000, 3600, sstep(0, 0.85, tr.u)) + 5200 * sstep(0.85, 1, tr.u);
       const mark = (id, cond, a, b, cls) => { if (cond && !tr.marks.has(id)) { tr.marks.add(id); banner(a, b, cls); chime(); } };
@@ -2280,7 +2280,7 @@ function update(dt) {
       }
     } else if (phase === 'orbit' || phase === 'descent') {
       steer(dt, ix, iy);
-      power = 0.15; S += (60 - S) * Math.min(1, dt);
+      power = 0.15; S += (45 - S) * Math.min(1, dt);
       if (phase === 'orbit') {
         mo.phi += dt * 0.02;
         spd = 5800;
