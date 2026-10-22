@@ -87,14 +87,15 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 #skip { position: fixed; z-index: 3; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); font: 600 12px var(--hud); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: rgba(6,10,22,.6); border: 1px solid var(--edge); border-radius: 3px; padding: 10px 14px; cursor: pointer; }
 
 .screen {
-  position: fixed; inset: 0; z-index: 4; display: flex; align-items: flex-end;
+  position: fixed; inset: 0; z-index: 4; display: flex; align-items: flex-start;
   padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: linear-gradient(180deg, rgba(2,4,10,0) 30%, rgba(2,4,10,.78) 100%);
   overflow-y: auto;
 }
-@media (min-width: 760px) { .screen { align-items: center; padding-left: max(6vw, env(safe-area-inset-left, 0px)); background: linear-gradient(90deg, rgba(2,4,10,.8) 0%, rgba(2,4,10,0) 62%); } }
-.card { width: min(100%, 470px); display: grid; gap: 16px; }
+@media (min-width: 760px) { .screen { align-items: flex-start; padding-left: max(6vw, env(safe-area-inset-left, 0px)); background: linear-gradient(90deg, rgba(2,4,10,.8) 0%, rgba(2,4,10,0) 62%); } }
+.card { width: min(100%, 470px); display: grid; gap: 16px; margin-top: auto; }
+@media (min-width: 760px) { .card { margin-block: auto; } }
 .card h1 { font-family: var(--display); font-weight: 400; font-size: clamp(52px, 14vw, 100px); line-height: .86; margin: 0; letter-spacing: .01em; text-shadow: 0 4px 30px rgba(0,0,0,.5); }
 .card h1 span { display: block; font-size: .4em; color: var(--gold); letter-spacing: .04em; }
 .card h2 { font-family: var(--display); font-weight: 400; font-size: clamp(34px, 9vw, 52px); line-height: .95; margin: 0; color: var(--danger); text-wrap: balance; }
@@ -115,6 +116,20 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 @keyframes pulse { 70% { box-shadow: 0 0 0 14px rgba(255,138,42,0); } 100% { box-shadow: 0 0 0 0 rgba(255,138,42,0); } }
 .go:hover { filter: brightness(1.08); }
 .go:focus-visible, .ghost:focus-visible, .site:focus-visible, #boost:focus-visible, #mute:focus-visible, #pauseBtn:focus-visible, #viewBtn:focus-visible, #voiceBtn:focus-visible, #skip:focus-visible { outline: 3px solid var(--line); outline-offset: 3px; }
+.achbtn { justify-self: start; font: 600 12px var(--hud); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); background: rgba(255,207,90,.08); border: 1px solid rgba(255,207,90,.4); border-radius: 3px; padding: 8px 12px; cursor: pointer; }
+.achlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.ach { display: flex; gap: 8px; align-items: baseline; font-size: 12px; line-height: 1.35; color: var(--muted); min-width: 0; }
+.ach i { flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--edge); }
+.ach.on { color: var(--ink); }
+.ach.on i { background: var(--gold); border-color: var(--gold); }
+.ach small { display: block; color: var(--muted); font-size: 11px; }
+#toast { position: fixed; z-index: 3; left: 50%; top: calc(150px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: rgba(6,10,22,.86); border: 1px solid var(--gold); color: var(--ink); padding: 9px 16px; border-radius: 3px; font-size: 14px; font-weight: 600; transition: opacity .5s; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+#toast b { color: var(--gold); margin-right: 6px; }
+.support { border: 1px solid rgba(255,207,90,.4); background: rgba(255,207,90,.07); border-radius: 3px; padding: 12px 14px; display: grid; gap: 10px; }
+.support p { font-size: 14px; }
+.newach { font-size: 13px; color: var(--gold); }
+#shareText { width: 100%; min-height: 60px; font: 13px var(--hud); color: var(--ink); background: rgba(6,10,22,.6); border: 1px solid var(--edge); border-radius: 3px; padding: 8px; resize: none; }
+.achbtn:focus-visible, #copyBtn:focus-visible, #supportLink:focus-visible { outline: 3px solid var(--line); outline-offset: 3px; }
 .rec { font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--fuel); }
 #err { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; line-height: 1.5; background: #02040a; }
 @media (prefers-reduced-motion: reduce) { .go { animation: none; } #fuelbar.low { animation: none; } }
@@ -147,6 +162,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 <div id="count" hidden></div>
 <div id="hint" hidden></div>
 <div id="fade"></div>
+<div id="toast" hidden></div>
 <div id="radio" aria-live="polite"></div>
 <button id="boost" type="button" hidden>BOOST</button>
 <button id="skip" type="button" hidden>Passer l'intro</button>
@@ -167,6 +183,8 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
       <b>Mobile</b><span>glisse le doigt pour piloter, bouton BOOST</span>
     </div>
     <div class="rec" id="recMenu"></div>
+    <button class="achbtn" id="achBtn" type="button" aria-expanded="false">Succès 0/12</button>
+    <div class="achlist" id="achList" hidden></div>
     <div class="btns">
       <button class="go" id="startBtn" type="button">Lancer la mission</button>
       <button class="ghost" id="fsBtn" type="button">Plein écran</button>
@@ -195,8 +213,15 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
       <div><span class="lbl">Étape</span><strong id="sStage">—</strong></div>
     </div>
     <div class="rec" id="recOver"></div>
+    <div class="newach" id="newAch" hidden></div>
+    <div class="support" id="support" hidden>
+      <p id="supportText"></p>
+      <a class="ghost" id="supportLink" target="_blank" rel="noopener" hidden>Soutenir le jeu</a>
+    </div>
+    <textarea id="shareText" readonly hidden aria-label="Texte à partager"></textarea>
     <div class="btns">
       <button class="go" id="againBtn" type="button">Relancer</button>
+      <button class="ghost" id="copyBtn" type="button">Copier mon score</button>
       <button class="ghost" id="menuBtn" type="button">Changer de base</button>
     </div>
   </div>
@@ -961,6 +986,9 @@ function doSeparation(ev) {
     }
   }
   setCfg(ev.cfg);
+  if (ev.cross) unlock('korolev');
+  if (ev.flip) unlock('retour');
+  if (veh.type === 'ariane' && ev.sep.includes('boosters')) unlock('p120');
   tmpV.set(0, 0, 0); rocket.localToWorld(tmpV);
   for (let i = 0; i < 40; i++) {
     const a = rnd(0, Math.PI * 2), l = rnd(0.85, 1);
@@ -1846,6 +1874,7 @@ function skipIntro() { if (state === 'pad' && tCount < -3.2) { tCount = -3.2; if
 
 function startMission(t0) {
   initAudio();
+  newAch = [];
   resetMission();
   state = 'pad'; phase = 'pad'; tCount = t0; tP = 0;
   $('menu').hidden = true; $('over').hidden = true;
@@ -2028,6 +2057,22 @@ function endMission(won, title, text) {
   else if (phase === 'transfer') { $('sMidL').textContent = 'Trajet'; $('sMid').textContent = Math.round(tr.u * 100) + ' %'; }
   else { $('sMidL').textContent = 'Altitude max'; $('sMid').textContent = fmt1(maxAlt) + ' km'; }
   $('sStage').textContent = stage;
+  $('newAch').hidden = !newAch.length;
+  $('newAch').textContent = newAch.length ? 'Nouveaux succès : ' + newAch.join(' · ') : '';
+  const showSupport = won || maxAlt > 100;
+  $('support').hidden = !showSupport;
+  $('supportText').textContent = SUPPORT_URL
+    ? 'Tu as aimé Fusée Kármán ? Le jeu est gratuit. Tu peux soutenir son créateur pour qu\'il ajoute de nouvelles missions.'
+    : 'Tu as aimé Fusée Kármán ? Le jeu est gratuit. Pour soutenir son créateur, utilise le bouton « Faire un don » sous le jeu, sur sa page itch.io.';
+  $('supportLink').hidden = !SUPPORT_URL;
+  if (SUPPORT_URL) $('supportLink').href = SUPPORT_URL;
+  const rn = SITES[siteIdx].rocketName;
+  shareMsg = won
+    ? `J'ai posé ma ${rn} sur la Lune dans Fusée Kármán ! Score : ${fmt0(score)} points. Tu fais mieux ?`
+    : `Dans Fusée Kármán, ma ${rn} est arrivée jusqu'à l'étape « ${stage} ». Score : ${fmt0(score)} points. Tu fais mieux ?`;
+  if (SUPPORT_URL) shareMsg += ' ' + SUPPORT_URL;
+  $('shareText').hidden = true; $('copyBtn').textContent = 'Copier mon score';
+  bannerQ.length = 0; bannerT = 0; $('banner').classList.remove('on');
   showRecord(isNew);
   bb.hidden = true; bOff(); $('skip').hidden = true;
 }
@@ -2180,7 +2225,7 @@ function applyView(dt, earthPhase) {
     camera.fov = W < H ? 80 : 68;
   } else {
     if (earthPhase && alt < 25) {
-      const gpos = _vA.set(26, 6, -32).add(ground.position);
+      const gpos = _vA.set(32, 6, -26).add(ground.position);
       camera.position.copy(gpos);
       const d = gpos.distanceTo(rocket.position);
       camera.lookAt(rocket.position);
@@ -2278,6 +2323,62 @@ function rocketScreen() {
   if (tmpV.z > 1 || view === 2) return [W / 2, H * 0.45];
   return [(tmpV.x * 0.5 + 0.5) * W, (-tmpV.y * 0.5 + 0.5) * H];
 }
+
+/* ---------- Succès, partage et soutien ---------- */
+// Mets ici l'adresse de ta page itch.io, par exemple 'https://ton-pseudo.itch.io/fusee-karman'
+const SUPPORT_URL = '';
+const ACH = [
+  ['mach1', 'Mur du son', 'Dépasser Mach 1'],
+  ['karman', 'Astronaute', 'Franchir la ligne de Kármán'],
+  ['p120', 'Made in Kourou', 'Larguer les boosters d\'Ariane 6'],
+  ['korolev', 'Croix de Korolev', 'Larguer les boosters du Soyouz'],
+  ['retour', 'Demi-tour', 'Séparer le 1er étage de la Falcon 9'],
+  ['iss', 'Bienvenue à bord', 'S\'amarrer à l\'ISS'],
+  ['tli', 'Cap sur la Lune', 'Réussir l\'injection trans-lunaire'],
+  ['gateway', 'Gateway', 'S\'amarrer à la station lunaire'],
+  ['moon', 'Sur la Lune', 'Se poser sur la Lune'],
+  ['perfect', 'Pile sur la cible', 'Se poser à moins de 50 m'],
+  ['noshield', 'Intouchable', 'Se poser sans perdre de bouclier'],
+  ['allsites', 'Tour du monde', 'Se poser depuis les 3 bases'],
+];
+let achDone = new Set(), newAch = [], shareMsg = '';
+try { achDone = new Set(JSON.parse(localStorage.getItem('fusee-succes') || '[]')); } catch (e) {}
+function renderAch() {
+  $('achBtn').textContent = `Succès ${ACH.filter(a => achDone.has(a[0])).length}/${ACH.length}`;
+  const box = $('achList'); box.textContent = '';
+  for (const [id, name, desc] of ACH) {
+    const d = document.createElement('div'); d.className = 'ach' + (achDone.has(id) ? ' on' : '');
+    const i = document.createElement('i'); const t = document.createElement('span');
+    t.textContent = name; const sm = document.createElement('small'); sm.textContent = desc; t.appendChild(sm);
+    d.appendChild(i); d.appendChild(t); box.appendChild(d);
+  }
+}
+let toastTimer = 0;
+function toast(label, text) {
+  const t = $('toast'); t.textContent = '';
+  const b = document.createElement('b'); b.textContent = label; t.appendChild(b); t.appendChild(document.createTextNode(text));
+  t.hidden = false; t.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.opacity = 0; setTimeout(() => { t.hidden = true; }, 500); }, 3200);
+}
+function unlock(id) {
+  if (achDone.has(id)) return;
+  const a = ACH.find(x => x[0] === id); if (!a) return;
+  achDone.add(id); newAch.push(a[1]);
+  try { localStorage.setItem('fusee-succes', JSON.stringify([...achDone])); } catch (e) {}
+  toast('Succès débloqué', a[1]);
+  tone(784, 784, 0.12, 'triangle', 0.08); tone(1175, 1175, 0.25, 'triangle', 0.08, 0.1);
+  renderAch();
+}
+renderAch();
+$('achBtn').addEventListener('click', () => {
+  const l = $('achList'); l.hidden = !l.hidden; $('achBtn').setAttribute('aria-expanded', String(!l.hidden));
+});
+$('copyBtn').addEventListener('click', () => {
+  const done = () => { $('copyBtn').textContent = 'Copié !'; };
+  const fallback = () => { const ta = $('shareText'); ta.value = shareMsg; ta.hidden = false; ta.focus(); ta.select(); $('copyBtn').textContent = 'Copie le texte ci-dessus'; };
+  try { navigator.clipboard.writeText(shareMsg).then(done, fallback); } catch (e) { fallback(); }
+});
 
 /* ---------- Boucle principale ---------- */
 let last = performance.now(), hudT = 0;
@@ -2429,10 +2530,11 @@ function update(dt) {
       S += (targetS - S) * Math.min(1, dt * 2);
       spd = speedAt(alt) * (boosting ? 1.06 : 1);
       if (phase === 'ascent') {
-        if (!machDone && spd >= soundSpeed(alt)) { machDone = true; banner('Mach 1', 'Tu viens de franchir le mur du son'); radio('Contrôle', 'Vitesse du son dépassée.'); }
+        if (!machDone && spd >= soundSpeed(alt)) { machDone = true; unlock('mach1'); banner('Mach 1', 'Tu viens de franchir le mur du son'); radio('Contrôle', 'Vitesse du son dépassée.'); }
         if (!maxqDone && alt >= 13) { maxqDone = true; banner('Max-Q', 'Pression aérodynamique maximale sur la fusée'); radio('Contrôle', 'Max-Q. Pression aérodynamique maximale.'); }
         while (layerIdx + 1 < LAYERS.length && alt >= LAYERS[layerIdx + 1].at) {
           layerIdx++; const L = LAYERS[layerIdx]; banner(L.name, L.note, L.gold ? 'gold' : ''); chime();
+          if (L.at === 100) unlock('karman');
           if (L.at === 100) radio('Contrôle', 'Ligne de Kármán franchie. Nous sommes dans l\'espace.');
           if (L.at === 408) radio('ISS', 'Ici la Station spatiale. Nous vous voyons, l\'anneau d\'amarrage est prêt.');
         }
@@ -2448,6 +2550,7 @@ function update(dt) {
           phase = 'tli'; tP = 0;
           banner('Injection trans-lunaire', 'Cap sur la Lune : 384 400 km', 'gold'); fanfare();
           radio('Directeur', 'Vous êtes GO pour l\'injection trans-lunaire.');
+          unlock('tli');
           fuel = Math.max(fuel, 60);
         }
       }
@@ -2520,6 +2623,8 @@ function update(dt) {
           const prec = Math.max(0, 1 - dist / 30);
           bonus += 5000 + Math.round(prec * 3000) + Math.round(fuel * 10);
           landResult = { dist, prec };
+          unlock('moon'); if (dist < 5) unlock('perfect'); if (lives === 3) unlock('noshield');
+          try { const ls = new Set(JSON.parse(localStorage.getItem('fusee-sites-landed') || '[]')); ls.add(siteIdx); localStorage.setItem('fusee-sites-landed', JSON.stringify([...ls])); if (ls.size >= 3) unlock('allsites'); } catch (e) {}
           state = 'win'; tP = 0; LD.vx = LD.vy = LD.vz = 0; LD.thrust = false;
           banner(dist < 5 ? 'Alunissage parfait !' : 'Alunissage réussi !', dist < 5 ? 'Pile sur la cible' : 'à ' + fmt0(dist * 10) + ' m de la cible', 'ok');
           radio('Contrôle', 'Contact ! Le module est posé. Félicitations, vous êtes sur la Lune !', true, true);
@@ -2743,6 +2848,7 @@ function updateObjects(dt) {
       if (Math.hypot(m.position.x - R.x, m.position.y - R.y) < 2.0) {
         const name = o.station === 'iss' ? 'ISS' : 'Gateway';
         docked[o.station] = true;
+        unlock(o.station === 'iss' ? 'iss' : 'gateway');
         bonus += o.station === 'iss' ? 1500 : 2000;
         fuel = 100;
         if (lives < 3) lives++;

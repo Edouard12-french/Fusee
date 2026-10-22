@@ -23,6 +23,8 @@ Pour y jouer en local, ouvre `jeu/index.html` dans un navigateur.
 
 ### Publier sur itch.io
 
+Tout est prêt dans le dossier `itch/` : le zip du jeu, l'image de couverture, les captures d'écran et le guide pas à pas avec les textes de la page (`itch/PAGE-ITCH.md`). Le résumé :
+
 1. Compresse le dossier `jeu` en `.zip` : `index.html` et `three.min.js` doivent être à la racine du zip.
 2. Sur itch.io : « Upload new project », « Kind of project » = **HTML**.
 3. Envoie le zip et coche « This file will be played in the browser ».
