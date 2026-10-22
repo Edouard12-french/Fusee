@@ -2,9 +2,18 @@
 
 ## Jeu : Fusée Kármán
 
-Jeu 3D dans le navigateur (Three.js + WebGL) : la fusée décolle, traverse les nuages, passe le mur du son et monte jusqu'à la ligne de Kármán (100 km), puis jusqu'à l'orbite de l'ISS. La Terre, l'atmosphère et les nuages sont calculés en temps réel. Il faut esquiver les avions, ballons-sondes, météorites, satellites et débris, et ramasser les réservoirs de carburant.
+Jeu 3D dans le navigateur (Three.js + WebGL), une mission complète de la Terre à la Lune :
 
-Commandes : flèches ou ZQSD/WASD pour piloter, Espace pour le boost, M pour couper le son. Sur mobile : glisser le doigt, bouton BOOST.
+1. **Décollage** depuis Kourou, Cap Canaveral ou Baïkonour : pas de tir, tour de lancement, compte à rebours, fumée.
+2. **Ascension** : nuages, mur du son, Max-Q, ligne de Kármán (100 km). Il faut esquiver avions, ballons-sondes, météorites, satellites et débris, et ramasser les réservoirs.
+3. **Station spatiale** : passer dans l'anneau vert pour s'amarrer à l'ISS et refaire le plein.
+4. **Voyage vers la Lune** : injection trans-lunaire, astéroïdes, la Lune qui grossit.
+5. **Orbite lunaire** et station Gateway, avec la Terre au-dessus de l'horizon.
+6. **Alunissage manuel** : freiner et viser la cible pour se poser à moins de 3 m/s.
+
+La Terre, la Lune, l'atmosphère et les nuages sont calculés en temps réel dans un shader.
+
+Commandes : flèches ou ZQSD/WASD pour piloter, Espace pour le boost (et la poussée pendant l'alunissage), M pour couper le son. Sur mobile : glisser le doigt, bouton BOOST.
 
 Pour y jouer en local, ouvre `jeu/index.html` dans un navigateur.
 
