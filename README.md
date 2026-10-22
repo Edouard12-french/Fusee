@@ -4,7 +4,7 @@
 
 Jeu 3D dans le navigateur (Three.js + WebGL), une mission complète de la Terre à la Lune :
 
-1. **Décollage** depuis Kourou, Cap Canaveral ou Baïkonour : pas de tir, tour de lancement, compte à rebours, fumée.
+1. **Décollage** avec le vrai lanceur de chaque base : Ariane 6 à Kourou (pas de tir ELA-4, portique mobile), Falcon 9 à Cap Canaveral (pas de tir 39A, tour de service et bras érecteur), Soyouz à Baïkonour (pas de tir 31, bras « tulipe » au-dessus de la fosse). Les étages se séparent en vol : boosters, premier étage, coiffe, puis l'étage supérieur. C'est le module lunaire qui se pose.
 2. **Ascension** : nuages, mur du son, Max-Q, ligne de Kármán (100 km). Il faut esquiver avions, ballons-sondes, météorites, satellites et débris, et ramasser les réservoirs.
 3. **Station spatiale** : passer dans l'anneau vert pour s'amarrer à l'ISS et refaire le plein.
 4. **Voyage vers la Lune** : injection trans-lunaire, astéroïdes, la Lune qui grossit.

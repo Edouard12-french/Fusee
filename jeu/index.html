@@ -148,9 +148,9 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
     <p>Décolle depuis une vraie base de lancement, traverse l'atmosphère, amarre-toi à la Station spatiale internationale, puis file vers la Lune et pose-toi en douceur sur sa surface.</p>
     <div class="lbl">Base de lancement</div>
     <div class="sites" id="sites">
-      <button class="site" type="button" data-site="0" aria-pressed="true">Kourou<small>Guyane française</small></button>
-      <button class="site" type="button" data-site="1" aria-pressed="false">Cap Canaveral<small>Floride</small></button>
-      <button class="site" type="button" data-site="2" aria-pressed="false">Baïkonour<small>Kazakhstan</small></button>
+      <button class="site" type="button" data-site="0" aria-pressed="true">Kourou<small>Ariane 6 · Guyane</small></button>
+      <button class="site" type="button" data-site="1" aria-pressed="false">Cap Canaveral<small>Falcon 9 · Floride</small></button>
+      <button class="site" type="button" data-site="2" aria-pressed="false">Baïkonour<small>Soyouz · Kazakhstan</small></button>
     </div>
     <div class="keys">
       <b>← ↑ → ↓</b><span>ou ZQSD / WASD : piloter</span>
@@ -227,7 +227,6 @@ const SUN = new T.Vector3(0.5, 0.6, -0.62).normalize();
 const MOON_DIR = new T.Vector3(-0.85, 0.3, -0.45).normalize();
 const MC = MOON_DIR.clone().multiplyScalar(384400);
 const START_ROT = 0.9;
-const BASE = 3.94;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -588,76 +587,283 @@ const mVC = std({ vertexColors: true, roughness: 0.75, metalness: 0.1 });
 const mVCmetal = std({ vertexColors: true, roughness: 0.45, metalness: 0.6 });
 
 /* ---------- La fusée ---------- */
-const bodyTex = canvasTex(512, 1024, (g, w, h) => {
-  g.fillStyle = '#eceef1'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = 'rgba(0,0,0,.10)'; g.lineWidth = 2;
-  for (let y = h / 14; y < h; y += h / 14) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-  g.strokeStyle = 'rgba(0,0,0,.05)';
-  for (let x = 0; x < w; x += w / 8) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-  g.fillStyle = '#16181d'; g.fillRect(0, h * 0.05, w, h * 0.07);
-  g.save(); g.translate(w / 2, h * 0.5); g.rotate(-Math.PI / 2);
-  g.fillStyle = '#16181d'; g.font = '700 118px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('FUSÉE', 0, 0);
-  g.restore();
-  const fx = w / 2 - 36, fy = h * 0.2;
-  g.fillStyle = '#1f3f9a'; g.fillRect(fx, fy, 72, 30);
-  g.fillStyle = '#f4f4f4'; g.fillRect(fx, fy + 30, 72, 30);
-  g.fillStyle = '#d42a3a'; g.fillRect(fx, fy + 60, 72, 30);
-  const soot = g.createLinearGradient(0, h * 0.78, 0, h);
-  soot.addColorStop(0, 'rgba(40,30,24,0)'); soot.addColorStop(1, 'rgba(40,30,24,.55)');
-  g.fillStyle = soot; g.fillRect(0, h * 0.78, w, h * 0.22);
+/* ---------- Lanceurs réalistes et module lunaire ---------- */
+function drawFlag(g, kind, x, y, w, h) {
+  if (kind === 'fr') { g.fillStyle = '#1f3f9a'; g.fillRect(x, y, w / 3, h); g.fillStyle = '#f4f4f4'; g.fillRect(x + w / 3, y, w / 3, h); g.fillStyle = '#d42a3a'; g.fillRect(x + 2 * w / 3, y, w / 3, h); }
+  else if (kind === 'us') {
+    for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? '#f4f4f4' : '#c8202f'; g.fillRect(x, y + i * h / 7, w, h / 7); }
+    g.fillStyle = '#2a3a7a'; g.fillRect(x, y, w * 0.42, h * 4 / 7);
+  } else if (kind === 'ru') { g.fillStyle = '#f4f4f4'; g.fillRect(x, y, w, h / 3); g.fillStyle = '#1f4fb0'; g.fillRect(x, y + h / 3, w, h / 3); g.fillStyle = '#d42a3a'; g.fillRect(x, y + 2 * h / 3, w, h / 3); }
+  g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 1; g.strokeRect(x, y, w, h);
+}
+function bodyTexture(o) {
+  const { base = '#eceef1', lines = 12, soot = 0, flag = null, flagY = 0.2, bands = [], circ = 1.7, len = 3, rib = 0.09 } = o;
+  return canvasTex(512, 1024, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    const grain = g.createLinearGradient(0, 0, w, 0);
+    grain.addColorStop(0, 'rgba(0,0,0,.05)'); grain.addColorStop(0.5, 'rgba(255,255,255,.04)'); grain.addColorStop(1, 'rgba(0,0,0,.05)');
+    g.fillStyle = grain; g.fillRect(0, 0, w, h);
+    g.strokeStyle = `rgba(0,0,0,${rib})`; g.lineWidth = 2;
+    for (let y = h / lines; y < h; y += h / lines) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    g.strokeStyle = 'rgba(0,0,0,.045)';
+    for (let x = 0; x < w; x += w / 8) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+    for (const [y0, y1, c] of bands) { g.fillStyle = c; g.fillRect(0, h * y0, w, h * (y1 - y0)); }
+    if (flag) {
+      const pxA = w / circ, pxL = h / len;
+      const fw = 0.24 * pxA, fh = 0.16 * pxL;
+      drawFlag(g, flag, w / 2 - fw / 2, h * flagY, fw, fh);
+    }
+    if (soot) {
+      const s = g.createLinearGradient(0, h * (1 - soot), 0, h);
+      s.addColorStop(0, 'rgba(45,35,28,0)'); s.addColorStop(1, 'rgba(45,35,28,.6)');
+      g.fillStyle = s; g.fillRect(0, h * (1 - soot), w, h * soot);
+    }
+  });
+}
+const goldTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#b8892e'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 260; i++) {
+    const x = Math.random() * w, y = Math.random() * h, r = rnd(6, 26);
+    g.fillStyle = Math.random() < 0.5 ? `rgba(240,200,110,${rnd(0.15, 0.45)})` : `rgba(110,75,20,${rnd(0.15, 0.4)})`;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) g.lineTo(x + rnd(-r, r), y + rnd(-r, r));
+    g.closePath(); g.fill();
+  }
 });
-const mWhite = std({ map: bodyTex, roughness: 0.38, metalness: 0.12 });
-const mNose = std({ color: 0xeef0f3, roughness: 0.35, metalness: 0.12 });
+goldTex.wrapS = goldTex.wrapT = T.RepeatWrapping;
+const mGoldFoil = std({ map: goldTex, roughness: 0.35, metalness: 0.85 });
+const mSilver = std({ color: 0xb9bdc3, roughness: 0.35, metalness: 0.75 });
+const mPaintW = std({ color: 0xeceef0, roughness: 0.42, metalness: 0.1 });
+const mPaintW2 = std({ color: 0xdcdee0, roughness: 0.5, metalness: 0.1 });
+const mBlack = std({ color: 0x17181c, roughness: 0.55, metalness: 0.3 });
 const mDark = std({ color: 0x24262c, roughness: 0.45, metalness: 0.75 });
-const mBell = std({ color: 0x2b2724, roughness: 0.6, metalness: 0.3 });
+const mBell = std({ color: 0x3a3532, roughness: 0.45, metalness: 0.55, side: T.DoubleSide });
+const mBellNb = std({ color: 0x4a4440, roughness: 0.35, metalness: 0.8, side: T.DoubleSide });
+const mNose = mPaintW;
+const mWhite = mPaintW;
 const mFin = std({ color: 0x8e1220, roughness: 0.5, metalness: 0.2 });
-const mLeg = std({ color: 0x1b1c20, roughness: 0.55, metalness: 0.4 });
+const mSoyDark = std({ color: 0x585d58, roughness: 0.6, metalness: 0.2 });
+const mWin = std({ color: 0x101318, roughness: 0.1, metalness: 0.7 });
+
+const own = m => { m.userData.own = true; return m; };
+function disposeObj(o) {
+  o.traverse(c => {
+    if (c.geometry && c.geometry !== unitBox) c.geometry.dispose();
+    if (c.material && c.material.userData && c.material.userData.own) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); }
+  });
+}
+function cylM(rTop, rBot, h, y0, mat, seg = 40, x = 0, z = 0) {
+  const m = new T.Mesh(new T.CylinderGeometry(rTop, rBot, h, seg, 1, false, Math.PI), mat);
+  m.position.set(x, y0 + h / 2, z); return m;
+}
+function latheM(pts, mat, seg = 40, phiStart = 0, phiLen = Math.PI * 2) {
+  return new T.Mesh(new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(Math.max(0.0005, r), y)), seg, phiStart, phiLen), mat);
+}
+function ogive(r, y0, len, n = 18, blunt = 0.6) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; pts.push([r * Math.pow(1 - t * t, blunt), y0 + t * len]); }
+  return pts;
+}
+function bellMesh(rT, rE, len, yTop, mat = mBell, seg = 24, x = 0, z = 0) {
+  const pts = [];
+  for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new T.Vector2(rT + (rE - rT) * Math.pow(t, 0.75), yTop - len * t)); }
+  const m = new T.Mesh(new T.LatheGeometry(pts, seg), mat); m.position.set(x, 0, z); return m;
+}
+function boxM(w, h, d, x, y, z, mat, ry = 0) { const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.rotation.y = ry; return m; }
+
+function buildLander(s) {
+  const g = new T.Group(), legs = [];
+  const inner = new T.Group(); inner.scale.setScalar(s); g.add(inner);
+  const ds = new T.Mesh(new T.CylinderGeometry(0.21, 0.21, 0.17, 8), mGoldFoil); ds.position.y = 0.225; ds.rotation.y = Math.PI / 8; inner.add(ds);
+  inner.add(cylM(0.2, 0.2, 0.02, 0.13, mBlack, 8));
+  inner.add(bellMesh(0.03, 0.075, 0.1, 0.14, mBellNb));
+  inner.add(boxM(0.36, 0.19, 0.3, 0, 0.405, -0.02, mSilver));
+  const front = boxM(0.24, 0.16, 0.12, 0, 0.42, 0.16, mSilver); front.rotation.x = -0.25; inner.add(front);
+  for (const sx of [-0.055, 0.055]) { const w = boxM(0.07, 0.055, 0.01, sx, 0.455, 0.225, mWin); w.rotation.x = -0.25; inner.add(w); }
+  inner.add(cylM(0.05, 0.055, 0.07, 0.5, mSilver, 16));
+  const dish = new T.Mesh(new T.SphereGeometry(0.06, 14, 6, 0, Math.PI * 2, 0, Math.PI / 3), mPaintW); dish.position.set(0.17, 0.6, -0.12); dish.rotation.x = -0.6; inner.add(dish);
+  inner.add(boxM(0.01, 0.12, 0.01, 0.17, 0.54, -0.12, mSilver));
+  for (const [x, z] of [[-0.2, -0.17], [0.2, -0.17], [-0.2, 0.13], [0.2, 0.13]]) inner.add(boxM(0.035, 0.035, 0.035, x, 0.47, z, mDark));
+  const strut = new T.BoxGeometry(0.018, 0.38, 0.018); strut.translate(0, -0.19, 0);
+  const foot = new T.CylinderGeometry(0.05, 0.056, 0.015, 12); foot.translate(0, -0.385, 0);
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2;
+    const pivot = new T.Group(); pivot.position.set(Math.cos(a) * 0.19, 0.27, Math.sin(a) * 0.19); pivot.rotation.y = -a;
+    const hinge = new T.Group(); pivot.add(hinge);
+    hinge.add(new T.Mesh(strut, mGoldFoil)); hinge.add(new T.Mesh(foot, mSilver));
+    hinge.rotation.z = 3.04;
+    inner.add(pivot); legs.push(hinge);
+  }
+  return { group: g, legs, H: 0.6 * s, nozzle: [0, 0.04 * s, 0, 0.075 * s, 0.9 * s] };
+}
+const LEG_FOLD = 3.04, LEG_OPEN = 0.72;
+
+function buildAriane() {
+  const root = new T.Group(), P = {};
+  const mCore = own(std({ map: bodyTexture({ flag: 'fr', flagY: 0.1, circ: 1.7, len: 2.9, lines: 11 }), roughness: 0.42, metalness: 0.1 }));
+  const mBoost = own(std({ map: bodyTexture({ base: '#e8eaec', lines: 6, circ: 1.07, len: 1.32, bands: [[0, 0.04, '#9da2a8']] }), roughness: 0.45, metalness: 0.1 }));
+  const s1 = new T.Group();
+  s1.add(cylM(0.27, 0.27, 2.9, 0.4, mCore));
+  s1.add(cylM(0.27, 0.25, 0.06, 0.34, mPaintW2));
+  s1.add(bellMesh(0.055, 0.105, 0.34, 0.4));
+  s1.add(cylM(0.27, 0.27, 0.25, 3.3, mPaintW));
+  s1.add(cylM(0.272, 0.272, 0.03, 3.5, mBlack));
+  root.add(s1); P.stage1 = s1;
+  P.boosters = [];
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2, b = new T.Group();
+    b.position.set(Math.cos(a) * 0.445, 0, Math.sin(a) * 0.445);
+    b.add(cylM(0.17, 0.17, 1.32, 0.18, mBoost, 32));
+    b.add(latheM(ogive(0.17, 1.5, 0.38, 14, 0.5), mPaintW, 32));
+    b.add(bellMesh(0.05, 0.1, 0.18, 0.18));
+    b.add(cylM(0.172, 0.16, 0.05, 0.14, mBlack, 32));
+    b.add(boxM(0.06, 0.05, 0.06, -Math.cos(a) * 0.2, 1.35, -Math.sin(a) * 0.2, mPaintW2));
+    root.add(b); P.boosters.push(b);
+  }
+  const s2 = new T.Group();
+  s2.add(cylM(0.27, 0.27, 0.7, 3.55, mPaintW2));
+  s2.add(bellMesh(0.04, 0.1, 0.28, 3.55, mBellNb));
+  root.add(s2); P.stage2 = s2;
+  const fp = [[0.27, 4.25], [0.27, 5.45], ...ogive(0.27, 5.45, 0.85)];
+  P.fairing = [0, 1].map(i => { const m = latheM(fp, mPaintW, 40, i * Math.PI, Math.PI); root.add(m); return m; });
+  const L = buildLander(1.1); L.group.position.y = 4.27; root.add(L.group); P.lander = L.group;
+  const ln = L.nozzle, ly = 4.27;
+  const coreN = [[0, 0.06, 0, 0.105, 3.0]];
+  const bN = P.boosters.map(b => [b.position.x, 0.0, b.position.z, 0.1, 2.6]);
+  const vin = [[0, 3.27, 0, 0.1, 1.8]];
+  return {
+    type: 'ariane', root, P, H: 6.3, lander: L,
+    cfgs: {
+      A: { n: [...coreN, ...bN], yMin: 0, yMax: 6.3, r: 0.6, plume: 0.6 },
+      B: { n: coreN, yMin: 0.06, yMax: 6.3, r: 0.32, plume: 0.3 },
+      C: { n: vin, yMin: 3.27, yMax: 6.3, r: 0.3, plume: 0.25 },
+      D: { n: vin, yMin: 3.27, yMax: ly + L.H, r: 0.3, plume: 0.25 },
+      E: { n: [[ln[0], ly + ln[1], ln[2], ln[3], ln[4]]], yMin: ly, yMax: ly + L.H, r: 0.3, plume: 0.12 },
+    },
+    seq: [
+      { alt: 48, cfg: 'B', sep: ['boosters'], t: 'Séparation des boosters', n: 'Les 4 boosters à poudre P120C se détachent' },
+      { alt: 80, cfg: 'C', sep: ['stage1'], t: 'Séparation du premier étage', n: 'Le moteur Vinci de l\'étage supérieur s\'allume' },
+      { alt: 110, cfg: 'D', sep: ['fairing'], t: 'Largage de la coiffe', n: 'Le module lunaire est à découvert' },
+    ],
+  };
+}
+
+function buildFalcon() {
+  const root = new T.Group(), P = {};
+  const m1 = own(std({ map: bodyTexture({ flag: 'us', flagY: 0.06, circ: 1.16, len: 4.05, lines: 9, soot: 0.35, rib: 0.06 }), roughness: 0.42, metalness: 0.1 }));
+  const s1 = new T.Group();
+  s1.add(cylM(0.185, 0.185, 0.07, 0.13, mBlack, 32));
+  const spots = [[0, 0]];
+  for (let k = 0; k < 8; k++) spots.push([Math.cos(k * Math.PI / 4) * 0.125, Math.sin(k * Math.PI / 4) * 0.125]);
+  for (const [x, z] of spots) s1.add(bellMesh(0.022, 0.045, 0.1, 0.13, mBell, 16, x, z));
+  s1.add(cylM(0.185, 0.185, 4.05, 0.2, m1, 40));
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2;
+    const leg = boxM(0.09, 1.3, 0.025, Math.cos(a) * 0.195, 0.9, Math.sin(a) * 0.195, mBlack, -a + Math.PI / 2);
+    s1.add(leg);
+  }
+  s1.add(cylM(0.186, 0.186, 0.5, 4.25, mBlack, 40));
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2;
+    s1.add(boxM(0.15, 0.016, 0.13, Math.cos(a) * 0.255, 4.62, Math.sin(a) * 0.255, mDark, -a));
+  }
+  root.add(s1); P.stage1 = s1;
+  const m2 = own(std({ map: bodyTexture({ lines: 4, circ: 1.16, len: 0.9, rib: 0.05 }), roughness: 0.42, metalness: 0.1 }));
+  const s2 = new T.Group();
+  s2.add(cylM(0.185, 0.185, 0.9, 4.75, m2, 40));
+  s2.add(bellMesh(0.04, 0.165, 0.45, 4.75, mBellNb, 32));
+  root.add(s2); P.stage2 = s2;
+  const fp = [[0.185, 5.65], [0.26, 5.86], [0.26, 6.45], ...ogive(0.26, 6.45, 0.55, 16, 0.55)];
+  P.fairing = [0, 1].map(i => { const m = latheM(fp, mPaintW, 40, i * Math.PI, Math.PI); root.add(m); return m; });
+  const L = buildLander(1.05); L.group.position.y = 5.67; root.add(L.group); P.lander = L.group;
+  const ln = L.nozzle, ly = 5.67;
+  const merlins = spots.map(([x, z]) => [x, 0.03, z, 0.045, 2.2]);
+  const mvac = [[0, 4.3, 0, 0.16, 2.2]];
+  return {
+    type: 'falcon', root, P, H: 7.0, lander: L,
+    cfgs: {
+      A: { n: merlins, yMin: 0.03, yMax: 7.0, r: 0.32, plume: 0.35 },
+      C: { n: mvac, yMin: 4.3, yMax: 7.0, r: 0.3, plume: 0.3 },
+      D: { n: mvac, yMin: 4.3, yMax: ly + L.H, r: 0.28, plume: 0.3 },
+      E: { n: [[ln[0], ly + ln[1], ln[2], ln[3], ln[4]]], yMin: ly, yMax: ly + L.H, r: 0.28, plume: 0.12 },
+    },
+    seq: [
+      { alt: 70, cfg: 'C', sep: ['stage1'], t: 'MECO · séparation', n: 'Le premier étage fait demi-tour pour revenir se poser', flip: true },
+      { alt: 110, cfg: 'D', sep: ['fairing'], t: 'Largage de la coiffe', n: 'Le module lunaire est à découvert' },
+    ],
+  };
+}
+
+function buildSoyuz() {
+  const root = new T.Group(), P = {};
+  const mSoy = own(std({ map: bodyTexture({ base: '#b8bbb5', flag: 'ru', flagY: 0.08, circ: 0.9, len: 2.7, lines: 10, rib: 0.12 }), roughness: 0.55, metalness: 0.15 }));
+  const mSoyB = own(std({ map: bodyTexture({ base: '#b3b6b0', lines: 8, circ: 0.8, len: 1.8, rib: 0.12, bands: [[0.93, 1, '#6a6f68']] }), roughness: 0.55, metalness: 0.15 }));
+  const s1 = new T.Group();
+  s1.add(latheM([[0.1, 0.15], [0.105, 0.5], [0.122, 1.1], [0.142, 1.8], [0.148, 2.5], [0.148, 2.62], [0.135, 2.78], [0.13, 2.86]], mSoy, 36));
+  for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; s1.add(bellMesh(0.018, 0.035, 0.13, 0.15, mBell, 14, Math.cos(a) * 0.05, Math.sin(a) * 0.05)); }
+  const truss = [];
+  for (let k = 0; k < 12; k++) {
+    const a0 = k / 12 * Math.PI * 2, a1 = (k + 0.5) / 12 * Math.PI * 2;
+    truss.push(beam(new T.Vector3(Math.cos(a0) * 0.128, 2.86, Math.sin(a0) * 0.128), new T.Vector3(Math.cos(a1) * 0.13, 3.0, Math.sin(a1) * 0.13), 0.008, 0x2d2f33));
+    truss.push(beam(new T.Vector3(Math.cos(a1) * 0.13, 3.0, Math.sin(a1) * 0.13), new T.Vector3(Math.cos(a0 + Math.PI / 6) * 0.128, 2.86, Math.sin(a0 + Math.PI / 6) * 0.128), 0.008, 0x2d2f33));
+  }
+  s1.add(new T.Mesh(merge(truss), mVCmetal));
+  root.add(s1); P.stage1 = s1;
+  P.boosters = [];
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2, b = new T.Group();
+    b.position.set(Math.cos(a) * 0.215, 0, Math.sin(a) * 0.215);
+    b.quaternion.setFromAxisAngle(new T.Vector3(-Math.sin(a), 0, Math.cos(a)), 0.045);
+    b.add(latheM([[0.135, 0.15], [0.13, 0.5], [0.112, 1.0], [0.08, 1.45], [0.045, 1.75], [0.0, 1.95]], mSoyB, 32));
+    for (let j = 0; j < 4; j++) { const c = Math.PI / 4 + j * Math.PI / 2; b.add(bellMesh(0.018, 0.033, 0.12, 0.15, mBell, 12, Math.cos(c) * 0.055, Math.sin(c) * 0.055)); }
+    b.add(boxM(0.012, 0.14, 0.1, Math.cos(a) * 0.14, 0.25, Math.sin(a) * 0.14, mSoyDark, -a + Math.PI / 2));
+    root.add(b); P.boosters.push(b);
+  }
+  const s2 = new T.Group();
+  s2.add(cylM(0.133, 0.133, 0.68, 3.0, mSoy, 32));
+  for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; s2.add(bellMesh(0.012, 0.025, 0.1, 3.0, mBell, 12, Math.cos(a) * 0.045, Math.sin(a) * 0.045)); }
+  root.add(s2); P.stage2 = s2;
+  const fp = [[0.15, 3.68], [0.15, 4.12], [0.07, 4.3], [0.0005, 4.31]];
+  P.fairing = [0, 1].map(i => {
+    const g = new T.Group(); g.add(latheM(fp, mPaintW2, 36, i * Math.PI, Math.PI));
+    for (const a of [i * Math.PI + Math.PI / 4, i * Math.PI + 3 * Math.PI / 4]) g.add(boxM(0.02, 0.12, 0.09, Math.sin(a) * 0.17, 3.8, Math.cos(a) * 0.17, mSoyDark, a));
+    root.add(g); return g;
+  });
+  const les = new T.Group();
+  les.add(latheM([[0.07, 4.3], [0.06, 4.36], [0.03, 4.42]], mPaintW2, 24));
+  les.add(cylM(0.018, 0.018, 0.33, 4.42, mSoyDark, 12));
+  les.add(cylM(0.035, 0.035, 0.06, 4.55, mSoyDark, 16));
+  les.add(latheM([[0.018, 4.75], [0.0005, 4.8]], mSoyDark, 12));
+  root.add(les); P.les = les;
+  const L = buildLander(0.62); L.group.position.y = 3.69; root.add(L.group); P.lander = L.group;
+  const ln = L.nozzle, ly = 3.69;
+  const coreN = [[0, 0.02, 0, 0.08, 2.2]];
+  const bN = P.boosters.map(b => [b.position.x, 0.03, b.position.z, 0.085, 2.2]);
+  const blockI = [[0, 2.9, 0, 0.06, 1.4]];
+  return {
+    type: 'soyuz', root, P, H: 4.8, lander: L,
+    cfgs: {
+      A: { n: [...coreN, ...bN], yMin: 0.02, yMax: 4.8, r: 0.42, plume: 0.45 },
+      A2: { n: [...coreN, ...bN], yMin: 0.02, yMax: 4.31, r: 0.42, plume: 0.45 },
+      B: { n: coreN, yMin: 0.02, yMax: 4.31, r: 0.2, plume: 0.25 },
+      C: { n: blockI, yMin: 2.9, yMax: 4.31, r: 0.2, plume: 0.2 },
+      D: { n: blockI, yMin: 2.9, yMax: ly + L.H, r: 0.2, plume: 0.2 },
+      E: { n: [[ln[0], ly + ln[1], ln[2], ln[3], ln[4]]], yMin: ly, yMax: ly + L.H, r: 0.2, plume: 0.1 },
+    },
+    seq: [
+      { alt: 40, cfg: 'A2', sep: ['les'], t: 'Largage de la tour de sauvetage', n: 'La tour d\'éjection n\'est plus nécessaire' },
+      { alt: 46, cfg: 'B', sep: ['boosters'], t: 'Croix de Korolev', n: 'Les 4 boosters se séparent en forme de croix', cross: true },
+      { alt: 85, cfg: 'C', sep: ['stage1'], t: 'Séparation du corps central', n: 'Le troisième étage s\'allume' },
+      { alt: 110, cfg: 'D', sep: ['fairing'], t: 'Largage de la coiffe', n: 'Le module lunaire est à découvert' },
+    ],
+  };
+}
 
 const rocket = new T.Group();
 const rv = new T.Group();
 rv.rotation.x = -Math.PI / 2;
 rocket.add(rv);
 scene.add(rocket);
-const legs = [];
-{
-  rv.add(new T.Mesh(new T.CylinderGeometry(0.32, 0.32, 4.4, 48, 1, false, Math.PI), mWhite));
-  const pts = [];
-  for (let i = 0; i <= 20; i++) { const t = i / 20; pts.push(new T.Vector2(Math.max(0.001, 0.32 * Math.pow(1 - t * t, 0.62)), t * 1.15)); }
-  const nose = new T.Mesh(new T.LatheGeometry(pts, 48), mNose); nose.position.y = 2.2; rv.add(nose);
-  const skirt = new T.Mesh(new T.CylinderGeometry(0.32, 0.37, 0.32, 48), mDark); skirt.position.y = -2.36; rv.add(skirt);
-  const bell = [];
-  for (let i = 0; i <= 12; i++) { const t = i / 12; bell.push(new T.Vector2(0.055 + 0.085 * Math.pow(t, 0.7), t * 0.42)); }
-  const bellGeo = new T.LatheGeometry(bell, 24);
-  const glowMat = new T.MeshBasicMaterial({ color: 0xff5a10, transparent: true, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
-  const discGeo = new T.CircleGeometry(0.13, 20);
-  const spots = [[0, 0]];
-  for (let k = 0; k < 8; k++) spots.push([Math.cos(k * Math.PI / 4) * 0.235, Math.sin(k * Math.PI / 4) * 0.235]);
-  for (const [x, z] of spots) {
-    const b = new T.Mesh(bellGeo, mBell); b.rotation.x = Math.PI; b.position.set(x, -2.52, z); rv.add(b);
-    const d = new T.Mesh(discGeo, glowMat); d.rotation.x = Math.PI / 2; d.position.set(x, -2.93, z); rv.add(d);
-  }
-  rocket.userData.glowMat = glowMat;
-  const finShape = new T.Shape();
-  finShape.moveTo(0.3, -1.25); finShape.lineTo(0.9, -1.95); finShape.lineTo(0.9, -2.4); finShape.lineTo(0.3, -2.2); finShape.closePath();
-  const finGeo = new T.ExtrudeGeometry(finShape, { depth: 0.05, bevelEnabled: false }); finGeo.translate(0, 0, -0.025);
-  for (let k = 0; k < 4; k++) { const f = new T.Mesh(finGeo, mFin); f.rotation.y = k * Math.PI / 2 + Math.PI / 4; rv.add(f); }
-  const gridGeo = new T.BoxGeometry(0.26, 0.03, 0.22);
-  for (let k = 0; k < 4; k++) {
-    const gf = new T.Mesh(gridGeo, mDark); const a = k * Math.PI / 2 + Math.PI / 4;
-    gf.position.set(Math.cos(a) * 0.45, 1.9, Math.sin(a) * 0.45); gf.rotation.y = -a; rv.add(gf);
-  }
-  const legGeo = new T.BoxGeometry(0.09, 1.6, 0.09); legGeo.translate(0, -0.8, 0);
-  const padGeo = new T.CylinderGeometry(0.16, 0.18, 0.05, 12); padGeo.translate(0, -1.6, 0);
-  for (let k = 0; k < 4; k++) {
-    const a = k * Math.PI / 2;
-    const pivot = new T.Group(); pivot.position.set(Math.cos(a) * 0.33, -2.0, Math.sin(a) * 0.33); pivot.rotation.y = -a;
-    const hinge = new T.Group(); pivot.add(hinge);
-    hinge.add(new T.Mesh(legGeo, mLeg)); hinge.add(new T.Mesh(padGeo, mLeg));
-    hinge.rotation.z = 2.95;
-    rv.add(pivot); legs.push(hinge);
-  }
-}
 const flameMat = new T.ShaderMaterial({
   uniforms: { uI: { value: 1 }, uT: { value: 0 }, uDia: { value: 1 }, uBlue: { value: 0 } },
   vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix*vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }',
@@ -674,16 +880,97 @@ const flameMat = new T.ShaderMaterial({
     }`,
   transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
 });
-const flame = new T.Mesh(new T.CylinderGeometry(0.38, 0.1, 3.4, 32, 1, true), flameMat);
-flame.position.y = -2.93 - 1.7; rv.add(flame);
 const vacMat = flameMat.clone(); vacMat.uniforms.uDia.value = 0; vacMat.uniforms.uBlue.value = 1;
-const vacPlume = new T.Mesh(new T.CylinderGeometry(0.42, 2.6, 6.0, 32, 1, true), vacMat);
-vacPlume.position.y = -2.93 - 3.0; rv.add(vacPlume);
-const engLight = new T.PointLight(0xff8a3a, 3, 14, 2); engLight.position.y = -9; rv.add(engLight);
+const glowMat = new T.MeshBasicMaterial({ color: 0xff5a10, transparent: true, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
 const vaporMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
-const vapor = new T.Mesh(new T.ConeGeometry(1.25, 2.4, 40, 1, true), vaporMat);
-vapor.position.y = 0.3; rv.add(vapor);
-rocket.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial) { o.castShadow = true; o.receiveShadow = true; } });
+const engLight = new T.PointLight(0xff8a3a, 3, 14, 2); rv.add(engLight);
+
+let veh = null, vehCfg = 'A', camF = 1, camFT = 1, vehShift = 0, vehShiftT = 0, legT = -1, BASE = 3.94;
+const flames = [], glowDiscs = [];
+let vacPlume = null, vapor = null;
+const sepParts = [];
+const colPts = Array.from({ length: 12 }, () => new T.Vector3());
+let colN = 0;
+
+function setupVehicle() {
+  if (veh) { rv.remove(veh.root); disposeObj(veh.root); }
+  for (const p of sepParts) { scene.remove(p); disposeObj(p); }
+  sepParts.length = 0;
+  const kind = SITES[siteIdx].rocket;
+  veh = kind === 'ariane' ? buildAriane() : kind === 'falcon' ? buildFalcon() : buildSoyuz();
+  veh.root.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial) { o.castShadow = true; o.receiveShadow = true; } });
+  rv.add(veh.root);
+  BASE = veh.H / 2 + SITES[siteIdx].padTop;
+  veh.legOff = (veh.cfgs.E.yMax - veh.cfgs.E.yMin) / 2;
+  legT = -1;
+  flames.length = 0; glowDiscs.length = 0; vacPlume = null; vapor = null;
+  setCfg('A', true);
+}
+function setCfg(c, instant) {
+  vehCfg = c;
+  const cf = veh.cfgs[c];
+  vehShiftT = -(cf.yMin + cf.yMax) / 2;
+  camFT = clamp((cf.yMax - cf.yMin) / 6.3, 0.22, 1);
+  if (instant) { vehShift = vehShiftT; camF = camFT; veh.root.position.y = vehShift; }
+  for (const f of flames) { veh.root.remove(f); f.geometry.dispose(); }
+  for (const d of glowDiscs) { veh.root.remove(d); d.geometry.dispose(); }
+  flames.length = 0; glowDiscs.length = 0;
+  for (const [x, y, z, r, len] of cf.n) {
+    const fl = new T.Mesh(new T.CylinderGeometry(r * 1.2, r * 0.35, len, 20, 1, true), flameMat);
+    fl.position.set(x, y - len / 2, z); fl.userData.len = len; fl.userData.y = y; fl.renderOrder = 2;
+    veh.root.add(fl); flames.push(fl);
+    const d = new T.Mesh(new T.CircleGeometry(r * 0.95, 20), glowMat); d.rotation.x = Math.PI / 2; d.position.set(x, y + 0.004, z);
+    veh.root.add(d); glowDiscs.push(d);
+  }
+  if (vacPlume) { veh.root.remove(vacPlume); vacPlume.geometry.dispose(); }
+  vacPlume = new T.Mesh(new T.CylinderGeometry(cf.plume * 1.1, cf.plume * 7, cf.plume * 16, 32, 1, true), vacMat);
+  vacPlume.position.set(0, cf.yMin - cf.plume * 8, 0); veh.root.add(vacPlume);
+  if (vapor) { veh.root.remove(vapor); vapor.geometry.dispose(); }
+  const len = cf.yMax - cf.yMin;
+  vapor = new T.Mesh(new T.ConeGeometry(cf.r * 3.4, len * 0.42, 40, 1, true), vaporMat);
+  vapor.position.y = cf.yMin + len * 0.62; veh.root.add(vapor);
+}
+function doSeparation(ev) {
+  const fwd = new T.Vector3(0, 0, -1);
+  for (const key of ev.sep) {
+    const list = Array.isArray(veh.P[key]) ? veh.P[key] : [veh.P[key]];
+    for (const part of list) {
+      if (!part || part.parent !== veh.root) continue;
+      part.updateMatrixWorld(true);
+      const c = new T.Box3().setFromObject(part).getCenter(new T.Vector3());
+      scene.attach(part);
+      const out = new T.Vector3(c.x - rocket.position.x, c.y - rocket.position.y, 0);
+      if (out.lengthSq() < 1e-4) out.set(rnd(-1, 1), rnd(-1, 1), 0);
+      out.normalize();
+      let v, w, drop = 10;
+      if (key === 'boosters') { v = out.clone().multiplyScalar(ev.cross ? 3.2 : 2.4); w = new T.Vector3().crossVectors(fwd, out).multiplyScalar(ev.cross ? 1.7 : 0.9); drop = 12; }
+      else if (key === 'fairing') { v = out.clone().multiplyScalar(4.5); w = new T.Vector3().crossVectors(fwd, out).multiplyScalar(2.2); drop = 8; }
+      else if (key === 'les') { v = new T.Vector3(rnd(-1.5, 1.5), 2.5, -18); w = new T.Vector3(rnd(-0.5, 0.5), 0, rnd(-0.5, 0.5)); drop = 9; }
+      else { v = new T.Vector3(rnd(-0.4, 0.4), -0.7, 0.5); w = ev.flip ? new T.Vector3(0.9, 0, 0) : new T.Vector3(rnd(-0.25, 0.25), rnd(-0.25, 0.25), rnd(-0.25, 0.25)); drop = key === 'stage2' ? 4 : 9; }
+      part.userData.sv = v; part.userData.sw = w; part.userData.st = 0; part.userData.drop = drop;
+      sepParts.push(part);
+    }
+  }
+  setCfg(ev.cfg);
+  tmpV.set(0, 0, 0); rocket.localToWorld(tmpV);
+  for (let i = 0; i < 40; i++) {
+    const a = rnd(0, Math.PI * 2), l = rnd(0.85, 1);
+    smoke.emit({ x: tmpV.x + Math.cos(a) * 0.4, y: tmpV.y + Math.sin(a) * 0.4, z: tmpV.z + rnd(-1, 1), vx: Math.cos(a) * rnd(2, 5), vy: Math.sin(a) * rnd(2, 5), vz: rnd(2, 8), drag: 1.5, max: rnd(0.8, 1.6), s0: 0.4, s1: rnd(2, 3.5), a: 0.5, cr: l, cg: l, cb: l, chase: true });
+  }
+  banner(ev.t, ev.n); tone(180, 90, 0.25, 'square', 0.07); tone(600, 300, 0.12, 'triangle', 0.05, 0.05);
+}
+function updateSepParts(dt) {
+  for (let i = sepParts.length - 1; i >= 0; i--) {
+    const p = sepParts[i], u = p.userData;
+    u.st += dt;
+    u.sv.z += u.drop * dt;
+    p.position.addScaledVector(u.sv, dt);
+    const wl = u.sw.length();
+    if (wl > 0) p.rotateOnWorldAxis(tmpV3.copy(u.sw).divideScalar(wl), wl * dt);
+    if (p.position.z > 60 || u.st > 14) { scene.remove(p); disposeObj(p); sepParts.splice(i, 1); }
+  }
+}
+
 
 /* ---------- Particules ---------- */
 function makeParticles(max, additive) {
@@ -761,9 +1048,9 @@ const streaks = Array.from({ length: STREAKS }, () => { const a = rnd(0, Math.PI
 
 /* ---------- Base de lancement ---------- */
 const SITES = [
-  { name: 'Kourou', full: 'Centre spatial guyanais', where: 'Kourou, Guyane française' },
-  { name: 'Cap Canaveral', full: 'Complexe de lancement 39', where: 'Cap Canaveral, Floride' },
-  { name: 'Baïkonour', full: 'Cosmodrome de Baïkonour', where: 'Baïkonour, Kazakhstan' },
+  { name: 'Kourou', full: 'Ensemble de lancement n°4', where: 'Kourou, Guyane française', rocket: 'ariane', rocketName: 'Ariane 6', padTop: 1.0, hall: 'BAL' },
+  { name: 'Cap Canaveral', full: 'Complexe de lancement 39A', where: 'Cap Canaveral, Floride', rocket: 'falcon', rocketName: 'Falcon 9', padTop: 1.0, hall: 'HANGAR 39A' },
+  { name: 'Baïkonour', full: 'Pas de tir n°31', where: 'Baïkonour, Kazakhstan', rocket: 'soyuz', rocketName: 'Soyouz', padTop: 0.35, hall: 'MIK' },
 ];
 let siteIdx = 0;
 try { siteIdx = clamp(Number(localStorage.getItem('fusee-site')) || 0, 0, 2); } catch (e) {}
@@ -878,92 +1165,174 @@ function treeGeo(w, h) {
   return (treeGeoCache[key] = g);
 }
 
-const swingArms = [];
+const padAnims = [];
+function applyPadAnims(t) { for (const a of padAnims) a.o.rotation[a.ax] = lerp(a.a0, a.a1, sstep(a.t0, a.t1, t)); }
+function signTexture(text) {
+  return canvasTex(1024, 256, (g, w, h) => {
+    g.fillStyle = '#e6e8ea'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#1f3f9a'; g.fillRect(0, h - 40, w, 40);
+    g.fillStyle = '#16181d'; g.font = '700 130px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, w / 2, h / 2 - 16);
+  });
+}
+function latticeParts(parts, tx, tz, tw, td, th, y0, color, step = 0.8, mem = 0.12) {
+  for (const [ox, oz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) parts.push(part(unitBox, tx + ox * tw / 2, y0 + th / 2, tz + oz * td / 2, mem, th, mem, 0, 0, 0, color));
+  const m2 = mem * 0.6, m3 = mem * 0.4;
+  for (let y = y0; y <= y0 + th + 1e-6; y += step) {
+    parts.push(part(unitBox, tx, y, tz - td / 2, tw, m2, m2, 0, 0, 0, color), part(unitBox, tx, y, tz + td / 2, tw, m2, m2, 0, 0, 0, color));
+    parts.push(part(unitBox, tx - tw / 2, y, tz, m2, m2, td, 0, 0, 0, color), part(unitBox, tx + tw / 2, y, tz, m2, m2, td, 0, 0, 0, color));
+    if (y + step <= y0 + th + 1e-6) {
+      parts.push(beam(new T.Vector3(tx - tw / 2, y, tz - td / 2), new T.Vector3(tx + tw / 2, y + step, tz - td / 2), m3, color));
+      parts.push(beam(new T.Vector3(tx - tw / 2, y + step, tz + td / 2), new T.Vector3(tx + tw / 2, y, tz + td / 2), m3, color));
+      parts.push(beam(new T.Vector3(tx + tw / 2, y, tz - td / 2), new T.Vector3(tx + tw / 2, y + step, tz + td / 2), m3, color));
+      parts.push(beam(new T.Vector3(tx - tw / 2, y + step, tz - td / 2), new T.Vector3(tx - tw / 2, y, tz + td / 2), m3, color));
+    }
+  }
+}
+function catenary(pts, a, b, sag, n = 16) {
+  for (let k = 0; k < n; k++) {
+    const t0 = k / n, t1 = (k + 1) / n;
+    const P0 = new T.Vector3().lerpVectors(a, b, t0); P0.y -= Math.sin(Math.PI * t0) * sag;
+    const P1 = new T.Vector3().lerpVectors(a, b, t1); P1.y -= Math.sin(Math.PI * t1) * sag;
+    pts.push(P0, P1);
+  }
+}
 function buildSite(type) {
-  if (siteParts) { ground.remove(siteParts); siteParts.traverse(o => { if (o.geometry && o.geometry !== unitBox) o.geometry.dispose(); }); }
-  swingArms.length = 0;
+  if (siteParts) { ground.remove(siteParts); disposeObj(siteParts); }
+  padAnims.length = 0;
   const G = new T.Group();
   const cast = m => { m.castShadow = true; m.receiveShadow = true; return m; };
-
-  const apron = new T.Mesh(new T.BoxGeometry(44, 0.06, 44), mConcrete);
-  apron.material.map.repeat.set(1, 1);
-  apron.position.y = 0.03; apron.receiveShadow = true; G.add(apron);
+  const add = m => { G.add(m); return m; };
+  const steel = 0x7d8288, red = 0xb3262f;
   const catcher = new T.Mesh(new T.PlaneGeometry(260, 260), new T.ShadowMaterial({ opacity: 0.45 }));
   catcher.rotation.x = -Math.PI / 2; catcher.position.y = 0.02; catcher.receiveShadow = true; G.add(catcher);
-  const table = cast(new T.Mesh(new T.BoxGeometry(4.4, 1.0, 4.4), mDarkConcrete)); table.position.set(0, 0.5, 0); G.add(table);
-  for (const s of [-1, 1]) {
-    const ramp = cast(new T.Mesh(new T.BoxGeometry(5, 0.8, 3.2), mConcrete)); ramp.position.set(s * 4.8, 0.4, 0); G.add(ramp);
-    const mouth = new T.Mesh(new T.BoxGeometry(0.12, 0.6, 2.4), new T.MeshBasicMaterial({ color: 0x050505 })); mouth.position.set(s * 2.25, 0.45, 0); G.add(mouth);
-  }
+  const bp = [], wires = [];
+  let roads, blocked = [];
 
-  const tp = [];
-  const tx = 3.6, tw = 1.7, th = 9.5, steel = 0x7d8288, red = 0xb3262f;
-  for (const [ox, oz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) tp.push(part(unitBox, tx + ox * tw / 2, 1 + th / 2, oz * tw / 2, 0.14, th, 0.14, 0, 0, 0, steel));
-  for (let y = 1; y <= 1 + th; y += 0.8) {
-    tp.push(part(unitBox, tx, y, -tw / 2, tw, 0.08, 0.08, 0, 0, 0, steel), part(unitBox, tx, y, tw / 2, tw, 0.08, 0.08, 0, 0, 0, steel));
-    tp.push(part(unitBox, tx - tw / 2, y, 0, 0.08, 0.08, tw, 0, 0, 0, steel), part(unitBox, tx + tw / 2, y, 0, 0.08, 0.08, tw, 0, 0, 0, steel));
-    if (y + 0.8 <= 1 + th) {
-      const a = new T.Vector3(), b = new T.Vector3();
-      tp.push(beam(a.set(tx - tw / 2, y, -tw / 2), b.set(tx + tw / 2, y + 0.8, -tw / 2), 0.05, steel));
-      tp.push(beam(new T.Vector3(tx - tw / 2, y + 0.8, tw / 2), new T.Vector3(tx + tw / 2, y, tw / 2), 0.05, steel));
-      tp.push(beam(new T.Vector3(tx + tw / 2, y, -tw / 2), new T.Vector3(tx + tw / 2, y + 0.8, tw / 2), 0.05, steel));
-      tp.push(beam(new T.Vector3(tx - tw / 2, y + 0.8, -tw / 2), new T.Vector3(tx - tw / 2, y, tw / 2), 0.05, steel));
+  if (type !== 2) {
+    const apron = new T.Mesh(new T.BoxGeometry(44, 0.06, 44), mConcrete);
+    apron.position.y = 0.03; apron.receiveShadow = true; G.add(apron);
+    const table = cast(new T.Mesh(new T.BoxGeometry(type === 0 ? 5 : 4.2, 1.0, type === 0 ? 5 : 4.2), mDarkConcrete)); table.position.set(0, 0.5, 0); G.add(table);
+    for (const s of [-1, 1]) {
+      const ramp = cast(new T.Mesh(new T.BoxGeometry(5, 0.8, 3.2), mConcrete)); ramp.position.set(s * 5.2, 0.4, 0); G.add(ramp);
+      add(new T.Mesh(new T.BoxGeometry(0.12, 0.6, 2.4), new T.MeshBasicMaterial({ color: 0x050505 }))).position.set(s * (type === 0 ? 2.55 : 2.15), 0.45, 0);
+    }
+    bp.push(part(unitBox, 36, 5.5, 30, 12, 11, 9, 0, 0, 0, 0xe2e4e6), part(unitBox, 29.95, 4.6, 30, 0.1, 9, 4.6, 0, 0, 0, 0x5d6168), part(unitBox, 36, 11.1, 30, 12.2, 0.2, 9.2, 0, 0, 0, 0x9da2a8));
+    bp.push(part(unitBox, -46, 1.6, -34, 9, 3.2, 6, 0, 0, 0, 0xd8d6cf), part(unitBox, -46, 3.3, -34, 9.2, 0.2, 6.2, 0, 0, 0, 0x7d8288));
+    bp.push(part(unitBox, -30, 1.1, 40, 6, 2.2, 4, 0, 0.3, 0, 0xcfd2d4), part(unitBox, 52, 1.0, -18, 5, 2.0, 7, 0, 0, 0, 0xc9c6bd));
+    roads = [[0, 0, 36, 30], [0, 0, -46, -34], [0, 0, -30, 40], [36, 30, 120, 160], [-46, -34, -200, -120], [0, 0, 52, -18]];
+    blocked = [[36, 30, 10, 8], [-46, -34, 8, 6], [52, -18, 6, 7], [-30, 40, 5, 4]];
+    const sign = new T.Mesh(new T.PlaneGeometry(9, 2.25), own(std({ map: signTexture(SITES[type].hall), roughness: 0.6 })));
+    sign.position.set(29.9, 9.4, 30); sign.rotation.y = -Math.PI / 2; G.add(sign);
+    for (const [fx, fz] of [[14, -16], [-14, -16], [14, 16], [-14, 16]]) {
+      bp.push(part(unitBox, fx, 4.5, fz, 0.2, 9, 0.2, 0, 0, 0, 0x8a8f96), part(unitBox, fx, 9.1, fz, 1.4, 0.7, 0.3, 0, Math.atan2(-fx, -fz), 0, 0x30333a));
+      const l = glowSprite(0xfff2c0, 2.2, 0.55); l.position.set(fx, 9.1, fz); G.add(l);
     }
   }
-  tp.push(part(unitBox, tx, 1 + th + 0.3, 0, tw + 0.3, 0.6, tw + 0.3, 0, 0, 0, red));
-  tp.push(part(unitBox, tx, 1 + th + 1.6, 0, 0.08, 2.2, 0.08, 0, 0, 0, steel));
-  G.add(cast(new T.Mesh(merge(tp), mVCmetal)));
-  const beacon = glowSprite(0xff2020, 1.4, 0.9); beacon.position.set(tx, 1 + th + 2.8, 0); G.add(beacon); G.userData.beacon = beacon;
-  for (const ay of [4.6, 6.4]) {
-    const pivot = new T.Group(); pivot.position.set(tx - tw / 2, ay, 0);
-    const arm = cast(new T.Mesh(merge([part(unitBox, -1.15, 0, 0, 2.3, 0.22, 0.5, 0, 0, 0, steel), part(unitBox, -2.25, 0, 0, 0.12, 0.5, 0.7, 0, 0, 0, red)]), mVCmetal));
-    pivot.add(arm); G.add(pivot); swingArms.push(pivot);
-  }
 
-  const mp = [];
-  for (const [mx, mz] of [[-10, -10], [10, -10], [10, 10], [-10, 10]]) {
-    mp.push(part(unitBox, mx, 7, mz, 0.18, 14, 0.18, 0, 0, 0, 0x9a9ea4));
-    mp.push(part(unitBox, mx, 14.3, mz, 0.08, 0.6, 0.08, 0, 0, 0, 0xb3262f));
-  }
-  const wt = [[-16, 12]];
-  for (const [wx, wz] of wt) {
-    for (const [ox, oz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) mp.push(beam(new T.Vector3(wx + ox * 1.2, 0, wz + oz * 1.2), new T.Vector3(wx + ox * 0.6, 7.4, wz + oz * 0.6), 0.16, 0xc9ccd0));
-  }
-  G.add(cast(new T.Mesh(merge(mp), mVC)));
-  const tank = cast(new T.Mesh(new T.SphereGeometry(1.6, 24, 16), mWhitePaint)); tank.position.set(-16, 8.6, 12); G.add(tank);
-  const wirePts = [];
-  const tops = [[-10, -10], [10, -10], [10, 10], [-10, 10]];
-  for (let i = 0; i < 4; i++) {
-    const [ax, az] = tops[i], [bx, bz] = tops[(i + 1) % 4];
-    for (let k = 0; k < 12; k++) {
-      const t0 = k / 12, t1 = (k + 1) / 12;
-      const sag = t => 14 - Math.sin(Math.PI * t) * 2.5;
-      wirePts.push(new T.Vector3(lerp(ax, bx, t0), sag(t0), lerp(az, bz, t0)), new T.Vector3(lerp(ax, bx, t1), sag(t1), lerp(az, bz, t1)));
+  if (type === 0) {
+    // ELA-4 : mât ombilical, 4 paratonnerres, château d'eau, portique mobile reculé sur ses rails
+    const mp = [];
+    latticeParts(mp, 1.95, 0, 0.9, 0.9, 6.2, 1, steel, 0.7, 0.1);
+    mp.push(part(unitBox, 1.95, 7.35, 0, 1.1, 0.3, 1.1, 0, 0, 0, red));
+    for (const [mx, mz] of [[-10, -10], [10, -10], [10, 10], [-10, 10]]) mp.push(part(unitBox, mx, 7, mz, 0.18, 14, 0.18, 0, 0, 0, 0x9a9ea4), part(unitBox, mx, 14.3, mz, 0.08, 0.6, 0.08, 0, 0, 0, red));
+    for (const [ox, oz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) mp.push(beam(new T.Vector3(-16 + ox * 1.2, 0, 12 + oz * 1.2), new T.Vector3(-16 + ox * 0.6, 7.4, 12 + oz * 0.6), 0.16, 0xc9ccd0));
+    const gz = 17, gw = 3.6, gd = 3.0, gh = 9.8;
+    mp.push(part(unitBox, 0, gh / 2, gz + gd / 2, gw, gh, 0.1, 0, 0, 0, 0xcfd5da));
+    for (const s of [-1, 1]) mp.push(part(unitBox, s * gw / 2, gh / 2, gz, 0.1, gh, gd, 0, 0, 0, 0xc4cacf));
+    mp.push(part(unitBox, 0, gh + 0.1, gz, gw + 0.2, 0.25, gd + 0.2, 0, 0, 0, 0x9aa1a8));
+    for (let y = 1.6; y < gh; y += 1.6) mp.push(part(unitBox, 0, y, gz + 0.4, gw - 0.2, 0.08, gd - 0.8, 0, 0, 0, 0x6d737a));
+    for (const s of [-1, 1]) {
+      mp.push(part(unitBox, s * (gw / 2 - 0.1), gh / 2, gz - gd / 2, 0.25, gh, 0.25, 0, 0, 0, 0xb0b6bc));
+      mp.push(part(unitBox, s * 1.3, 0.05, 9, 0.14, 0.1, 18, 0, 0, 0, 0x5d5f63));
+    }
+    mp.push(part(unitBox, 0, gh - 0.4, gz - gd / 2, gw, 0.6, 0.2, 0, 0, 0, 0xb0b6bc));
+    G.add(cast(new T.Mesh(merge(mp), mVC)));
+    const tank = cast(new T.Mesh(new T.SphereGeometry(1.6, 24, 16), mPaintW)); tank.position.set(-16, 8.6, 12); G.add(tank);
+    const gsign = new T.Mesh(new T.PlaneGeometry(2.8, 0.7), own(std({ map: signTexture('ELA-4'), roughness: 0.6 })));
+    gsign.position.set(1.81, 8.6, gz); gsign.rotation.y = Math.PI / 2; G.add(gsign);
+    for (const ay of [2.9, 4.9]) {
+      const pivot = new T.Group(); pivot.position.set(1.5, ay, 0);
+      pivot.add(cast(new T.Mesh(merge([part(unitBox, -0.5, 0, 0, 1.0, 0.14, 0.3, 0, 0, 0, steel), part(unitBox, -1.0, 0, 0, 0.08, 0.3, 0.42, 0, 0, 0, red)]), mVCmetal)));
+      G.add(pivot); padAnims.push({ o: pivot, ax: 'y', a0: 0, a1: 1.4, t0: -5, t1: -3.5 });
+    }
+    const tops = [[-10, -10], [10, -10], [10, 10], [-10, 10]];
+    for (let i = 0; i < 4; i++) catenary(wires, new T.Vector3(tops[i][0], 14, tops[i][1]), new T.Vector3(tops[(i + 1) % 4][0], 14, tops[(i + 1) % 4][1]), 2.5);
+    const beaconK = glowSprite(0xff2020, 1.2, 0.9); beaconK.position.set(1.95, 7.8, 0); G.add(beaconK);
+  } else if (type === 1) {
+    // LC-39A : tour de service fixe, passerelle d'équipage, bras érecteur noir, mât paratonnerre, château d'eau
+    const mp = [];
+    latticeParts(mp, 2.45, 0, 1.6, 1.6, 8.0, 1, 0x6e5f55, 0.8, 0.13);
+    for (let y = 2.6; y < 9; y += 1.6) mp.push(part(unitBox, 2.45, y, 0, 1.75, 0.08, 1.75, 0, 0, 0, 0x5a4e46));
+    mp.push(part(unitBox, 2.45, 9.1, 0, 1.8, 0.2, 1.8, 0, 0, 0, 0x5a4e46));
+    mp.push(part(new T.CylinderGeometry(0.05, 0.08, 2.8, 8), 2.45, 10.6, 0, 1, 1, 1, 0, 0, 0, 0xe0dcd0));
+    for (const [ox, oz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) mp.push(beam(new T.Vector3(-22 + ox * 1.5, 0, 18 + oz * 1.5), new T.Vector3(-22 + ox * 0.8, 8.6, 18 + oz * 0.8), 0.2, 0xd8dadc));
+    G.add(cast(new T.Mesh(merge(mp), mVCmetal)));
+    const tank = cast(new T.Mesh(new T.SphereGeometry(1.8, 24, 16), mPaintW)); tank.position.set(-22, 9.8, 18); tank.scale.y = 1.2; G.add(tank);
+    catenary(wires, new T.Vector3(2.45, 12, 0), new T.Vector3(24, 0.2, 20), 2.5, 20);
+    catenary(wires, new T.Vector3(2.45, 12, 0), new T.Vector3(-20, 0.2, -22), 2.5, 20);
+    const arm = new T.Group(); arm.position.set(1.65, 7.4, 0);
+    arm.add(cast(new T.Mesh(merge([part(unitBox, -0.6, 0, 0, 1.2, 0.18, 0.3, 0, 0, 0, 0xe8e8e8), part(unitBox, -1.18, 0.02, 0, 0.32, 0.34, 0.34, 0, 0, 0, 0xf2f2f2)]), mVC)));
+    G.add(arm); padAnims.push({ o: arm, ax: 'y', a0: 0, a1: -1.3, t0: -6, t1: -4.5 });
+    const te = new T.Group(); te.position.set(-0.45, 1.0, 0);
+    const tp = [];
+    latticeParts(tp, -0.15, 0, 0.3, 0.32, 6.9, 0, 0x1c1d21, 0.45, 0.05);
+    for (const y of [1.2, 3.6, 6.1]) tp.push(part(unitBox, 0.12, y, 0, 0.26, 0.08, 0.18, 0, 0, 0, 0x1c1d21));
+    te.add(cast(new T.Mesh(merge(tp), mVCmetal)));
+    G.add(te); padAnims.push({ o: te, ax: 'z', a0: 0, a1: 0.055, t0: -4, t1: -1 });
+    const beaconC = glowSprite(0xff2020, 1.2, 0.9); beaconC.position.set(2.45, 12.1, 0); G.add(beaconC);
+  } else {
+    // Pas de tir 31 : plateforme au-dessus de la fosse, 4 bras « tulipe », 2 mâts de service rabattables, voie ferrée
+    const mp = [];
+    const deck = [[-4.5, -1.15, -3.5, 3.5], [1.15, 4.5, -3.5, 3.5], [-1.15, 1.15, 1.15, 3.5], [-1.15, 1.15, -3.5, -1.15]];
+    for (const [x0, x1, z0, z1] of deck) mp.push(part(unitBox, (x0 + x1) / 2, 1.0, (z0 + z1) / 2, x1 - x0, 0.4, z1 - z0, 0, 0, 0, 0x8d8a83));
+    for (const [px, pz] of [[-4, -3], [-4, 3], [4, -3], [4, 3]]) mp.push(part(unitBox, px, 0.4, pz, 0.6, 0.8, 0.6, 0, 0, 0, 0x7d7a73));
+    mp.push(part(unitBox, -1.6, -1.4, 0, 0.3, 2.8, 4.6, 0, 0, 0, 0x2b2927));
+    for (const s of [-1, 1]) mp.push(part(unitBox, 7.2, -1.4, s * 2.3, 17.6, 2.8, 0.3, 0, 0, 0, 0x2b2927));
+    for (let i = 0; i < 6; i++) { const x0 = -1.5 + i * 3; mp.push(part(unitBox, x0 + 1.5, -2.8 + i * 0.45, 0, 3.0, 0.2, 4.4, 0, 0, 0, 0x1d1c1a)); }
+    const ap = [[-14, -1.6, -10, 10], [-1.6, 16, 2.45, 10], [-1.6, 16, -10, -2.45]];
+    for (const [x0, x1, z0, z1] of ap) mp.push(part(unitBox, (x0 + x1) / 2, 0.03, (z0 + z1) / 2, x1 - x0, 0.06, z1 - z0, 0, 0, 0, 0x8a877f));
+    for (const [mx, mz] of [[-13, -13], [13, -13], [13, 13], [-13, 13]]) latticeParts(mp, mx, mz, 0.8, 0.8, 10, 0, 0x8a8f96, 1.0, 0.1);
+    for (const s of [-1, 1]) mp.push(part(unitBox, -33, 0.06, s * 0.45, 54, 0.08, 0.08, 0, 0, 0, 0x55575b));
+    for (let x = -60; x < -6; x += 0.8) mp.push(part(unitBox, x, 0.03, 0, 0.15, 0.05, 1.3, 0, 0, 0, 0x4a3b2c));
+    mp.push(part(unitBox, -68, 5, 0, 14, 10, 12, 0, 0, 0, 0xd9d7d0), part(unitBox, -68, 10.1, 0, 14.2, 0.3, 12.2, 0, 0, 0, 0x8a8f96));
+    mp.push(part(unitBox, -20, 1.2, -26, 8, 2.4, 5, 0, 0, 0, 0xcfccc4), part(unitBox, 26, 1.0, 24, 6, 2.0, 5, 0, 0, 0, 0xcfccc4));
+    G.add(cast(new T.Mesh(merge(mp), mVC)));
+    const sign = new T.Mesh(new T.PlaneGeometry(7, 1.75), own(std({ map: signTexture(SITES[2].hall), roughness: 0.6 })));
+    sign.position.set(-60.9, 8, 0); sign.rotation.y = Math.PI / 2; G.add(sign);
+    for (let k = 0; k < 4; k++) {
+      const a = Math.PI / 4 + k * Math.PI / 2;
+      const pivot = new T.Group(); pivot.position.set(Math.cos(a) * 1.3, 1.2, Math.sin(a) * 1.3); pivot.rotation.y = -a;
+      const armG = new T.Group(); pivot.add(armG);
+      armG.add(cast(new T.Mesh(merge([
+        beam(new T.Vector3(0, 0, 0), new T.Vector3(-0.98, 0.72, 0), 0.12, 0x8a8f96),
+        beam(new T.Vector3(0, 0, 0.12), new T.Vector3(-0.98, 0.72, 0.12), 0.06, 0x8a8f96),
+        part(unitBox, -0.98, 0.75, 0.06, 0.08, 0.16, 0.3, 0, 0, 0, 0x2d2f33),
+        part(unitBox, 0.35, -0.12, 0.06, 0.5, 0.35, 0.45, 0, 0, 0, 0x6d706f),
+      ]), mVCmetal)));
+      G.add(pivot); padAnims.push({ o: armG, ax: 'z', a0: 0, a1: -0.95, t0: 0, t1: 1.4 });
+    }
+    for (const s of [-1, 1]) {
+      const pivot = new T.Group(); pivot.position.set(0, 1.2, s * 2.7);
+      const tp = []; latticeParts(tp, 0, 0, 0.7, 0.7, 4.6, 0, 0x7f848b, 0.6, 0.08);
+      tp.push(part(unitBox, 0, 4.66, 0, 0.6, 0.12, 0.6, 0, 0, 0, 0x9c3a34));
+      for (const y of [2.4, 3.6]) tp.push(part(unitBox, 0, y, -s * 0.9, 0.18, 0.12, 1.2, 0, 0, 0, 0x7f848b));
+      pivot.add(cast(new T.Mesh(merge(tp), mVCmetal)));
+      G.add(pivot); padAnims.push({ o: pivot, ax: 'x', a0: 0, a1: s * 1.52, t0: -9.5, t1: -6.5 });
+    }
+    roads = [[-6, 0, -6, -60], [-6, -8, 50, -40], [-6, 8, -40, 60], [-60, 0, -200, -80]];
+    blocked = [[-68, 0, 9, 8], [-20, -26, 6, 4], [26, 24, 5, 4], [7, 0, 11, 4]];
+    for (const [fx, fz] of [[-8, -10], [-8, 10], [14, -9], [14, 9]]) {
+      bp.push(part(unitBox, fx, 4.5, fz, 0.2, 9, 0.2, 0, 0, 0, 0x8a8f96), part(unitBox, fx, 9.1, fz, 1.4, 0.7, 0.3, 0, Math.atan2(-fx, -fz), 0, 0x30333a));
+      const l = glowSprite(0xfff2c0, 2.2, 0.55); l.position.set(fx, 9.1, fz); G.add(l);
     }
   }
-  G.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(wirePts), new T.LineBasicMaterial({ color: 0x2a2c30 })));
-
-  const bp = [];
-  bp.push(part(unitBox, 36, 5.5, 30, 12, 11, 9, 0, 0, 0, 0xe2e4e6));
-  bp.push(part(unitBox, 29.95, 4.6, 30, 0.1, 9, 4.6, 0, 0, 0, 0x5d6168));
-  bp.push(part(unitBox, 36, 11.1, 30, 12.2, 0.2, 9.2, 0, 0, 0, 0x9da2a8));
-  bp.push(part(unitBox, -46, 1.6, -34, 9, 3.2, 6, 0, 0, 0, 0xd8d6cf));
-  bp.push(part(unitBox, -46, 3.3, -34, 9.2, 0.2, 6.2, 0, 0, 0, 0x7d8288));
-  bp.push(part(unitBox, -30, 1.1, 40, 6, 2.2, 4, 0, 0.3, 0, 0xcfd2d4));
-  bp.push(part(unitBox, 52, 1.0, -18, 5, 2.0, 7, 0, 0, 0, 0xc9c6bd));
-  for (const [fx, fz] of [[14, -16], [-14, -16], [14, 16], [-14, 16]]) {
-    bp.push(part(unitBox, fx, 4.5, fz, 0.2, 9, 0.2, 0, 0, 0, 0x8a8f96));
-    bp.push(part(unitBox, fx, 9.1, fz, 1.4, 0.7, 0.3, 0, Math.atan2(-fx, -fz), 0, 0x30333a));
-  }
-  const roads = [[0, 0, 36, 30], [0, 0, -46, -34], [0, 0, -30, 40], [36, 30, 120, 160], [-46, -34, -200, -120], [0, 0, 52, -18]];
   for (const [ax, az, bx, bz] of roads) {
     const len = Math.hypot(bx - ax, bz - az);
     bp.push(part(unitBox, (ax + bx) / 2, 0.035, (az + bz) / 2, 2.4, 0.04, len, 0, Math.atan2(bx - ax, bz - az), 0, 0x55555a));
   }
-  G.add(cast(new T.Mesh(merge(bp), mVC)));
-  const sign = new T.Mesh(new T.PlaneGeometry(9, 2.25), std({ map: signTex, roughness: 0.6 }));
-  sign.position.set(29.9, 9.4, 30); sign.rotation.y = -Math.PI / 2; G.add(sign);
-  for (const [fx, fz] of [[14, -16], [-14, -16], [14, 16], [-14, 16]]) { const l = glowSprite(0xfff2c0, 2.2, 0.55); l.position.set(fx, 9.1, fz); G.add(l); }
+  if (bp.length) G.add(cast(new T.Mesh(merge(bp), mVC)));
+  if (wires.length) G.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(wires), new T.LineBasicMaterial({ color: 0x2a2c30 })));
 
   const placeOk = (x, z) => {
     for (const [ax, az, bx, bz] of roads) {
@@ -971,9 +1340,7 @@ function buildSite(type) {
       const t = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1);
       if (Math.hypot(x - (ax + dx * t), z - (az + dz * t)) < 4) return false;
     }
-    if (Math.abs(x - 36) < 10 && Math.abs(z - 30) < 8) return false;
-    if (Math.abs(x + 46) < 8 && Math.abs(z + 34) < 6) return false;
-    if (Math.abs(x - 52) < 6 && Math.abs(z + 18) < 7) return false;
+    for (const [cx, cz, hx, hz] of blocked) if (Math.abs(x - cx) < hx && Math.abs(z - cz) < hz) return false;
     return true;
   };
   const scatter = (mesh, count, rMin, rMax, sc, tint) => {
@@ -1003,10 +1370,11 @@ function buildSite(type) {
     for (const tex of treeTextures('palm')) scatter(new T.InstancedMesh(treeGeo(2.8, 3.8), treeMat(tex), n), n, 40, 170, [0.75, 1.2], [0.85, 1.1]);
     scatter(new T.InstancedMesh(shrubGeo(0x4c5a2c), mVC, 1400), 1400, 34, 200, [0.6, 1.5], [0.8, 1.15]);
   } else {
-    scatter(new T.InstancedMesh(shrubGeo(0x6d6a3e), mVC, 900), 900, 34, 230, [0.5, 1.4], [0.8, 1.15]);
+    scatter(new T.InstancedMesh(shrubGeo(0x6d6a3e), mVC, 900), 900, 30, 230, [0.5, 1.4], [0.8, 1.15]);
   }
   ground.add(G); siteParts = G;
   bgMat.uniforms.uSiteType.value = type;
+  applyPadAnims(-10);
 }
 
 /* ---------- Sol lunaire (zone d'alunissage) ---------- */
@@ -1355,6 +1723,7 @@ function clearWorld() {
   for (const g of gates) scene.remove(g); gates.length = 0;
   for (const c of nearClouds) { scene.remove(c); c.material.dispose(); } nearClouds.length = 0;
   for (const d of debrisChunks) scene.remove(d); debrisChunks.length = 0;
+  for (const sp of sepParts) { scene.remove(sp); disposeObj(sp); } sepParts.length = 0;
   fire.clear(); smoke.clear();
 }
 function resetMission() {
@@ -1367,8 +1736,8 @@ function resetMission() {
   mo = { phi: -0.75, h: 100, tau: 0 };
   landResult = null; score = 0; bonus = 0;
   rocket.visible = true; ground.visible = true; moonSite.visible = false;
-  for (const l of legs) l.rotation.z = 2.95;
-  for (const a of swingArms) a.rotation.y = 0;
+  setupVehicle();
+  applyPadAnims(-10);
   bannerQ.length = 0; bannerT = 0; $('banner').classList.remove('on');
 }
 
@@ -1434,6 +1803,7 @@ function setSite(i) {
   try { localStorage.setItem('fusee-site', String(i)); } catch (e) {}
   for (const b of document.querySelectorAll('.site')) b.setAttribute('aria-pressed', String(Number(b.dataset.site) === i));
   buildSite(i);
+  setupVehicle();
 }
 for (const b of document.querySelectorAll('.site')) b.addEventListener('click', () => setSite(Number(b.dataset.site)));
 $('startBtn').addEventListener('click', () => startMission(-10));
@@ -1469,7 +1839,7 @@ function startMission(t0) {
   $('menu').hidden = true; $('over').hidden = true;
   $('hud').classList.remove('off');
   $('count').hidden = false; $('skip').hidden = false;
-  banner(SITES[siteIdx].full, SITES[siteIdx].where);
+  banner(SITES[siteIdx].rocketName + ' · ' + SITES[siteIdx].full, SITES[siteIdx].where);
 }
 
 /* ---------- Apparition des objets ---------- */
@@ -1545,17 +1915,20 @@ function emitExhaust(dt, power, spaceK) {
   const n = rate * dt; const cnt = Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
   const spread = lerp(2.5, 11, spaceK);
   tmpV3.set(0, -1, 0).transformDirection(rv.matrixWorld);
+  const cf = veh.cfgs[vehCfg], nz = cf.n;
+  const sc = clamp(cf.plume / 0.3, 0.35, 1.6);
   for (let i = 0; i < cnt; i++) {
-    const a = rnd(0, Math.PI * 2), rr = Math.sqrt(Math.random()) * 0.3;
-    tmpV.set(Math.cos(a) * rr, -3.3, Math.sin(a) * rr); rv.localToWorld(tmpV);
-    const sp = rnd(45, 70) * (boosting ? 1.2 : 1);
-    fire.emit({ x: tmpV.x, y: tmpV.y, z: tmpV.z, vx: tmpV3.x * sp + rnd(-spread, spread) * 0.35, vy: tmpV3.y * sp + rnd(-spread, spread) * 0.35, vz: tmpV3.z * sp + rnd(-spread, spread) * 0.35, drag: 1.2, max: rnd(0.1, 0.26) * (1 + spaceK * 0.8), s0: rnd(0.25, 0.42), s1: rnd(0.8, 1.5) * (1 + spaceK * 1.5), a: 0.24, blue: spaceK, fade: phase !== 'pad' && phase !== 'landing' });
+    const [nx, ny, nzz, nr] = nz[(Math.random() * nz.length) | 0];
+    const a = rnd(0, Math.PI * 2), rr = Math.sqrt(Math.random()) * nr;
+    tmpV.set(nx + Math.cos(a) * rr, ny - 0.05, nzz + Math.sin(a) * rr); veh.root.localToWorld(tmpV);
+    const sp = rnd(45, 70) * (boosting ? 1.2 : 1) * Math.sqrt(sc);
+    fire.emit({ x: tmpV.x, y: tmpV.y, z: tmpV.z, vx: tmpV3.x * sp + rnd(-spread, spread) * 0.35 * sc, vy: tmpV3.y * sp + rnd(-spread, spread) * 0.35 * sc, vz: tmpV3.z * sp + rnd(-spread, spread) * 0.35 * sc, drag: 1.2, max: rnd(0.1, 0.26) * (1 + spaceK * 0.8), s0: rnd(0.25, 0.42) * sc, s1: rnd(0.8, 1.5) * (1 + spaceK * 1.5) * sc, a: 0.24, blue: spaceK, fade: phase !== 'pad' && phase !== 'landing' });
   }
   const smokeK = (phase === 'landing' || phase === 'orbit' || phase === 'descent' || phase === 'transfer') ? 0 : 1 - sstep(8, 30, alt);
   if (smokeK > 0.01) {
     const ns = 70 * smokeK * dt * power; const sc = Math.floor(ns) + (Math.random() < ns % 1 ? 1 : 0);
     for (let i = 0; i < sc; i++) {
-      tmpV.set(rnd(-0.3, 0.3), -3.6, rnd(-0.3, 0.3)); rv.localToWorld(tmpV);
+      tmpV.set(rnd(-0.3, 0.3), cf.yMin - 0.6, rnd(-0.3, 0.3)); veh.root.localToWorld(tmpV);
       const l = rnd(0.72, 0.9);
       smoke.emit({ x: tmpV.x, y: tmpV.y, z: tmpV.z, vx: rnd(-2, 2) + tmpV3.x * 6, vy: rnd(-1.5, 2) + tmpV3.y * 6, vz: tmpV3.z * 6, flow: true, chase: phase !== 'pad', drag: 0.5, max: rnd(1.4, 2.4), s0: 1.0, s1: rnd(5, 9), a: 0.28 * smokeK, cr: l, cg: l, cb: l * 1.03 });
     }
@@ -1564,17 +1937,19 @@ function emitExhaust(dt, power, spaceK) {
 function emitPadSmoke(dt, k) {
   const n = 320 * k * dt; const cnt = Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
   for (let i = 0; i < cnt; i++) {
-    const s = Math.random() < 0.5 ? -1 : 1;
-    const gx = s * rnd(2.4, 3.6), gy = rnd(0.5, 1.4), gz = rnd(-1.2, 1.2);
+    const pit = SITES[siteIdx].rocket === 'soyuz';
+    const s = pit ? 1 : (Math.random() < 0.5 ? -1 : 1);
+    const gx = pit ? rnd(1.5, 5) : s * rnd(2.4, 3.6), gy = pit ? rnd(-2.2, -0.4) : rnd(0.5, 1.4), gz = rnd(-1.2, 1.2);
     const l = rnd(0.8, 0.94);
-    smoke.emit({ x: gx + ground.position.x, y: gy + ground.position.y, z: gz + ground.position.z, vx: s * rnd(8, 24), vy: rnd(0.5, 5), vz: rnd(-6, 6), flow: true, drag: 0.7, max: rnd(5, 9), s0: rnd(3, 6), s1: rnd(18, 34), grow: 0.55, a: 0.75, cr: l, cg: l * 0.99, cb: l * 0.97, hot: 0.9, floor: ground.position.y + 1.5 });
+    smoke.emit({ x: gx + ground.position.x, y: gy + ground.position.y, z: gz + ground.position.z, vx: s * rnd(8, 24), vy: rnd(0.5, 5) + (pit ? 2 : 0), vz: rnd(-6, 6) * (pit ? 0.5 : 1), flow: true, drag: 0.7, max: rnd(5, 9), s0: rnd(3, 6), s1: rnd(18, 34), grow: 0.55, a: 0.75, cr: l, cg: l * 0.99, cb: l * 0.97, hot: 0.9, floor: ground.position.y + (pit ? -2.6 : 1.5) });
   }
   const baseH = alt / U;
   if (baseH < 30 && baseH > 0.2) {
     const nb = 60 * dt * (1 - baseH / 30);
     for (let i = 0; i < nb; i++) {
       const l = rnd(0.82, 0.95), a = rnd(0, Math.PI * 2);
-      smoke.emit({ x: Math.cos(a) * 0.6, y: -2.9 + rnd(-0.5, 0), z: Math.sin(a) * 0.6, vx: Math.cos(a) * rnd(2, 6), vy: -rnd(4, 10), vz: Math.sin(a) * rnd(2, 6), flow: true, drag: 0.8, max: rnd(4, 7), s0: 2, s1: rnd(12, 22), grow: 0.55, a: 0.5, cr: l, cg: l, cb: l * 0.98, hot: 0.6, floor: ground.position.y + 1.5 });
+      tmpV2.set(0, veh.cfgs[vehCfg].yMin, 0); veh.root.localToWorld(tmpV2);
+      smoke.emit({ x: tmpV2.x + Math.cos(a) * 0.6, y: tmpV2.y + rnd(-0.5, 0), z: tmpV2.z + Math.sin(a) * 0.6, vx: Math.cos(a) * rnd(2, 6), vy: -rnd(4, 10), vz: Math.sin(a) * rnd(2, 6), flow: true, drag: 0.8, max: rnd(4, 7), s0: 2, s1: rnd(12, 22), grow: 0.55, a: 0.5, cr: l, cg: l, cb: l * 0.98, hot: 0.6, floor: ground.position.y + 1.5 });
     }
   }
   if (Math.random() < k * dt * 20) {
@@ -1716,7 +2091,7 @@ function update(dt) {
     if (at(-6)) banner('Déluge d\'eau', 'Protection du pas de tir activée');
     if (at(-3)) { banner('Allumage', 'Montée en poussée des moteurs'); $('skip').hidden = true; }
     if (at(0)) { banner('Décollage !', SITES[siteIdx].where, 'gold'); tone(220, 660, 0.8, 'sawtooth', 0.06); }
-    for (const a of swingArms) a.rotation.y = lerp(0, 1.45, sstep(-5, -3.5, tCount));
+    applyPadAnims(tCount);
     if (tCount > -6 && tCount < 1 && Math.random() < dt * 25) {
       const s = Math.random() < 0.5 ? -1 : 1;
       smoke.emit({ x: s * rnd(1, 2.5), y: ground.position.y + 1.1, z: rnd(-2, 2), vx: s * rnd(1, 4), vy: rnd(1, 3), vz: rnd(-2, 2), flow: true, drag: 0.6, max: 3, s0: 1, s1: 5, a: 0.3, cr: 0.95, cg: 0.96, cb: 0.98 });
@@ -1765,6 +2140,9 @@ function update(dt) {
         vv += (3.4 - vv) * Math.min(1, dt);
         if (tP >= 6) {
           phase = 'transfer'; tP = 0; tr.s = 0; tr.u = 0;
+          for (const ev of veh.seq) if (!ev.done) { ev.done = true; doSeparation(ev); }
+          doSeparation({ cfg: 'E', sep: ['stage2'], t: 'Séparation de l\'étage supérieur', n: 'Le module lunaire file seul vers la Lune' });
+          legT = 0;
           tr.P0.copy(P);
           tr.P1.copy(P).sub(MC).normalize().multiplyScalar(RM + 100).add(MC);
           nextObs = travel + 300; nextCan = travel + 600;
@@ -1790,6 +2168,7 @@ function update(dt) {
         while (layerIdx + 1 < LAYERS.length && alt >= LAYERS[layerIdx + 1].at) {
           layerIdx++; const L = LAYERS[layerIdx]; banner(L.name, L.note, L.gold ? 'gold' : ''); chime();
         }
+        for (const ev of veh.seq) if (!ev.done && alt >= ev.alt) { ev.done = true; doSeparation(ev); }
         const tA = -SPAWN_Z / Math.max(20, S);
         for (const L of LAYERS) if (L.at && !gatesDone.has(L.at) && alt + vv * tA >= L.at) { gatesDone.add(L.at); spawnGate(L); }
         if (!issSpawned && alt + vv * (-SPAWN_Z / Math.max(20, S * 0.45)) >= 408) { issSpawned = true; spawnStation('iss'); }
@@ -1859,13 +2238,12 @@ function update(dt) {
       if (thrust) fuel = Math.max(0, fuel - 3.5 * dt);
       if (ix || iy) fuel = Math.max(0, fuel - 0.8 * dt);
       LD.x += LD.vx * dt; LD.y += LD.vy * dt; LD.z += LD.vz * dt;
-      for (const l of legs) l.rotation.z = lerp(l.rotation.z, LD.y < 45 ? 0.5 : 2.95, Math.min(1, dt * 2));
-      const legH = LD.y - 3.4;
+      const legH = LD.y - veh.legOff;
       if (thrust) emitDust(dt, legH);
       if (legH <= 0) {
         const vh = Math.hypot(LD.vx, LD.vz), dist = Math.hypot(LD.x, LD.z);
-        LD.y = 3.4;
-        if (-LD.vy < 0.35 && vh < 0.3 && legs[0].rotation.z < 1) {
+        LD.y = veh.legOff;
+        if (-LD.vy < 0.35 && vh < 0.3) {
           const prec = Math.max(0, 1 - dist / 30);
           bonus += 5000 + Math.round(prec * 3000) + Math.round(fuel * 10);
           landResult = { dist, prec };
@@ -1873,7 +2251,7 @@ function update(dt) {
           banner(dist < 5 ? 'Alunissage parfait !' : 'Alunissage réussi !', dist < 5 ? 'Pile sur la cible' : 'à ' + fmt0(dist * 10) + ' m de la cible', 'ok');
           fanfare();
         } else {
-          die(-LD.vy >= 0.35 ? 'Écrasé sur la Lune : trop rapide' : (vh >= 0.3 ? 'Basculé : trop de vitesse horizontale' : 'Train d\'atterrissage non sorti'));
+          die(-LD.vy >= 0.35 ? 'Écrasé sur la Lune : trop rapide' : 'Basculé : trop de vitesse horizontale');
         }
       }
       spd = Math.hypot(LD.vx, LD.vy, LD.vz) * 36;
@@ -1908,6 +2286,7 @@ function update(dt) {
 
   // Objets du monde
   updateObjects(dt);
+  updateSepParts(dt);
 
   // Nuages traversés vers 7 km
   const band = earthPhase ? Math.exp(-Math.pow((alt - 7) / 1.6, 2)) : 0;
@@ -1934,18 +2313,29 @@ function update(dt) {
     rocket.position.set(R.x, R.y, 0);
     rocket.rotation.set(R.vy * 0.035 * (1 - vertK) + vertK * Math.PI / 2, -R.vx * 0.025, -R.vx * 0.07);
   }
+  camF += (camFT - camF) * Math.min(1, dt * 1.5);
+  vehShift += (vehShiftT - vehShift) * Math.min(1, dt * 1.5);
+  veh.root.position.y = vehShift;
+  if (legT >= 0) { legT += dt; for (const h of veh.lander.legs) h.rotation.z = lerp(LEG_FOLD, LEG_OPEN, sstep(0, 2.5, legT)); }
   rocket.updateMatrixWorld(true);
+  {
+    const cf = veh.cfgs[vehCfg];
+    colN = clamp(Math.ceil((cf.yMax - cf.yMin) / 0.9), 2, 12);
+    for (let i = 0; i < colN; i++) { colPts[i].set(0, lerp(cf.yMin + 0.15, cf.yMax - 0.15, i / (colN - 1)), 0); veh.root.localToWorld(colPts[i]); }
+  }
   const flick = 0.9 + Math.random() * 0.2;
   const pw = rocket.visible ? power : 0;
   const visibleBoost = boosting && state === 'play';
   flameMat.uniforms.uI.value = pw * flick * (1 - spaceK * 0.35);
   flameMat.uniforms.uT.value = time;
   flameMat.uniforms.uDia.value = earthPhase ? 1 - sstep(10, 30, alt) : 0;
-  flame.scale.set(1 + spaceK * 0.6, (visibleBoost ? 1.35 : 1) * (0.7 + 0.3 * Math.min(pw, 1.3)), 1 + spaceK * 0.6);
+  const fy = (visibleBoost ? 1.35 : 1) * (0.7 + 0.3 * Math.min(pw, 1.3));
+  for (const fl of flames) { fl.scale.set(1 + spaceK * 0.6, fy, 1 + spaceK * 0.6); fl.position.y = fl.userData.y - fl.userData.len * fy / 2; }
   vacMat.uniforms.uI.value = pw * spaceK * 0.45 * flick;
   vacMat.uniforms.uT.value = time;
   engLight.intensity = pw * 2.2 * flick;
-  rocket.userData.glowMat.opacity = Math.min(0.35, 0.08 + pw * 0.27);
+  engLight.position.y = vehShift + veh.cfgs[vehCfg].yMin - 6;
+  glowMat.opacity = Math.min(0.35, 0.08 + pw * 0.27);
   const machK = earthPhase && spd > 0 ? Math.exp(-Math.pow((spd / soundSpeed(alt) - 1.0) / 0.08, 2)) : 0;
   vaporMat.opacity = state === 'play' ? machK * 0.22 * (0.85 + Math.random() * 0.3) : 0;
   if (rocket.visible && pw > 0.05) emitExhaust(dt, Math.max(pw, 0.4), spaceK);
@@ -1999,9 +2389,9 @@ function update(dt) {
     for (let i = 0; i < u.lights.length; i++) u.lights[i].visible = ((time * 1.5 + i / u.lights.length) % 1) < 0.5;
     u.catcher.position.set(LD.x, 0.015, LD.z);
     u.dot.position.set(LD.x, 0.07, LD.z);
-    u.dot.scale.setScalar(clamp(1.6 - (LD.y - 3.4) / 60, 0.3, 1.6));
+    u.dot.scale.setScalar(clamp(0.9 - (LD.y - veh.legOff) / 80, 0.2, 0.9));
     let px = LD.x, pz = LD.z;
-    const h = LD.y - 3.4, g = 0.162;
+    const h = LD.y - veh.legOff, g = 0.162;
     if (h > 0) { const tHit = (LD.vy + Math.sqrt(Math.max(0, LD.vy * LD.vy + 2 * g * h))) / g; px = LD.x + LD.vx * tHit; pz = LD.z + LD.vz * tHit; }
     u.marker.position.set(px, 0.08, pz);
     u.marker.material.color.setHex(Math.hypot(px, pz) < 4.5 ? 0x5dff9a : 0xffffff);
@@ -2035,6 +2425,13 @@ function steer(dt, ix, iy) {
 
 function initLanding() {
   clearWorld();
+  for (const key of ['boosters', 'stage1', 'stage2', 'fairing', 'les']) {
+    const list = Array.isArray(veh.P[key]) ? veh.P[key] : [veh.P[key]];
+    for (const part of list) if (part && part.parent === veh.root) { veh.root.remove(part); disposeObj(part); }
+  }
+  if (vehCfg !== 'E') setCfg('E', true);
+  for (const h of veh.lander.legs) h.rotation.z = LEG_OPEN;
+  legT = -1;
   phase = 'landing'; tP = 0;
   moonSite.visible = true;
   LD.x = rnd(-6, 6); LD.y = 120; LD.z = 40; LD.vx = 0; LD.vy = -2.5; LD.vz = -1.25;
@@ -2080,10 +2477,9 @@ function updateObjects(dt) {
       for (const [sx, sy, sz, sr] of o.spheres) {
         tmpV.set(sx, sy, sz); m.localToWorld(tmpV);
         const r = sr * (o.scale || 1);
-        for (let rz = -2.6; rz <= 2.0; rz += 1.15) {
-          tmpV2.set(R.x, R.y, rz);
-          const rr = r + 0.36;
-          if (tmpV.distanceToSquared(tmpV2) < rr * rr) { hit = true; break; }
+        const rr = r + veh.cfgs[vehCfg].r * 0.75;
+        for (let ci = 0; ci < colN; ci++) {
+          if (tmpV.distanceToSquared(colPts[ci]) < rr * rr) { hit = true; break; }
         }
         if (hit) break;
       }
@@ -2137,19 +2533,19 @@ function updateCamera(dt, mode, visibleBoost) {
   } else if (mode === 'landing' || mode === 'win') {
     if (mode === 'win') {
       const a = tP * 0.15 + 0.4;
-      camera.position.set(LD.x + Math.sin(a) * 18, LD.y + 3 + Math.sin(tP * 0.3), LD.z + Math.cos(a) * 18);
-      camera.lookAt(LD.x, LD.y - 1, LD.z);
+      camera.position.set(LD.x + Math.sin(a) * 5.5, LD.y + 1.2 + Math.sin(tP * 0.3) * 0.4, LD.z + Math.cos(a) * 5.5);
+      camera.lookAt(LD.x, LD.y - 0.2, LD.z);
     } else {
-      const h = Math.max(0, LD.y - 3.4);
+      const h = Math.max(0, LD.y - veh.legOff);
       const k = clamp(h / 120, 0, 1);
-      camera.position.set(LD.x * 0.85, LD.y + 4 + h * 0.15, LD.z + 14 + h * 0.1);
+      camera.position.set(LD.x * 0.85, LD.y + 1.3 + h * 0.15, LD.z + 4.2 + h * 0.1);
       const w = lerp(0.12, 0.4, k);
       camera.lookAt(LD.x * (1 - w), LD.y * (1 - w) + 1.5 * w, LD.z * (1 - w) - 3 * (1 - k));
     }
   } else {
-    const cx = R.x * 0.6, cy = R.y * 0.6 + 2.9, cz = 9.6;
+    const cx = R.x * 0.6, cy = R.y * 0.6 + 2.9 * camF, cz = 9.6 * camF;
     camera.position.set(cx, cy, cz);
-    camera.lookAt(R.x * 0.75, R.y * 0.75 + 0.3, -14);
+    camera.lookAt(R.x * 0.75, R.y * 0.75 + 0.3 * camF, -14);
     camera.rotateZ(-R.vx * 0.012);
     if (visibleBoost) { camera.position.x += rnd(-0.03, 0.03); camera.position.y += rnd(-0.03, 0.03); fov += 6; }
   }
@@ -2207,7 +2603,7 @@ function updateView(dt, earthPhase) {
 function updateHUD(earthPhase) {
   const set = (id, v) => { const e = $(id); if (e.textContent !== v) e.textContent = v; };
   if (phase === 'landing' || state === 'win') {
-    set('l1', 'Hauteur'); set('v1', fmt0(Math.max(0, (LD.y - 3.4) * 10))); set('u1', 'm');
+    set('l1', 'Hauteur'); set('v1', fmt0(Math.max(0, (LD.y - veh.legOff) * 10))); set('u1', 'm');
     set('l2', 'Vitesse verticale'); set('v2', fmt1(LD.vy * 10) + ' m/s');
     set('l3', 'Cible'); set('v3', fmt0(Math.hypot(LD.x, LD.z) * 10) + ' m');
     set('layer', -LD.vy * 10 > 3 && LD.y < 40 ? 'Trop rapide : freine !' : 'Alunissage · Mer de la Tranquillité');
