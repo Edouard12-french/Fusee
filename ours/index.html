@@ -1059,35 +1059,33 @@ function ball(parent, mat, r, x, y, z, sx, sy, sz) {
 }
 const eyeMat = lam(0x1d1416, { flatShading: false });
 function makeBear() {
-  // Oscar debout (quand il est déguisé) : ours noir au museau clair
-  const g = new T.Group(), fur = lam(0x2f2a2d), furD = lam(0x221e20), light = lam(0xc89a6c), pink = lam(0x4a3a3e), white = new T.MeshBasicMaterial({ color: 0xffffff });
+  // Oscar debout (déguisé), d'après le dessin : un grand corps en forme de haricot, sans cou
+  const g = new T.Group(), fur = lam(0x2f2a2d), furD = lam(0x221e20), light = lam(0xc89a6c), white = new T.MeshBasicMaterial({ color: 0xffffff });
   const body = new T.Group(); g.add(body);
-  ball(body, fur, 0.72, 0, 1.05, 0, 1, 1.0, 0.92);
-  ball(body, lam(0x3a3437), 0.5, 0, 1.0, 0.36, 0.95, 1.0, 0.55);
-  ball(body, furD, 0.16, 0, 0.75, -0.66);
-  const head = new T.Group(); head.position.set(0, 2.05, 0.06); body.add(head);
-  ball(head, fur, 0.64, 0, 0, 0, 1.05, 0.95, 1);
-  ball(head, light, 0.3, 0, -0.16, 0.5, 1.15, 0.85, 0.8);
-  ball(head, eyeMat, 0.11, 0, -0.05, 0.75, 1.2, 0.85, 0.9);
+  ball(body, fur, 0.72, 0, 1.6, 0, 1, 1.75, 0.92);
+  ball(body, fur, 0.76, 0, 1.05, 0, 1, 0.9, 0.96);
+  const head = new T.Group(); head.position.set(0, 2.38, 0.05); body.add(head);
+  ball(head, light, 0.24, 0, -0.06, 0.6, 0.85, 0.7, 1.15);
+  ball(head, eyeMat, 0.085, 0, 0.0, 0.86, 1.2, 0.9, 0.9);
   for (const s2 of [-1, 1]) {
-    ball(head, eyeMat, 0.1, s2 * 0.23, 0.12, 0.54, 0.9, 1.1, 0.6);
-    const hl = new T.Mesh(new T.SphereGeometry(0.035, 6, 4), white); hl.position.set(s2 * 0.23 + 0.03, 0.17, 0.6); head.add(hl);
-    ball(head, pink, 0.09, s2 * 0.38, -0.12, 0.45, 1.2, 0.7, 0.5);
-    ball(head, fur, 0.22, s2 * 0.46, 0.5, -0.02, 1, 1, 0.75);
-    ball(head, pink, 0.12, s2 * 0.47, 0.5, 0.11, 1, 1, 0.4);
+    ball(head, eyeMat, 0.075, s2 * 0.24, 0.18, 0.56, 0.9, 1.1, 0.6);
+    const hl = new T.Mesh(new T.SphereGeometry(0.025, 5, 4), white); hl.position.set(s2 * 0.24 + 0.02, 0.21, 0.61); head.add(hl);
+    ball(head, fur, 0.19, s2 * 0.34, 0.44, -0.02, 1, 1, 0.7);
+    ball(head, lam(0x4a3a3e), 0.1, s2 * 0.34, 0.44, 0.08, 1, 1, 0.4);
   }
-  const rig = { body, head, armL: limb(body, fur, 0.21, 0.55, -0.66, 1.4, 0.08), armR: limb(body, fur, 0.21, 0.55, 0.66, 1.4, 0.08), legL: limb(g, furD, 0.26, 0.42, -0.33, 0.52, 0.02), legR: limb(g, furD, 0.26, 0.42, 0.33, 0.52, 0.02) };
-  for (const l of [rig.legL, rig.legR]) { const pad = new T.Mesh(new T.SphereGeometry(0.16, 8, 6), light); pad.position.set(0, -0.42, 0.2); pad.scale.set(1, 0.5, 0.9); l.add(pad); }
-  for (const a of [rig.armL, rig.armR]) { a.rotation.z = a === rig.armL ? -0.25 : 0.25; }
+  // Longs bras ovales le long du corps, et petits pieds ovales
+  const oval = (parent, mat, x, y, z, rx, ry, rz) => { const pv = new T.Group(); pv.position.set(x, y, z); parent.add(pv); const m = new T.Mesh(new T.SphereGeometry(1, 12, 9), mat); m.scale.set(rx, ry, rz); m.position.y = -ry * 0.9; m.castShadow = true; pv.add(m); return pv; };
+  const rig = { body, head, armL: oval(body, fur, -0.74, 2.05, 0.08, 0.2, 0.62, 0.22), armR: oval(body, fur, 0.74, 2.05, 0.08, 0.2, 0.62, 0.22), legL: oval(g, furD, -0.3, 0.32, 0.1, 0.22, 0.2, 0.34), legR: oval(g, furD, 0.3, 0.32, 0.1, 0.22, 0.2, 0.34) };
+  rig.armL.rotation.z = -0.12; rig.armR.rotation.z = 0.12;
   // Déguisement : chapeau, manteau à carreaux et lunettes
   const dis = new T.Group(); dis.visible = false; body.add(dis);
-  const coat = new T.Mesh(new T.CylinderGeometry(0.66, 0.8, 1.15, 12), lam(0xc0392b)); coat.position.set(0, 1.12, 0); coat.scale.z = 0.95; coat.castShadow = true; dis.add(coat);
-  const collar = new T.Mesh(new T.TorusGeometry(0.5, 0.12, 6, 12), lam(0x8e2a20)); collar.position.set(0, 1.68, 0.02); collar.rotation.x = Math.PI / 2; dis.add(collar);
-  const hat = new T.Group(); hat.position.set(0, 0.56, 0); head.add(hat); hat.visible = false;
+  const coat = new T.Mesh(new T.CylinderGeometry(0.74, 0.84, 1.35, 14), lam(0xc0392b)); coat.position.set(0, 1.3, 0); coat.scale.z = 0.98; coat.castShadow = true; dis.add(coat);
+  const collar = new T.Mesh(new T.TorusGeometry(0.66, 0.12, 6, 14), lam(0x8e2a20)); collar.position.set(0, 1.98, 0.02); collar.rotation.x = Math.PI / 2; dis.add(collar);
+  const hat = new T.Group(); hat.position.set(0, 0.6, -0.05); head.add(hat); hat.visible = false;
   hat.add(new T.Mesh(new T.CylinderGeometry(0.72, 0.72, 0.06, 16), lam(0x3e5a3a)));
   const crown = new T.Mesh(new T.CylinderGeometry(0.4, 0.45, 0.5, 14), lam(0x3e5a3a)); crown.position.y = 0.26; hat.add(crown);
   const band = new T.Mesh(new T.CylinderGeometry(0.46, 0.46, 0.1, 14), lam(0xd84a3a)); band.position.y = 0.1; hat.add(band);
-  const glasses = new T.Group(); glasses.position.set(0, 0.13, 0.62); head.add(glasses); glasses.visible = false;
+  const glasses = new T.Group(); glasses.position.set(0, 0.18, 0.64); head.add(glasses); glasses.visible = false;
   for (const s of [-1, 1]) { const l = new T.Mesh(new T.BoxGeometry(0.28, 0.18, 0.05), lam(0x111111)); l.position.x = s * 0.23; l.rotation.y = s * 0.25; glasses.add(l); }
   // Chapeaux bonus achetés au village
   const extra = {};
@@ -1513,11 +1511,18 @@ function setDisguise(on) {
   if (on && !S.flags.disguise) return;
   P.disguise = on;
   const u = P.model.userData;
-  u.quad.visible = !on; u.up.visible = on; u.rig = on ? u.up.userData.rig : u.quad.userData.rig;
+  syncBearForm();
   u.dis.visible = on; u.hat.visible = on && !S.wear;
   updateHats();
   $('bDis').classList.toggle('on', on);
   if (on) { puff(P.x, P.y + 1.5, P.z, 12, [1, 1, 1], 2); questEvent('disguise'); }
+}
+// Oscar se met debout quand il est déguisé ou quand il parle à quelqu'un
+function syncBearForm() {
+  const u = P.model.userData, stand = P.disguise || (G.talking && P.mode === 'walk');
+  if (u.stand === stand) return;
+  u.stand = stand;
+  u.quad.visible = !stand; u.up.visible = stand; u.rig = stand ? u.up.userData.rig : u.quad.userData.rig;
 }
 function updateHats() {
   const u = P.model.userData;
@@ -1525,7 +1530,7 @@ function updateHats() {
   for (const k in u.extraQ) u.extraQ[k].visible = false;
   if (S.wear && u.extra[S.wear]) u.extra[S.wear].visible = true;
   if (S.wear && u.extraQ[S.wear]) u.extraQ[S.wear].visible = true;
-  if (S.wear === 'sun') u.glasses.visible = true;
+  u.glasses.visible = P.disguise || S.wear === 'sun';
   u.hat.visible = P.disguise && !S.wear;
   if (P.disguise) u.glasses.visible = true;
 }
@@ -3072,6 +3077,7 @@ function step(dt) {
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
     updateNPCs(dt);
     updateTalk(dt);
+    syncBearForm();
     updateAction();
     G.saveT += dt; if (G.saveT > 20) { G.saveT = 0; saveGame(); }
     if (G.state === 'play') { const t = G.t; G.hudT = (G.hudT || 0) + dt; if (G.hudT > 0.5) { G.hudT = 0; updateHUD(); } }
