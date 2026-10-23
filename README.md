@@ -52,10 +52,12 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
 - 14 missions qui se suivent, avec Max le castor, Lulu la loutre, Raflex le raton laveur (son musée), Donovan le canard (course contre la montre), Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau.
 - Une ligne blanche au sol guide vers l'objectif.
 - Animaux de la forêt (cerfs, lapins, renards, canards, oiseaux, papillons, poissons qui sautent) et personnages qui parlent avec leur voix.
-- Une rivière, un ruisseau avec des ponts, un lac, une montagne et beaucoup d'arbres.
+- Une rivière, un ruisseau avec des ponts, 5 lacs (dont le lac d'Oscar), une montagne et beaucoup d'arbres.
+- 9 cabanes dans les arbres reliées par des ponts de corde (le village des arbres et les cabanes du lac).
+- La maison d'Oscar dans sa grotte : lit de feuilles pour dormir, cheminée et étagère à trophées. Deux grottes à explorer (cristaux et fossile).
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.
 - 12 pommes de pin dorées à trouver, sauvegarde automatique, clavier ou écran tactile.
 
-Pour y jouer en local, ouvre `ours/index.html`. Pour itch.io, tout est dans `itch/ours/`. Pour itch.io, tout est dans `itch/escadron/` (zip, couverture, captures et guide `PAGE-ITCH.md`).
+Pour y jouer en local, ouvre `ours/index.html`. Pour itch.io, tout est dans `itch/ours/` (zip, couverture, captures et guide `PAGE-ITCH.md`).

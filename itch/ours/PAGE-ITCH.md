@@ -16,7 +16,7 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 11, 07, 14, 13, 03, 08, 06, 04, 15, 05, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 11, 07, 16, 17, 14, 13, 03, 08, 06, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `fishing`, `browser`, `french`, `family-friendly`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
@@ -43,6 +43,8 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Pêche** 8 espèces de poissons avec Lulu la loutre.
 - **Cherche des trésors** avec la carte de Madame Plume la chouette.
 - **Répare un vieux camping-car**… et fais-le **voler** pour montrer le parc à la maire !
+- **Visite la maison d'Oscar** dans sa grotte : dors dans le lit de feuilles près du feu et regarde tes trophées.
+- **9 cabanes dans les arbres** reliées par des ponts de corde, **5 lacs** et **des grottes à explorer** (cristaux bleus et fossile de dinosaure).
 - Des cerfs, des lapins, des renards, des canards, des oiseaux et des papillons partout dans la forêt.
 - Les personnages parlent avec leur propre voix.
 - Le jour et la nuit passent, avec des campeurs qui dorment et un garde qui fait sa ronde à la lampe.
@@ -65,6 +67,8 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Go fishing** for 8 kinds of fish with Lulu the otter.
 - **Dig for treasure** with Madame Plume the owl's map.
 - **Fix an old camper van**… and make it **fly** to show the park to the mayor!
+- **Visit Oscar's home** in his cave: sleep in the leaf bed by the fire and look at your trophies.
+- **9 treehouses** linked by rope bridges, **5 lakes** and **caves to explore** (glowing blue crystals and a dinosaur fossil).
 - Deer, rabbits, foxes, ducks, birds and butterflies all around the forest.
 - Characters speak with their own voices (in French).
 - A day and night cycle: campers sleep at night while the ranger patrols with his flashlight.

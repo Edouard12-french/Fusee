@@ -355,12 +355,13 @@ const POI = {
   lakePart: [58, 86],
   arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
   chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
+  cabanesLac: [104, 86], grotteCristal: [-146, -112], grotteFossile: [90, -114],
   faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
   musee: [-14, 128], donovan: [4, 24], noisette: [-40, -120],
 };
 const RACE = [[-2, 34], [-12, 58], [-11, 78], [-6, 96], [10, 107], [30, 113], [48, 113], [12, 108], [-10, 82], [0, 30]];
 const NUTS = [[-70, -140], [-20, -160], [30, -170], [60, -130], [-90, -120], [10, -140], [-50, -95], [40, -105]];
-const TREEHOUSES = [[-166, 72, 0.25], [-148, 94, -0.2], [-174, 100, 0.1], [-144, 66, -0.3]];
+const TREEHOUSES = [[-166, 72, 0.25], [-148, 94, -0.2], [-174, 100, 0.1], [-144, 66, -0.3], [-184, 80, 0.2], [-160, 114, -0.15], [100, 70, -0.3, 1], [112, 90, 0.2, 1], [94, 100, 0.1, 1]];
 const TRASH = [[-20, 30], [0, 15], [60, 21], [90, 26], [-56, 92], [4, 96], [-80, 22], [52, -24], [140, -40], [-10, -40]];
 const PLANKS = [[140, -100], [160, -122], [58, -53], [-116, 120], [-30, -16], [150, 100]];
 const CAMPSITES = [[-30, 50, 0.4], [-50, 68, 2.4], [-66, 46, 1.3], [-40, 88, 3.4], [-16, 74, -1.4]];
@@ -375,6 +376,10 @@ const PATHS = [
   { w: 3, pts: [[10, 14], [18, 30], [20, 39]] },
   { w: 3, pts: [[-36, 36], [-30, 48], [-44, 64], [-62, 48], [-50, 68], [-40, 86], [-18, 74], [-30, 50]] },
   { w: 3, pts: [[30, 10], [0, 30], [-12, 60], [-8, 90], [12, 108], [24, 112], [50, 113]] },
+  { w: 3, pts: [[-62, 50], [-98, 70], [-132, 80]] },
+  { w: 3, pts: [[2, -100], [24, -96], [44, -84], [48, -60]] },
+  { w: 3, pts: [[-100, -96], [-62, -100], [-24, -104], [-2, -104]] },
+  { w: 3, pts: [[124, 50], [112, 80], [104, 90]] },
 ];
 const ALL_PATHS = ROADS.concat(PATHS);
 function segDist(px, pz, ax, az, bx, bz) {
@@ -384,7 +389,9 @@ function segDist(px, pz, ax, az, bx, bz) {
   return Math.sqrt(x * x + z * z);
 }
 function polyDist(x, z, pts) { let d = 1e9; for (let i = 0; i < pts.length - 1; i++) d = Math.min(d, segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; }
-const lakeE = (x, z) => ((x - LAKE.x) / LAKE.rx) ** 2 + ((z - LAKE.z) / LAKE.rz) ** 2;
+const PONDS = [{ x: -125, z: 45, rx: 14, rz: 10, name: 'Étang des lapins' }, { x: 100, z: -28, rx: 12, rz: 9, name: 'Mare aux grenouilles' }, { x: 172, z: 108, rx: 12, rz: 8, name: 'Lac bleu' }, { x: -78, z: -106, rx: 9, rz: 7, name: 'Lac d\'Oscar' }];
+const LAKES = [LAKE].concat(PONDS);
+const lakeE = (x, z) => { let e = 1e9; for (const L of LAKES) e = Math.min(e, ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2); return e; };
 const riverDist = (x, z) => { let d = 1e9; for (const r of RIVERS) d = Math.min(d, polyDist(x, z, r.pts) * RIVER_W / r.w); return d; };
 // Ponts : partout où un chemin traverse une rivière
 const BRIDGES = (() => {
@@ -408,6 +415,7 @@ const BRIDGES = (() => {
   });
 })();
 function groundY(x, z) {
+  if (x > 300) return 0;
   let y = (fbm(x * 0.02, z * 0.02, 3) - 0.45) * 1.6;
   const dm = Math.hypot(x - MOUNT.x, z - MOUNT.z) / MOUNT.r;
   if (dm < 1) {
@@ -482,7 +490,7 @@ function collide(p, r) {
       }
     }
   }
-  p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4);
+  if (p.x < 300) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
 }
 
 // ================= Matériaux =================
@@ -566,6 +574,10 @@ function buildGround() {
   const lake = new T.Mesh(new T.CircleGeometry(1, 72), wm);
   lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx * 1.06, LAKE.rz * 1.06, 1); lake.position.set(LAKE.x, WATER_Y, LAKE.z);
   lake.receiveShadow = true; scene.add(lake);
+  for (const L of PONDS) {
+    const pm = new T.Mesh(new T.CircleGeometry(1, 40), wm); pm.rotation.x = -Math.PI / 2; pm.scale.set(L.rx * 1.08, L.rz * 1.08, 1); pm.position.set(L.x, WATER_Y, L.z); pm.receiveShadow = true; scene.add(pm);
+    const pf = new T.Mesh(new T.RingGeometry(1, 1.05, 40), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false })); pf.rotation.x = -Math.PI / 2; pf.scale.set(L.rx, L.rz, 1); pf.position.set(L.x, WATER_Y + 0.02, L.z); scene.add(pf);
+  }
   const lt = waterTex.clone(); lt.needsUpdate = true; lt.repeat.set(8, 8); lake.material = wm.clone(); lake.material.map = lt;
   const foam = new T.Mesh(new T.RingGeometry(1, 1.035, 72), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
   foam.rotation.x = -Math.PI / 2; foam.scale.set(LAKE.rx * 1.0, LAKE.rz * 1.0, 1); foam.position.set(LAKE.x, WATER_Y + 0.02, LAKE.z); scene.add(foam);
@@ -979,8 +991,13 @@ function buildPlaces() {
     raceGates.push(g);
   });
   // Village des cabanes dans les arbres
-  TREEHOUSES.forEach((t, i) => buildTreehouse(t[0], t[1], t[2], i));
-  ropeBridge(treehouses[0], treehouses[3]); ropeBridge(treehouses[1], treehouses[2]);
+  TREEHOUSES.forEach((t, i) => { buildTreehouse(t[0], t[1], t[2], i); treehouses[i].always = !!t[3]; });
+  ropeBridge(treehouses[0], treehouses[3]); ropeBridge(treehouses[1], treehouses[2]); ropeBridge(treehouses[0], treehouses[4]); ropeBridge(treehouses[2], treehouses[5]); ropeBridge(treehouses[6], treehouses[7]); ropeBridge(treehouses[7], treehouses[8]);
+  sign('CABANES DU LAC', 118, 76, -0.4, 2.2, 0.8, '#6e4430');
+  // Grottes à explorer
+  caveArch(POI.grotteCristal[0], POI.grotteCristal[1], 0.4, 0x7fd8f0);
+  caveArch(POI.grotteFossile[0], POI.grotteFossile[1], 0, 0xe8dcc0);
+  buildHome();
   sign('VILLAGE DES ARBRES', POI.arbres[0] + 24, POI.arbres[1] - 4, -1.4, 2.2, 0.85, '#6e4430');
   // Chantier de M. Béton (il veut raser le parc !)
   scene.add(chantier);
@@ -1004,7 +1021,7 @@ function buildTreehouse(x, z, rot, i) {
   mesh(new T.CylinderGeometry(3.5, 3.5, 0.35, 14), M.woodL, 0, 6.6, 0, g);
   for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283; if (Math.abs(angDiff(a, Math.PI / 2)) < 0.3) continue; mesh(new T.BoxGeometry(0.15, 1, 0.15), M.woodD, Math.cos(a) * 3.3, 7.2, Math.sin(a) * 3.3, g); }
   const fixed = new T.Group(), broken = new T.Group(); g.add(fixed, broken);
-  const col = [0xf07a3a, 0x5a8fd0, 0xf2c14e, 0xe0607a][i];
+  const col = [0xf07a3a, 0x5a8fd0, 0xf2c14e, 0xe0607a, 0x7ac27a][i % 5];
   mesh(new T.BoxGeometry(3, 2.4, 2.6), M.woodL, 0.4, 8, -0.8, fixed);
   const tri = new T.Shape([new T.Vector2(-1.9, 0), new T.Vector2(1.9, 0), new T.Vector2(0, 1.5)]);
   const rg = new T.ExtrudeGeometry(tri, { depth: 3.2, bevelEnabled: false }); rg.translate(0, 0, -1.6);
@@ -1042,7 +1059,53 @@ function bulldozer(x, z, rot) {
   chantierCols.push(addBox(x, z, 2.2, 2.8, rot));
 }
 function setChantier(on) { chantier.visible = on; if (reserveSign) reserveSign.visible = !on; for (const c of chantierCols) c.off = !on; }
-function setTreehouses(fixed) { for (const t of treehouses) { t.fixed.visible = fixed; t.broken.visible = !fixed; } }
+function setTreehouses(fixed) { for (const t of treehouses) { const f = fixed || t.always; t.fixed.visible = f; t.broken.visible = !f; } }
+function caveArch(x, z, rot, glow) {
+  const g = new T.Group(); g.position.set(x, groundY(x, z), z); g.rotation.y = rot; g.scale.setScalar(1.4); scene.add(g);
+  for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8); const rk = mesh(new T.DodecahedronGeometry(srange(1.3, 1.8), 0), M.stone, Math.cos(a) * 3.4, Math.sin(a) * 3.6 + 0.4, 0, g); rk.rotation.set(i, i * 2, 0); }
+  mesh(new T.CircleGeometry(2.8, 16, 0, Math.PI), new T.MeshBasicMaterial({ color: 0x1a1214 }), 0, 0.4, -0.5, g).castShadow = false;
+  mesh(new T.DodecahedronGeometry(5, 0), M.stoneD, 0, 2.6, -4.5, g);
+  for (let k = 0; k < 4; k++) { const c = mesh(new T.ConeGeometry(0.25, 0.9, 5), new T.MeshBasicMaterial({ color: glow }), -1.4 + k * 0.9, 0.5, -0.9, g); c.rotation.z = (k - 1.5) * 0.3; }
+  addCircle(x - Math.cos(rot) * 4.8, z + Math.sin(rot) * 4.8, 2.2); addCircle(x + Math.cos(rot) * 4.8, z - Math.sin(rot) * 4.8, 2.2);
+}
+// Maison d'Oscar : l'intérieur de sa grotte (placé hors de la carte)
+const HOME = { x: 420, z: 420 };
+let homeShelf = null;
+function buildHome() {
+  const g = new T.Group(); g.position.set(HOME.x, 0, HOME.z); scene.add(g);
+  const floor = mesh(new T.CircleGeometry(11, 32), lam(0x9a7a5a), 0, 0.02, 0, g); floor.rotation.x = -Math.PI / 2;
+  const rug = mesh(new T.CircleGeometry(3.2, 24), lam(0xd8507a), 0, 0.05, 1, g); rug.rotation.x = -Math.PI / 2;
+  for (let i = 0; i < 22; i++) {
+    const a = i / 22 * 6.283; if (Math.abs(angDiff(a, Math.PI / 2)) < 0.25) continue;
+    const r = mesh(new T.DodecahedronGeometry(srange(2, 2.8), 0), [M.stone, M.stoneD][i % 2], Math.cos(a) * 11.5, srange(1, 2.2), Math.sin(a) * 11.5, g); r.rotation.set(i, i * 1.7, 0);
+    addCircle(HOME.x + Math.cos(a) * 11.5, HOME.z + Math.sin(a) * 11.5, 2.4);
+  }
+  // Lit de feuilles, cheminée, table, étagère
+  const bed = mesh(new T.SphereGeometry(1.8, 12, 8), lam(0xd9893f), -6, 0.2, -4, g); bed.scale.set(1.3, 0.3, 1);
+  mesh(new T.SphereGeometry(0.6, 10, 6), lam(0xf3e6c8), -7.4, 0.5, -4.6, g).scale.set(1, 0.5, 0.8);
+  for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; mesh(new T.DodecahedronGeometry(0.4, 0), M.stone, 6 + Math.cos(a), 0.3, -5 + Math.sin(a), g); }
+  const fl = new T.Mesh(new T.ConeGeometry(0.5, 1.3, 6), flameMat); fl.position.set(6, 0.9, -5); g.add(fl);
+  fires.push({ f: fl, g: null });
+  const hg = new T.Sprite(new T.SpriteMaterial({ map: glowTex, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); hg.position.set(6, 1.4, -5); hg.scale.set(9, 9, 1); g.add(hg);
+  const fire = new T.PointLight(0xffa050, 1.2, 22, 2); fire.position.set(6, 2, -5); g.add(fire);
+  mesh(new T.CylinderGeometry(1.2, 1.2, 0.15, 12), M.woodL, 2, 1, 3.5, g);
+  mesh(new T.CylinderGeometry(0.25, 0.3, 1, 8), M.woodD, 2, 0.5, 3.5, g);
+  mesh(new T.BoxGeometry(0.8, 0.45, 0.55), lam(0xc98a4b), 2, 1.3, 3.5, g);
+  homeShelf = new T.Group(); homeShelf.position.set(0, 0, -8.5); g.add(homeShelf);
+  for (const y of [0.9, 1.9, 2.9]) mesh(new T.BoxGeometry(7, 0.15, 0.9), M.wood, 0, y, 0, homeShelf);
+  for (const sx of [-3.5, 3.5]) mesh(new T.BoxGeometry(0.2, 3.2, 0.9), M.woodD, sx, 1.6, 0, homeShelf);
+  addCircle(HOME.x - 6, HOME.z - 4, 2); addCircle(HOME.x + 6, HOME.z - 5, 1.4); addCircle(HOME.x + 2, HOME.z + 3.5, 1.3);
+  addBox(HOME.x, HOME.z - 8.5, 3.7, 0.6, 0);
+  sign('SORTIE', HOME.x, HOME.z + 10.5, 0, 2, 0.6, '#6e4430');
+}
+// Trophées sur l'étagère : poissons, pommes de pin dorées, chapeaux
+function updateHomeShelf() {
+  if (!homeShelf) return;
+  for (let i = homeShelf.children.length - 1; i >= 5; i--) homeShelf.remove(homeShelf.children[i]);
+  FISH_IDS.forEach((f, i) => { if (!S.fish[f]) return; const m = new T.Mesh(new T.ConeGeometry(0.2, 0.6, 6), lam([0x5a8fd0, 0x9ad0e0, 0x8a9a50, 0x5a7a4a, 0x6a5a4a, 0xe07a5a, 0x7a6a6a, 0xffc53d][i])); m.rotation.z = Math.PI / 2; m.position.set(-3 + i * 0.85, 1.2, 0); homeShelf.add(m); });
+  S.cones.forEach((c, i) => { const m = new T.Mesh(new T.ConeGeometry(0.2, 0.45, 7), lam(0xffc53d)); m.rotation.x = Math.PI; m.position.set(-3.1 + i * 0.55, 2.2, 0); homeShelf.add(m); });
+  Object.keys(S.hats).forEach((h, i) => { const m = new T.Mesh(new T.CylinderGeometry(0.3, 0.35, 0.3, 10), lam({ sun: 0x222222, cowboy: 0xa0703a, crown: 0xffc53d, golden: 0xffc53d, noisette: 0x8a5a30 }[h] || 0xffffff)); m.position.set(-2.6 + i * 1.3, 3.2, 0); homeShelf.add(m); });
+}
 
 // ================= Personnages =================
 // Chaque personnage est un groupe tourné vers +Z, avec des membres articulés (rig) pour l'animation.
@@ -1428,7 +1491,7 @@ const ITEMS = {
   perche: { n: 'Perche', e: '🐟', sell: 6, fish: 1 }, truite: { n: 'Truite', e: '🐟', sell: 8, fish: 1 }, carpe: { n: 'Carpe', e: '🐟', sell: 10, fish: 1 },
   brochet: { n: 'Brochet', e: '🐟', sell: 16, fish: 1 }, anguille: { n: 'Anguille', e: '🐍', sell: 18, fish: 1 }, saumon: { n: 'Saumon', e: '🐠', sell: 22, fish: 1 },
   silure: { n: 'Poisson-chat', e: '🐡', sell: 26, fish: 1 }, dore: { n: 'Poisson doré', e: '🐠', sell: 60, fish: 1 },
-  coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
+  coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, cristal: { n: 'Cristal bleu', e: '💎', sell: 80 }, fossile: { n: 'Fossile', e: '🦴', sell: 60 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
   chapeau: { n: 'Chapeau', e: '🎩', key: 1 }, manteau: { n: 'Manteau', e: '🧥', key: 1 }, canne: { n: 'Canne à pêche', e: '🎣', key: 1 }, pelle: { n: 'Pelle', e: '⛏️', key: 1 },
   carte: { n: 'Carte au trésor', e: '🗺️', key: 1 }, cle: { n: 'Clé du camping-car', e: '🔑', key: 1 },
   helice: { n: 'Hélice', e: '🌀', key: 1 }, aileG: { n: 'Aile gauche', e: '✈️', key: 1 }, aileD: { n: 'Aile droite', e: '✈️', key: 1 }, moteur: { n: 'Moteur', e: '⚙️', key: 1 },
@@ -2436,13 +2499,13 @@ function buildExtraInteractions() {
   // Bébés animaux
   for (const b of BABIES) addInter({ get x() { return b.x; }, get z() { return b.z; }, r: 2.8, icon: '🐾', label: () => 'Emmener ' + b.name + ' avec toi', can: () => qid() === 'animaux' && S.step === 0 && !b.follow && !S.babies.includes(b.id) && !BABIES.some(o => o.follow), act: () => { b.follow = true; hearts(b.x, b.y + 1, b.z); sfx.step(); toast('🐾 ' + b.name.charAt(0).toUpperCase() + b.name.slice(1) + ' te suit ! Ramène-le à sa famille.'); } });
   // Échelles des cabanes
-  for (const t of treehouses) addInter({ x: t.ladder[0], z: t.ladder[1], r: 2.6, icon: '🪜', label: () => S.flags.th ? 'Grimper dans la cabane' : 'Cabane cassée…', can: () => true, act: () => { if (!S.flags.th) { toast('Cette cabane est cassée. Papi Blaireau aura besoin d\'aide.'); return; } climb(t); } });
+  for (const t of treehouses) addInter({ x: t.ladder[0], z: t.ladder[1], r: 2.6, icon: '🪜', label: () => S.flags.th || t.always ? 'Grimper dans la cabane' : 'Cabane cassée…', can: () => true, act: () => { if (!S.flags.th && !t.always) { toast('Cette cabane est cassée. Papi Blaireau aura besoin d\'aide.'); return; } climb(t); } });
 }
 function climb(t) {
   P.mode = 'tree'; P.tree = t;
   P.x = t.x + Math.sin(t.rot) * 2.3; P.z = t.z + Math.cos(t.rot) * 2.3; P.y = t.y; P.vx = P.vz = 0;
   sfx.step();
-  if (!S.flags['th' + t.i]) { S.flags['th' + t.i] = 1; const g = [25, 40, 30, 50][t.i]; S.coins += g; sfx.coin(); sparkle(P.x, P.y + 1, P.z); toast('🎁 Un coffre caché dans la cabane : +' + g + ' pièces !'); updateHUD(); saveGame(); }
+  if (!S.flags['th' + t.i]) { S.flags['th' + t.i] = 1; const g = [25, 40, 30, 50, 35, 45, 30, 40, 60][t.i] || 30; S.coins += g; sfx.coin(); sparkle(P.x, P.y + 1, P.z); toast('🎁 Un coffre caché dans la cabane : +' + g + ' pièces !'); updateHUD(); saveGame(); }
 }
 function updateTree(dt) {
   const t = P.tree;
@@ -2534,7 +2597,7 @@ const guide = new T.Mesh(glGeo, new T.MeshBasicMaterial({ color: 0xffffff, trans
 guide.frustumCulled = false; guide.renderOrder = 2; scene.add(guide);
 function updateGuide() {
   const st = curStep(), tgt = st && st.at && st.at();
-  const on = tgt && (P.mode === 'walk' || P.mode === 'drive') && !G.talking;
+  const on = tgt && (P.mode === 'walk' || P.mode === 'drive') && !G.talking && !P.inHome;
   const d = on ? Math.hypot(tgt[0] - P.x, tgt[1] - P.z) : 0;
   guide.visible = on && d > 7;
   if (!guide.visible) return;
@@ -2550,6 +2613,33 @@ function updateGuide() {
   }
   glGeo.attributes.position.needsUpdate = true;
   guide.material.opacity = 0.75 * Math.min(1, (d - 7) / 6);
+}
+
+// ================= Maison d'Oscar et grottes =================
+const CAVE_DOOR = () => [POI.cave[0] - 5, POI.cave[1] - 5];
+function enterHome() {
+  fadeTo(() => {
+    P.x = HOME.x; P.z = HOME.z + 8; P.vx = P.vz = 0; P.rot = Math.PI; P.inHome = true;
+    updateHomeShelf();
+    status('🏠 Bienvenue chez Oscar !', 'hide', 3);
+  });
+}
+function leaveHome() {
+  fadeTo(() => { const d = CAVE_DOOR(); P.x = d[0] + 3; P.z = d[1] + 3; P.vx = P.vz = 0; P.inHome = false; });
+}
+function buildHomeInteractions() {
+  const d = CAVE_DOOR();
+  addInter({ x: d[0], z: d[1], r: 3.5, icon: '🏠', label: () => 'Entrer chez Oscar', can: () => true, act: enterHome });
+  addInter({ x: HOME.x, z: HOME.z + 9.5, r: 2.6, icon: '🚪', label: () => 'Sortir de la grotte', can: () => true, act: leaveHome });
+  addInter({ x: HOME.x - 6, z: HOME.z - 4, r: 3, icon: '💤', label: () => S.time > 18 || S.time < 5 ? 'Dormir jusqu\'au matin' : 'Faire une sieste', can: () => true, act: sleep });
+  addInter({ x: HOME.x, z: HOME.z - 7.3, r: 2.4, icon: '🏆', label: () => 'Regarder mes trophées', can: () => true, act: () => { updateHomeShelf(); talk([['oscar', 'Mes trophées : ' + FISH_IDS.filter(f => S.fish[f]).length + ' poissons sur 8, ' + S.cones.length + ' pommes de pin dorées sur 12, et ' + Object.keys(S.hats).length + ' chapeaux !']]); } });
+  for (const [k, item, txt] of [['grotteCristal', 'cristal', 'Des cristaux bleus qui brillent dans le noir !'], ['grotteFossile', 'fossile', 'Un fossile de dinosaure ! Raflex va adorer.']]) {
+    const p = POI[k];
+    addInter({ x: p[0], z: p[1] + 2, r: 3.4, icon: '🔦', label: () => S.flags[k] ? 'Grotte déjà explorée' : 'Explorer la grotte', can: () => true, act: () => {
+      if (S.flags[k]) { toast('Tu as déjà tout trouvé ici.'); return; }
+      fadeTo(() => { S.flags[k] = 1; give(item); S.coins += 40; sfx.coin(); sparkle(P.x, P.y + 1.5, P.z); talk([['oscar', txt + ' Et 40 pièces en plus !']]); saveGame(); });
+    } });
+  }
 }
 
 // ================= État général =================
@@ -2876,9 +2966,9 @@ function drawMap() {
   }
   g.strokeStyle = '#41b3e6'; g.lineCap = 'round'; g.lineJoin = 'round';
   for (const rv of RIVERS) { const r = rv.pts; g.lineWidth = rv.w * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
-  g.fillStyle = '#41b3e6'; g.beginPath(); g.ellipse(X(LAKE.x), Z(LAKE.z), LAKE.rx * k, LAKE.rz * k, 0, 0, 6.283); g.fill();
+  g.fillStyle = '#41b3e6'; for (const L of LAKES) { g.beginPath(); g.ellipse(X(L.x), Z(L.z), L.rx * k, L.rz * k, 0, 0, 6.283); g.fill(); }
   for (const p of ALL_PATHS) { g.strokeStyle = p === ROADS[0] ? '#9a7f78' : '#e2cc98'; g.lineWidth = p.w * k * 1.1; g.beginPath(); p.pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
-  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette]];
+  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile]].concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
   g.font = '700 17px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
@@ -2907,7 +2997,7 @@ function saveGame() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
 }
 function applyState() {
-  P.x = S.pos[0]; P.z = S.pos[1]; P.vx = P.vz = 0; P.mode = 'walk'; P.model.visible = true;
+  P.x = S.pos[0]; P.z = S.pos[1]; P.vx = P.vz = 0; P.mode = 'walk'; P.model.visible = true; P.inHome = P.x > 300;
   C.x = S.camper[0]; C.z = S.camper[1]; C.rot = S.camper[2]; C.spd = 0;
   if (S.baskets) baskets.forEach((b, i) => { b.takenDay = S.baskets[i]; });
   for (const b of baskets) b.mesh.visible = b.takenDay !== S.day;
@@ -3010,7 +3100,7 @@ function drawOverlay() {
   }
   // Flèche vers l'objectif de la mission
   const st = curStep(), tgt = st && st.at && st.at();
-  if (tgt && !G.talking) {
+  if (tgt && !G.talking && !P.inHome) {
     const ty = P.mode === 'fly' && qid() === 'maire' && S.step === 2 ? groundY(tgt[0], tgt[1]) + RINGS.find(r => r[0] === tgt[0])[2] : groundY(tgt[0], tgt[1]) + 4;
     const s = toScreen(tgt[0], ty, tgt[1]);
     const d = Math.hypot(tgt[0] - P.x, tgt[1] - P.z);
@@ -3097,6 +3187,7 @@ function step(dt) {
   if (Math.random() < dt * 3) for (const k in partMeshes) { const m = partMeshes[k]; if (m.visible && m.position.distanceTo(camera.position) < 80) emit(m.position.x + rand(-1, 1), m.position.y + 1, m.position.z + rand(-1, 1), 0, 1, 0, 0.8, 0.3, 1, 0.9, 0.4, 0); }
   updateParticles(dt);
   setTimeOfDay(G.state === 'title' ? 17.6 : S.time, G.state === 'title' ? new V3(-30, 0, 60) : new V3(P.x, 0, P.z));
+  if (G.state === 'play' && P.x > 300) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
   updateCamera(dt);
   sfx.tick(dt);
   if (toastT > 0) { toastT -= dt; if (toastT < 0.3) $('toast').style.opacity = toastT / 0.3; if (toastT <= 0) $('toast').hidden = true; }
@@ -3125,12 +3216,13 @@ buildInteractions();
 buildAnimals();
 buildExtraInteractions();
 buildMoreInteractions();
+buildHomeInteractions();
 S = freshState();
 applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>
