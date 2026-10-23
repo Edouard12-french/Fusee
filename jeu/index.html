@@ -30,6 +30,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 #gl, #ui { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 #gl { touch-action: none; }
 #ui { pointer-events: none; z-index: 1; }
+#vig { position: fixed; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(0,0,0,.42) 100%); }
 
 #hud {
   position: fixed; top: 0; left: 0; right: 0; z-index: 2; pointer-events: none;
@@ -139,6 +140,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 <body>
 <canvas id="gl"></canvas>
 <canvas id="ui"></canvas>
+<div id="vig" aria-hidden="true"></div>
 
 <div id="hud" class="off">
   <div>
@@ -383,7 +385,13 @@ vec3 earthSurface(vec3 p, vec3 rd, float t, float h){
   float mu = max(-dot(rd, n), 0.0);
   float od = (1.0 - exp(-h/8.0))/(mu + 0.035);
   vec3 Tr = exp(-od*BETA*0.33);
-  return g*Tr + HAZE*mix(0.7, 1.0, 1.0 - exp(-od*0.08))*(1.0 - Tr)*smoothstep(-0.25, 0.2, ndl);
+  float night = 1.0 - smoothstep(-0.12, 0.04, ndl);
+  if (night > 0.0) {
+    float cityN = vnoise(L*60.0)*vnoise(L*240.0 + 3.0)*vnoise(L*900.0 + 7.0);
+    g += vec3(1.0, 0.7, 0.36)*smoothstep(0.12, 0.3, cityN)*(1.0 - ocean)*night*1.4;
+  }
+  vec3 hz = mix(vec3(1.0, 0.5, 0.26), HAZE, smoothstep(-0.04, 0.32, ndl));
+  return g*Tr + hz*mix(0.7, 1.0, 1.0 - exp(-od*0.08))*(1.0 - Tr)*smoothstep(-0.25, 0.2, ndl);
 }
 
 vec4 earthClouds(vec3 rd, float tLimit){
@@ -920,7 +928,7 @@ const vaporMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, o
 const engLight = new T.PointLight(0xff8a3a, 3, 14, 2); rv.add(engLight);
 
 let veh = null, vehCfg = 'A', camF = 1, camFT = 1, vehShift = 0, vehShiftT = 0, legT = -1, BASE = 3.94;
-const flames = [], glowDiscs = [];
+const flames = [], glowDiscs = [], engGlows = [];
 let vacPlume = null, vapor = null;
 const sepParts = [];
 const colPts = Array.from({ length: 12 }, () => new T.Vector3());
@@ -937,7 +945,7 @@ function setupVehicle() {
   BASE = veh.H / 2 + SITES[siteIdx].padTop;
   veh.legOff = (veh.cfgs.E.yMax - veh.cfgs.E.yMin) / 2;
   legT = -1;
-  flames.length = 0; glowDiscs.length = 0; vacPlume = null; vapor = null;
+  flames.length = 0; glowDiscs.length = 0; engGlows.length = 0; vacPlume = null; vapor = null;
   setCfg('A', true);
 }
 function setCfg(c, instant) {
@@ -948,6 +956,8 @@ function setCfg(c, instant) {
   if (instant) { vehShift = vehShiftT; camF = camFT; veh.root.position.y = vehShift; }
   for (const f of flames) { veh.root.remove(f); f.geometry.dispose(); }
   for (const d of glowDiscs) { veh.root.remove(d); d.geometry.dispose(); }
+  for (const e of engGlows) { veh.root.remove(e); e.material.dispose(); }
+  engGlows.length = 0;
   flames.length = 0; glowDiscs.length = 0;
   for (const [x, y, z, r, len] of cf.n) {
     const fl = new T.Mesh(new T.CylinderGeometry(r * 1.2, r * 0.35, len, 20, 1, true), flameMat);
@@ -955,6 +965,7 @@ function setCfg(c, instant) {
     veh.root.add(fl); flames.push(fl);
     const d = new T.Mesh(new T.CircleGeometry(r * 0.95, 20), glowMat); d.rotation.x = Math.PI / 2; d.position.set(x, y + 0.004, z);
     veh.root.add(d); glowDiscs.push(d);
+    const eg = glowSprite(0xff7424, r * 6, 0); eg.position.set(x, y - r * 0.8, z); eg.userData.r = r; veh.root.add(eg); engGlows.push(eg);
   }
   if (vacPlume) { veh.root.remove(vacPlume); vacPlume.geometry.dispose(); }
   vacPlume = new T.Mesh(new T.CylinderGeometry(cf.plume * 1.1, cf.plume * 7, cf.plume * 16, 32, 1, true), vacMat);
@@ -1712,6 +1723,7 @@ $('mute').addEventListener('click', () => {
 });
 
 /* ---------- État ---------- */
+let showcase = 0, showT = 0;
 let state = 'menu', phase = '', tP = 0, time = 0, tCount = -10;
 let alt = 0, vv = 0, D = 0, fuel = 100, S = 0, travel = 0, nextObs = 0, nextCan = 0, maxAlt = 0, spd = 0;
 let boosting = false, shake = 0, layerIdx = 0, machDone = false, maxqDone = false, mecoDone = false;
@@ -1847,7 +1859,7 @@ function setSite(i) {
 for (const b of document.querySelectorAll('.site')) b.addEventListener('click', () => setSite(Number(b.dataset.site)));
 $('startBtn').addEventListener('click', () => startMission(-10));
 $('againBtn').addEventListener('click', () => startMission(-6));
-function backToMenu() { resetMission(); state = 'menu'; phase = ''; $('skip').hidden = true; bb.hidden = true; $('count').hidden = true; $('hint').hidden = true; $('over').hidden = true; $('menu').hidden = false; $('hud').classList.add('off'); }
+function backToMenu() { showcase = 0; showT = 0; resetMission(); state = 'menu'; phase = ''; $('skip').hidden = true; bb.hidden = true; $('count').hidden = true; $('hint').hidden = true; $('over').hidden = true; $('menu').hidden = false; $('hud').classList.add('off'); }
 $('menuBtn').addEventListener('click', backToMenu);
 let paused = false;
 function setPause(on) {
@@ -1875,6 +1887,7 @@ function skipIntro() { if (state === 'pad' && tCount < -3.2) { tCount = -3.2; if
 function startMission(t0) {
   initAudio();
   newAch = [];
+  showcase = 0; showT = 0;
   resetMission();
   state = 'pad'; phase = 'pad'; tCount = t0; tP = 0;
   $('menu').hidden = true; $('over').hidden = true;
@@ -1969,7 +1982,7 @@ function emitExhaust(dt, power, spaceK) {
     const sp = rnd(45, 70) * (boosting ? 1.2 : 1) * Math.sqrt(sc);
     fire.emit({ x: tmpV.x, y: tmpV.y, z: tmpV.z, vx: tmpV3.x * sp + rnd(-spread, spread) * 0.35 * sc, vy: tmpV3.y * sp + rnd(-spread, spread) * 0.35 * sc, vz: tmpV3.z * sp + rnd(-spread, spread) * 0.35 * sc, drag: 1.2, max: rnd(0.1, 0.26) * (1 + spaceK * 0.8), s0: rnd(0.25, 0.42) * sc, s1: rnd(0.8, 1.5) * (1 + spaceK * 1.5) * sc, a: 0.24, blue: spaceK, fade: phase !== 'pad' && phase !== 'landing' });
   }
-  const smokeK = (phase === 'landing' || phase === 'orbit' || phase === 'descent' || phase === 'transfer') ? 0 : 1 - sstep(8, 30, alt);
+  const smokeK = (phase === 'landing' || phase === 'orbit' || phase === 'descent' || phase === 'transfer' || (state === 'menu' && showcase > 0)) ? 0 : 1 - sstep(8, 30, alt);
   if (smokeK > 0.01) {
     const ns = 70 * smokeK * dt * power; const sc = Math.floor(ns) + (Math.random() < ns % 1 ? 1 : 0);
     for (let i = 0; i < sc; i++) {
@@ -2224,7 +2237,7 @@ function applyView(dt, earthPhase) {
     camera.up.set(0, 1, 0);
     camera.fov = W < H ? 80 : 68;
   } else {
-    if (earthPhase && alt < 25) {
+    if (earthPhase && alt < 3) {
       const gpos = _vA.set(32, 6, -26).add(ground.position);
       camera.position.copy(gpos);
       const d = gpos.distanceTo(rocket.position);
@@ -2432,7 +2445,9 @@ function update(dt) {
   let groundDy = 0;
 
   if (state === 'menu') {
-    vertK = 1; camMode = 'menu'; S = 0;
+    vertK = showcase === 0 ? 1 : 0; camMode = 'menu'; S = 0;
+    showT += dt;
+    if (showT > (showcase === 0 ? 14 : 10) && !fadeS) { showT = -1; startFade(() => { showcase = (showcase + 1) % 3; showT = 0; }); }
   } else if (state === 'pad') {
     vertK = 1; camMode = 'pad';
     const prev = tCount;
@@ -2653,7 +2668,7 @@ function update(dt) {
   }
 
   // Sol terrestre : suit l'altitude et la distance parcourue
-  const earthPhase = state === 'menu' || state === 'pad' || ['climb', 'ascent', 'tli'].includes(phase) || (state === 'dead' && ['pad', 'climb', 'ascent', 'tli'].includes(phase));
+  const earthPhase = (state === 'menu' && showcase === 0) || state === 'pad' || ['climb', 'ascent', 'tli'].includes(phase) || (state === 'dead' && ['pad', 'climb', 'ascent', 'tli'].includes(phase));
   _earthPhase = earthPhase;
   if (earthPhase) {
     const gs = state === 'menu' || state === 'pad' ? 0 : speedAt(alt) / 3600 * sstep(0, 60, alt) + 0.12 * sstep(0, 3, alt);
@@ -2719,6 +2734,7 @@ function update(dt) {
   engLight.intensity = pw * 2.2 * flick;
   engLight.position.y = vehShift + veh.cfgs[vehCfg].yMin - 6;
   glowMat.opacity = Math.min(0.35, 0.08 + pw * 0.27);
+  for (const e of engGlows) { e.material.opacity = Math.min(0.32, pw * 0.26) * flick; const k = e.userData.r * 6 * (visibleBoost ? 1.3 : 1) * (0.8 + 0.3 * spaceK); e.scale.set(k, k, 1); }
   const machK = earthPhase && spd > 0 ? Math.exp(-Math.pow((spd / soundSpeed(alt) - 1.0) / 0.08, 2)) : 0;
   vaporMat.opacity = state === 'play' ? machK * 0.22 * (0.85 + Math.random() * 0.3) : 0;
   if (rocket.visible && pw > 0.05) emitExhaust(dt, Math.max(pw, 0.4), spaceK);
@@ -2736,7 +2752,7 @@ function update(dt) {
   const target = (camMode === 'landing' || state === 'win') ? rocket.position : (camMode === 'pad' || camMode === 'menu' || camMode === 'climb') ? tmpV2.set(rocket.position.x, ground.position.y + 4, rocket.position.z) : rocket.position;
   sunLight.target.position.copy(target);
   sunLight.position.copy(target).addScaledVector(sunG, 150);
-  const onMoon = !earthPhase && ['orbit', 'descent', 'landing'].includes(phase) || state === 'win';
+  const onMoon = (!earthPhase && ['orbit', 'descent', 'landing'].includes(phase) && state !== 'menu') || state === 'win' || (state === 'menu' && showcase === 2);
   if (onMoon) {
     scene.fog.near = 1e5; scene.fog.far = 1e6;
     hemi.color.setRGB(0.03, 0.03, 0.04); hemi.groundColor.setRGB(0.32, 0.31, 0.3); hemi.intensity = 0.5;
@@ -2898,7 +2914,12 @@ function updateObjects(dt) {
 const chaseOff = new T.Vector3(0, 2.9, 9.6);
 function updateCamera(dt, mode, visibleBoost) {
   let fov = W < H ? 74 : 60;
-  if (mode === 'menu') {
+  if (mode === 'menu' && showcase > 0) {
+    const a = time * 0.08 + (showcase === 1 ? 0.6 : 2.4);
+    camera.position.set(Math.sin(a) * 10, 2.2 + Math.sin(time * 0.25) * 1.2, Math.cos(a) * 10);
+    camera.lookAt(0, -0.4, 0);
+    fov = W < H ? 66 : 50;
+  } else if (mode === 'menu') {
     const a = time * 0.06 + 2.2;
     camG.set(Math.sin(a) * 34, 8 + Math.sin(time * 0.2) * 2, Math.cos(a) * 34); lookG.set(0, 4.5, 0);
     camera.position.copy(camG).add(ground.position);
@@ -2949,7 +2970,16 @@ function updateCamera(dt, mode, visibleBoost) {
 
 function updateView(dt, earthPhase) {
   let rot = START_ROT;
-  if (earthPhase) {
+  if (state === 'menu' && showcase === 1) {
+    P.set(0, RE + 420, 0);
+    rot = START_ROT + 0.35 + time * 0.0006;
+    qWorld.copy(qRx(-0.5));
+  } else if (state === 'menu' && showcase === 2) {
+    const ph = -0.55 + (time % 400) * 0.002;
+    const up = orbitUp(ph), fwd = orbitFwd(ph);
+    P.copy(MC).addScaledVector(up, RM + 60);
+    qWorld.copy(qBasis(up, fwd)).multiply(qRx(-0.3));
+  } else if (earthPhase) {
     const cy = camera.position.y - ground.position.y;
     P.set(camera.position.x * U, RE + Math.max(0.002, cy * U), camera.position.z * U);
     rot = START_ROT + D / RE;
@@ -3042,10 +3072,48 @@ function missionProgress() {
   return 0.45 * Math.sqrt(Math.min(alt, 600) / 600);
 }
 const MARKS = [[0, 'Terre'], [0.45 * Math.sqrt(100 / 600), '100 km'], [0.45 * Math.sqrt(408 / 600), 'ISS'], [0.45, 'Départ Lune'], [0.87, 'Orbite lunaire'], [1, 'Lune']];
+function sunOccluded() {
+  const occ = (cx, cy, cz, R) => { const b = SUN.x * cx + SUN.y * cy + SUN.z * cz; if (b <= 0) return false; const px = cx - SUN.x * b, py = cy - SUN.y * b, pz = cz - SUN.z * b; return px * px + py * py + pz * pz < R * R; };
+  return occ(-P.x, -P.y, -P.z, RE) || occ(MC.x - P.x, MC.y - P.y, MC.z - P.z, RM);
+}
+const FLARE = [[0.28, 26, 'rgba(255,170,90,'], [0.5, 12, 'rgba(120,180,255,'], [0.72, 44, 'rgba(140,255,170,'], [1.05, 18, 'rgba(255,140,220,'], [1.4, 66, 'rgba(110,150,255,'], [1.75, 24, 'rgba(255,200,120,']];
+function drawFlare() {
+  tmpV.copy(SUN).multiplyScalar(5).project(bgCam);
+  if (tmpV.z > 1 || Math.abs(tmpV.x) > 1.25 || Math.abs(tmpV.y) > 1.25 || sunOccluded()) return false;
+  const sx = (tmpV.x * 0.5 + 0.5) * W, sy = (-tmpV.y * 0.5 + 0.5) * H;
+  const edge = 1 - sstep(0.85, 1.25, Math.max(Math.abs(tmpV.x), Math.abs(tmpV.y)));
+  const hE = P.length() - RE;
+  const k = edge * lerp(0.55, 1, sstep(10, 80, hE));
+  if (k <= 0.01) return false;
+  const u = Math.min(W, H) / 720, cx = W / 2, cy = H / 2;
+  const g = uctx;
+  g.save(); g.globalCompositeOperation = 'lighter';
+  const halo = g.createRadialGradient(sx, sy, 0, sx, sy, 160 * u);
+  halo.addColorStop(0, `rgba(255,245,225,${0.32 * k})`); halo.addColorStop(1, 'rgba(255,245,225,0)');
+  g.fillStyle = halo; g.beginPath(); g.arc(sx, sy, 160 * u, 0, Math.PI * 2); g.fill();
+  g.translate(sx, sy); g.rotate(time * 0.03);
+  for (let i = 0; i < 6; i++) {
+    g.rotate(Math.PI / 6);
+    const L = (i % 2 ? 140 : 230) * u;
+    const ray = g.createLinearGradient(-L, 0, L, 0);
+    ray.addColorStop(0, 'rgba(255,240,210,0)'); ray.addColorStop(0.5, `rgba(255,240,210,${0.22 * k})`); ray.addColorStop(1, 'rgba(255,240,210,0)');
+    g.fillStyle = ray; g.fillRect(-L, -1.2 * u, 2 * L, 2.4 * u);
+  }
+  g.setTransform(renderer.getPixelRatio(), 0, 0, renderer.getPixelRatio(), 0, 0);
+  for (const [t, r, c] of FLARE) {
+    const fx = sx + (cx - sx) * t, fy = sy + (cy - sy) * t, rr = r * u;
+    const gr = g.createRadialGradient(fx, fy, rr * 0.2, fx, fy, rr);
+    gr.addColorStop(0, c + (0.02 * k) + ')'); gr.addColorStop(0.8, c + (0.09 * k) + ')'); gr.addColorStop(1, c + '0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(fx, fy, rr, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+  return true;
+}
 function drawUI() {
   uctx.clearRect(0, 0, W, H);
   const cockpitOn = view === 1 && (state === 'play' || state === 'pad');
-  const uiVis = cockpitOn || state === 'play' ? 'visible' : 'hidden';
+  const flared = drawFlare();
+  const uiVis = cockpitOn || state === 'play' || flared ? 'visible' : 'hidden';
   if (ui.style.visibility !== uiVis) ui.style.visibility = uiVis;
   if (cockpitOn) drawCockpit();
   if (state !== 'play') return;
