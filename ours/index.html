@@ -1059,39 +1059,49 @@ function ball(parent, mat, r, x, y, z, sx, sy, sz) {
 }
 const eyeMat = lam(0x1d1416, { flatShading: false });
 function makeBear() {
-  const g = new T.Group(), fur = lam(0x8b5a3c, { flatShading: false }), lightF = lam(0xd6a36d, { flatShading: false });
+  // Oscar : grosse tête ronde, petit corps rond, pattes courtes (style dessin animé)
+  const g = new T.Group(), fur = lam(0x9a5f3c), furD = lam(0x7a4a2e), light = lam(0xe8c08a), pink = lam(0xf2a0a0), white = new T.MeshBasicMaterial({ color: 0xffffff });
   const body = new T.Group(); g.add(body);
-  ball(body, fur, 0.78, 0, 1.35, 0, 1, 1.15, 0.88);
-  ball(body, lightF, 0.55, 0, 1.25, 0.34, 1, 1.2, 0.6);
-  const head = new T.Group(); head.position.set(0, 2.25, 0.05); body.add(head);
-  ball(head, fur, 0.52, 0, 0, 0);
-  ball(head, lightF, 0.24, 0, -0.08, 0.42, 1.1, 0.85, 1);
-  ball(head, eyeMat, 0.09, 0, -0.02, 0.64);
-  for (const s of [-1, 1]) { ball(head, eyeMat, 0.07, s * 0.2, 0.12, 0.44); ball(head, fur, 0.17, s * 0.36, 0.38, -0.02); ball(head, lightF, 0.09, s * 0.36, 0.4, 0.06); }
-  const rig = { body, head, armL: limb(body, fur, 0.2, 0.85, -0.72, 1.85, 0.05), armR: limb(body, fur, 0.2, 0.85, 0.72, 1.85, 0.05), legL: limb(g, fur, 0.24, 0.62, -0.32, 0.72, 0), legR: limb(g, fur, 0.24, 0.62, 0.32, 0.72, 0) };
+  ball(body, fur, 0.72, 0, 1.05, 0, 1, 1.0, 0.92);
+  ball(body, light, 0.5, 0, 1.0, 0.36, 0.95, 1.0, 0.55);
+  ball(body, furD, 0.16, 0, 0.75, -0.66);
+  const head = new T.Group(); head.position.set(0, 2.05, 0.06); body.add(head);
+  ball(head, fur, 0.64, 0, 0, 0, 1.05, 0.95, 1);
+  ball(head, light, 0.3, 0, -0.16, 0.5, 1.15, 0.85, 0.8);
+  ball(head, eyeMat, 0.11, 0, -0.05, 0.75, 1.2, 0.85, 0.9);
+  for (const s2 of [-1, 1]) {
+    ball(head, eyeMat, 0.1, s2 * 0.23, 0.12, 0.54, 0.9, 1.1, 0.6);
+    const hl = new T.Mesh(new T.SphereGeometry(0.035, 6, 4), white); hl.position.set(s2 * 0.23 + 0.03, 0.17, 0.6); head.add(hl);
+    ball(head, pink, 0.09, s2 * 0.38, -0.12, 0.45, 1.2, 0.7, 0.5);
+    ball(head, fur, 0.22, s2 * 0.46, 0.5, -0.02, 1, 1, 0.75);
+    ball(head, pink, 0.12, s2 * 0.47, 0.5, 0.11, 1, 1, 0.4);
+  }
+  const rig = { body, head, armL: limb(body, fur, 0.21, 0.55, -0.66, 1.4, 0.08), armR: limb(body, fur, 0.21, 0.55, 0.66, 1.4, 0.08), legL: limb(g, furD, 0.26, 0.42, -0.33, 0.52, 0.02), legR: limb(g, furD, 0.26, 0.42, 0.33, 0.52, 0.02) };
+  for (const l of [rig.legL, rig.legR]) { const pad = new T.Mesh(new T.SphereGeometry(0.16, 8, 6), light); pad.position.set(0, -0.42, 0.2); pad.scale.set(1, 0.5, 0.9); l.add(pad); }
+  for (const a of [rig.armL, rig.armR]) { a.rotation.z = a === rig.armL ? -0.25 : 0.25; }
   // Déguisement : chapeau, manteau à carreaux et lunettes
   const dis = new T.Group(); dis.visible = false; body.add(dis);
-  const coat = new T.Mesh(new T.CylinderGeometry(0.84, 0.92, 1.35, 10), lam(0xc0392b)); coat.position.set(0, 1.4, 0); coat.scale.z = 0.92; coat.castShadow = true; dis.add(coat);
-  const collar = new T.Mesh(new T.TorusGeometry(0.55, 0.12, 6, 12), lam(0x8e2a20)); collar.position.set(0, 2.0, 0.02); collar.rotation.x = Math.PI / 2; dis.add(collar);
-  const hat = new T.Group(); hat.position.set(0, 0.42, 0); head.add(hat); hat.visible = false;
+  const coat = new T.Mesh(new T.CylinderGeometry(0.66, 0.8, 1.15, 12), lam(0xc0392b)); coat.position.set(0, 1.12, 0); coat.scale.z = 0.95; coat.castShadow = true; dis.add(coat);
+  const collar = new T.Mesh(new T.TorusGeometry(0.5, 0.12, 6, 12), lam(0x8e2a20)); collar.position.set(0, 1.68, 0.02); collar.rotation.x = Math.PI / 2; dis.add(collar);
+  const hat = new T.Group(); hat.position.set(0, 0.56, 0); head.add(hat); hat.visible = false;
   hat.add(new T.Mesh(new T.CylinderGeometry(0.72, 0.72, 0.06, 16), lam(0x3e5a3a)));
   const crown = new T.Mesh(new T.CylinderGeometry(0.4, 0.45, 0.5, 14), lam(0x3e5a3a)); crown.position.y = 0.26; hat.add(crown);
   const band = new T.Mesh(new T.CylinderGeometry(0.46, 0.46, 0.1, 14), lam(0xd84a3a)); band.position.y = 0.1; hat.add(band);
-  const glasses = new T.Group(); glasses.position.set(0, 0.12, 0.47); head.add(glasses); glasses.visible = false;
-  for (const s of [-1, 1]) { const l = new T.Mesh(new T.BoxGeometry(0.24, 0.16, 0.05), lam(0x111111)); l.position.x = s * 0.18; glasses.add(l); }
+  const glasses = new T.Group(); glasses.position.set(0, 0.13, 0.62); head.add(glasses); glasses.visible = false;
+  for (const s of [-1, 1]) { const l = new T.Mesh(new T.BoxGeometry(0.28, 0.18, 0.05), lam(0x111111)); l.position.x = s * 0.23; l.rotation.y = s * 0.25; glasses.add(l); }
   // Chapeaux bonus achetés au village
   const extra = {};
-  extra.cowboy = new T.Group(); extra.cowboy.position.y = 0.42; head.add(extra.cowboy); extra.cowboy.visible = false;
+  extra.cowboy = new T.Group(); extra.cowboy.position.y = 0.56; head.add(extra.cowboy); extra.cowboy.visible = false;
   extra.cowboy.add(new T.Mesh(new T.CylinderGeometry(0.85, 0.85, 0.06, 16), lam(0xa0703a)));
   const cc = new T.Mesh(new T.CylinderGeometry(0.36, 0.44, 0.45, 12), lam(0xa0703a)); cc.position.y = 0.25; extra.cowboy.add(cc);
-  extra.crown = new T.Group(); extra.crown.position.y = 0.4; head.add(extra.crown); extra.crown.visible = false;
+  extra.crown = new T.Group(); extra.crown.position.y = 0.55; head.add(extra.crown); extra.crown.visible = false;
   const cr = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.3, 8, 1, true), lam(0xffc53d, { side: T.DoubleSide })); cr.position.y = 0.15; extra.crown.add(cr);
   for (let i = 0; i < 8; i++) { const p = new T.Mesh(new T.ConeGeometry(0.08, 0.22, 4), lam(0xffc53d)); p.position.set(Math.cos(i / 8 * 6.283) * 0.4, 0.38, Math.sin(i / 8 * 6.283) * 0.4); extra.crown.add(p); }
-  extra.golden = new T.Group(); extra.golden.position.y = 0.42; head.add(extra.golden); extra.golden.visible = false;
+  extra.golden = new T.Group(); extra.golden.position.y = 0.56; head.add(extra.golden); extra.golden.visible = false;
   extra.golden.add(new T.Mesh(new T.CylinderGeometry(0.72, 0.72, 0.06, 16), lam(0xffc53d)));
   const gc = new T.Mesh(new T.ConeGeometry(0.42, 0.8, 10), lam(0xffc53d)); gc.position.y = 0.42; extra.golden.add(gc);
   extra.sun = glasses;
-  extra.noisette = new T.Group(); extra.noisette.position.y = 0.36; head.add(extra.noisette); extra.noisette.visible = false;
+  extra.noisette = new T.Group(); extra.noisette.position.y = 0.48; head.add(extra.noisette); extra.noisette.visible = false;
   const nc = new T.Mesh(new T.SphereGeometry(0.5, 12, 8, 0, 6.283, 0, 1.5), lam(0x8a5a30)); nc.scale.y = 0.7; extra.noisette.add(nc);
   const ns = new T.Mesh(new T.CylinderGeometry(0.05, 0.06, 0.25, 5), lam(0x5a3a20)); ns.position.y = 0.38; extra.noisette.add(ns);
   g.userData = { rig, dis, hat, glasses, extra };
