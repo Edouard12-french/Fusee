@@ -348,14 +348,17 @@ const POI = {
   junk: [150, -112],
   wreck: [-122, 125],
   air: [155, 145],
-  bench: [24, 113],
+  bench: [32, 119],
   cloth: [-76, 66],
   peak: [-158, -156],
   lakePart: [58, 86],
   arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
   chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
   faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
+  musee: [-14, 128], donovan: [4, 24], noisette: [-40, -120],
 };
+const RACE = [[-2, 34], [-12, 58], [-11, 78], [-6, 96], [10, 107], [30, 113], [48, 113], [12, 108], [-10, 82], [0, 30]];
+const NUTS = [[-70, -140], [-20, -160], [30, -170], [60, -130], [-90, -120], [10, -140], [-50, -95], [40, -105]];
 const TREEHOUSES = [[-166, 72, 0.25], [-148, 94, -0.2], [-174, 100, 0.1], [-144, 66, -0.3]];
 const TRASH = [[-20, 30], [0, 15], [60, 21], [90, 26], [-56, 92], [4, 96], [-80, 22], [52, -24], [140, -40], [-10, -40]];
 const PLANKS = [[140, -100], [160, -122], [58, -53], [-116, 120], [-30, -16], [150, 100]];
@@ -370,7 +373,7 @@ const PATHS = [
   { w: 3.4, pts: [[32, 10], [37, -2], [43, -30], [47, -52]] },
   { w: 3, pts: [[10, 14], [18, 30], [20, 39]] },
   { w: 3, pts: [[-36, 36], [-30, 48], [-44, 64], [-62, 48], [-50, 68], [-40, 86], [-18, 74], [-30, 50]] },
-  { w: 3, pts: [[30, 10], [16, 60], [12, 96], [24, 110], [50, 112]] },
+  { w: 3, pts: [[30, 10], [0, 30], [-12, 60], [-8, 90], [12, 108], [24, 112], [50, 113]] },
 ];
 const ALL_PATHS = ROADS.concat(PATHS);
 function segDist(px, pz, ax, az, bx, bz) {
@@ -921,6 +924,37 @@ function buildPlaces() {
   }
   // Source du ruisseau, entourée de rochers
   for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283, x = POI.spring[0] + Math.cos(a) * 6.5, z = POI.spring[1] + Math.sin(a) * 6.5; mesh(new T.DodecahedronGeometry(srange(0.8, 1.5), 0), M.stone, x, groundY(x, z) + 0.3, z); }
+  // Musée des trouvailles de Raflex
+  cabin({ x: POI.musee[0], z: POI.musee[1] - 6, rot: 0, w: 12, d: 8, h: 4.6, wall: lam(0xf2c14e), roof: lam(0xe0607a), sign: 'MUSÉE DE RAFLEX', signBg: '#e0607a', side: true });
+  for (let k = 0; k < 3; k++) {
+    const x = POI.musee[0] - 4 + k * 4, z = POI.musee[1] + 1;
+    mesh(new T.CylinderGeometry(0.7, 0.85, 1.2, 10), M.white, x, groundY(x, z) + 0.6, z);
+    const show = new T.Group(); show.position.set(x, groundY(x, z) + 1.7, z); show.visible = false; scene.add(show); museumShows.push(show);
+    addCircle(x, z, 0.9);
+  }
+  museumShows[0].add(new T.Mesh(new T.BoxGeometry(0.8, 0.45, 0.55), lam(0xc98a4b)));
+  { const f = new T.Mesh(new T.ConeGeometry(0.3, 1, 6), lam(0x5a8fd0)); f.rotation.z = Math.PI / 2; museumShows[1].add(f); }
+  { const c = new T.Mesh(new T.ConeGeometry(0.35, 0.8, 7), lam(0xffc53d)); c.rotation.x = Math.PI; museumShows[2].add(c); }
+  // Coffre qui s'ouvre avec des confettis
+  museumChest = new T.Group(); museumChest.position.set(POI.musee[0] + 7, groundY(POI.musee[0] + 7, POI.musee[1]), POI.musee[1] + 1); scene.add(museumChest);
+  mesh(new T.BoxGeometry(1.6, 1, 1.1), lam(0xd8507a), 0, 0.5, 0, museumChest);
+  const lid = new T.Group(); lid.position.set(0, 1, -0.55); museumChest.add(lid);
+  mesh(new T.BoxGeometry(1.6, 0.25, 1.1), lam(0xe0607a), 0, 0.12, 0.55, lid);
+  museumChest.userData.lid = lid; addCircle(museumChest.position.x, museumChest.position.z, 1);
+  // Portes de la course de Donovan (panneaux à flèches)
+  RACE.forEach((p, i) => {
+    const nx = RACE[(i + 1) % RACE.length], ang = Math.atan2(nx[0] - p[0], nx[1] - p[1]);
+    const g = new T.Group(); g.position.set(p[0], walkY(p[0], p[1]), p[1]); g.rotation.y = ang; g.visible = false; scene.add(g);
+    for (const s of [-1, 1]) {
+      const pnl = mesh(new T.BoxGeometry(0.2, 1.6, 1.1), M.white, s * 3.2, 0.9, 0, g);
+      const ar = mesh(new T.ConeGeometry(0.35, 0.6, 3), M.red, s * 3.2 - s * 0.12, 0.9, 0, g); ar.rotation.z = -Math.PI / 2 * s; ar.rotation.y = Math.PI / 2;
+      mesh(new T.BoxGeometry(0.3, 0.2, 1.2), lam(0xc0504a), s * 3.2, 0.1, 0, g);
+    }
+    const ring = mesh(new T.RingGeometry(2.3, 3.1, 28), new T.MeshBasicMaterial({ color: 0x3fd0c0, transparent: true, opacity: 0.85, depthWrite: false }), 0, 0.22, 0, g); ring.rotation.x = -Math.PI / 2; ring.castShadow = false;
+    const disc = mesh(new T.CircleGeometry(2.3, 28), new T.MeshBasicMaterial({ color: 0x2a9a8a, transparent: true, opacity: 0.5, depthWrite: false }), 0, 0.2, 0, g); disc.rotation.x = -Math.PI / 2; disc.castShadow = false;
+    for (const s of [-1, 1]) { const pole = mesh(new T.CylinderGeometry(0.08, 0.08, 3.4, 6), M.white, s * 3.2, 1.7, 0, g); const fl = mesh(new T.BoxGeometry(0.05, 0.6, 0.9), M.orange, s * 3.2, 3.1, 0.45, g); }
+    raceGates.push(g);
+  });
   // Village des cabanes dans les arbres
   TREEHOUSES.forEach((t, i) => buildTreehouse(t[0], t[1], t[2], i));
   ropeBridge(treehouses[0], treehouses[3]); ropeBridge(treehouses[1], treehouses[2]);
@@ -937,7 +971,8 @@ function buildPlaces() {
   lampPost(18, 36); lampPost(28, 108);
 }
 let flagMesh = null, coatMesh = null, hatMesh = null, reserveSign = null;
-const treehouses = [], chantier = new T.Group(), chantierCols = [];
+const treehouses = [], chantier = new T.Group(), chantierCols = [], museumShows = [], raceGates = [];
+let museumChest = null;
 function buildTreehouse(x, z, rot, i) {
   const y0 = groundY(x, z), g = new T.Group(); g.position.set(x, y0, z); g.rotation.y = rot; scene.add(g);
   mesh(new T.CylinderGeometry(1.0, 1.5, 13, 8), M.trunk, 0, 6.5, 0, g);
@@ -1033,6 +1068,9 @@ function makeBear() {
   extra.golden.add(new T.Mesh(new T.CylinderGeometry(0.72, 0.72, 0.06, 16), lam(0xffc53d)));
   const gc = new T.Mesh(new T.ConeGeometry(0.42, 0.8, 10), lam(0xffc53d)); gc.position.y = 0.42; extra.golden.add(gc);
   extra.sun = glasses;
+  extra.noisette = new T.Group(); extra.noisette.position.y = 0.36; head.add(extra.noisette); extra.noisette.visible = false;
+  const nc = new T.Mesh(new T.SphereGeometry(0.5, 12, 8, 0, 6.283, 0, 1.5), lam(0x8a5a30)); nc.scale.y = 0.7; extra.noisette.add(nc);
+  const ns = new T.Mesh(new T.CylinderGeometry(0.05, 0.06, 0.25, 5), lam(0x5a3a20)); ns.position.y = 0.38; extra.noisette.add(ns);
   g.userData = { rig, dis, hat, glasses, extra };
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -1252,6 +1290,58 @@ function makeBadger() {
   return g;
 }
 
+function makeRaccoon() {
+  const g = new T.Group(), f = lam(0x8a8a98, { flatShading: false }), w = lam(0xe8e8f0, { flatShading: false }), d = lam(0x2a2a32, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.45, 0, 0.7, 0, 1, 1.2, 0.9);
+  ball(body, w, 0.3, 0, 0.65, 0.25, 1, 1.2, 0.6);
+  const head = new T.Group(); head.position.set(0, 1.4, 0.04); body.add(head);
+  ball(head, f, 0.34, 0, 0, 0);
+  ball(head, w, 0.18, 0, -0.1, 0.26, 1.2, 0.8, 1);
+  const mask = ball(head, d, 0.3, 0, 0.06, 0.12, 1.15, 0.38, 0.8);
+  ball(head, d, 0.05, 0, -0.06, 0.44);
+  for (const s of [-1, 1]) { ball(head, f, 0.11, s * 0.24, 0.3, -0.04); const l = new T.Mesh(new T.BoxGeometry(0.2, 0.12, 0.05), lam(0x111111)); l.position.set(s * 0.13, 0.08, 0.34); head.add(l); }
+  const br = new T.Mesh(new T.BoxGeometry(0.1, 0.03, 0.05), lam(0x111111)); br.position.set(0, 0.08, 0.35); head.add(br);
+  const scarf = new T.Mesh(new T.TorusGeometry(0.3, 0.08, 6, 12), lam(0xe0607a)); scarf.rotation.x = Math.PI / 2; scarf.position.y = 1.1; body.add(scarf);
+  const tail = new T.Group(); tail.position.set(0, 0.45, -0.4); g.add(tail);
+  for (let k = 0; k < 5; k++) { const r = ball(tail, k % 2 ? d : f, 0.16 - k * 0.012, 0, k * 0.08, -k * 0.16); }
+  tail.rotation.x = 0.5;
+  const rig = { body, head, tail, armL: limb(body, f, 0.09, 0.4, -0.4, 1.05, 0.12), armR: limb(body, f, 0.09, 0.4, 0.4, 1.05, 0.12), legL: limb(g, d, 0.11, 0.3, -0.2, 0.32, 0), legR: limb(g, d, 0.11, 0.3, 0.2, 0.32, 0) };
+  g.userData = { rig };
+  return g;
+}
+function makeSquirrel() {
+  const g = new T.Group(), f = lam(0xc0703a, { flatShading: false }), l = lam(0xf4dcc0, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.3, 0, 0.45, 0, 1, 1.25, 0.9);
+  ball(body, l, 0.2, 0, 0.45, 0.17, 1, 1.2, 0.6);
+  const head = new T.Group(); head.position.set(0, 0.92, 0.04); body.add(head);
+  ball(head, f, 0.24, 0, 0, 0);
+  ball(head, l, 0.12, 0, -0.06, 0.18);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.04, s * 0.1, 0.05, 0.19); const e = new T.Mesh(new T.ConeGeometry(0.06, 0.18, 4), f); e.position.set(s * 0.13, 0.24, -0.02); head.add(e); }
+  const bow = new T.Mesh(new T.BoxGeometry(0.22, 0.1, 0.06), lam(0x5fae5c)); bow.position.set(0.12, 0.22, 0.05); head.add(bow);
+  const tail = new T.Group(); tail.position.set(0, 0.35, -0.3); g.add(tail);
+  ball(tail, f, 0.25, 0, 0.3, -0.1, 0.8, 1.4, 0.8); ball(tail, f, 0.2, 0, 0.7, 0.05, 0.9, 1, 0.9);
+  const rig = { body, head, tail, armL: limb(body, f, 0.06, 0.25, -0.26, 0.65, 0.15), armR: limb(body, f, 0.06, 0.25, 0.26, 0.65, 0.15), legL: limb(g, f, 0.08, 0.2, -0.15, 0.2, 0.05), legR: limb(g, f, 0.08, 0.2, 0.15, 0.2, 0.05) };
+  g.userData = { rig };
+  return g;
+}
+function makeBigDuck() {
+  const g = new T.Group(), w = lam(0xf4f0e8, { flatShading: false }), o = lam(0xf2a23a);
+  const body = new T.Group(); g.add(body);
+  ball(body, w, 0.55, 0, 0.75, 0, 1, 1.15, 1.05);
+  const head = new T.Group(); head.position.set(0, 1.55, 0.1); body.add(head);
+  ball(head, w, 0.36, 0, 0, 0);
+  const bk = new T.Mesh(new T.BoxGeometry(0.34, 0.1, 0.36), o); bk.position.set(0, -0.06, 0.38); head.add(bk);
+  for (const s of [-1, 1]) ball(head, eyeMat, 0.055, s * 0.15, 0.1, 0.3);
+  const band = new T.Mesh(new T.TorusGeometry(0.33, 0.06, 6, 14), lam(0xd84a3a)); band.rotation.x = Math.PI / 2; band.position.y = 0.16; head.add(band);
+  const shirt = new T.Mesh(new T.CylinderGeometry(0.5, 0.58, 0.6, 12), lam(0x5a8fd0)); shirt.position.y = 1.0; body.add(shirt);
+  const wh = new T.Mesh(new T.SphereGeometry(0.06, 6, 4), lam(0xffc53d)); wh.position.set(0.15, 1.25, 0.5); body.add(wh);
+  const rig = { body, head, armL: limb(body, w, 0.1, 0.45, -0.55, 1.15, 0), armR: limb(body, w, 0.1, 0.45, 0.55, 1.15, 0), legL: limb(g, o, 0.07, 0.35, -0.2, 0.35, 0), legR: limb(g, o, 0.07, 0.35, 0.2, 0.35, 0) };
+  g.userData = { rig };
+  return g;
+}
+
 // ================= Objets du jeu =================
 const ITEMS = {
   sandwich: { n: 'Sandwich', e: '🥪', en: 30, sell: 4 }, gateau: { n: 'Gâteau', e: '🍰', en: 40, sell: 6 }, pomme: { n: 'Pomme', e: '🍎', en: 20, sell: 3 },
@@ -1273,11 +1363,12 @@ const CONES = [[-170, -40], [-140, 60], [-60, -150], [10, -182], [92, -80], [182
 const TREASURES = [[-92, 152], [112, -152], [176, 84]];
 const PARTS = { helice: [POI.wreck[0] - 2, POI.wreck[1] - 3], aileD: POI.peak, aileG: POI.lakePart, moteur: [POI.shed[0] + 1.5, POI.shed[1] + 3.2] };
 const MAYOR_SAYS = ['Oh, le grand lac !', 'Regardez, des cerfs dans la prairie !', 'Quelle belle montagne !', 'Des cabanes dans les arbres ? Adorable !', 'Que la forêt est verte !', 'Et ces petits renards !', 'Le camping a l\'air si joyeux !', 'Je n\'avais jamais vu le parc comme ça !'];
+const RACE_LIMIT = 45;
 const RINGS = [[-60, -60, 22], [0, -132, 30], [62, -150, 26], [150, -62, 22], [170, 62, 28], [82, 140, 24], [-40, 150, 30], [-130, 40, 26]];
 
 let S = null;
 function freshState() {
-  return { day: 1, time: 8, coins: 0, energy: 75, inv: [], q: 0, step: 0, cnt: 0, flags: {}, cones: [], fish: {}, dug: [], parts: {}, hats: {}, wear: '', stars: 0, trash: [], planks: [], babies: [],
+  return { day: 1, time: 8, coins: 0, energy: 75, inv: [], q: 0, step: 0, cnt: 0, flags: {}, cones: [], fish: {}, dug: [], parts: {}, hats: {}, wear: '', stars: 0, trash: [], planks: [], babies: [], nuts: [], raceBest: 0,
     pos: [POI.bed[0] + 3, POI.bed[1] + 4], camper: [152, -114, 0.4], rings: [], done: false };
 }
 const has = id => S.inv.includes(id);
@@ -1423,6 +1514,9 @@ function buildNPCs() {
   addNPC('blaireau', { name: 'Papi Blaireau', col: '#5a5a66', model: makeBadger(), x: POI.blaireau[0], z: POI.blaireau[1], rot: 1.2, head: 2 });
   addNPC('gisele', { name: 'Gisèle (la maire)', col: '#4a6a9a', model: makeHuman(0x4a6a9a, 0x2a2a3a, 0xd8a050, {}), x: POI.mairie[0], z: POI.mairie[1], rot: 0, head: 2.5 });
   addNPC('beton', { name: 'M. Béton', col: '#55575c', model: makeHuman(0x6a6c72, 0x3a3a40, 0x222222, { cap: 0xf2b632 }), x: POI.chantier[0] - 8, z: POI.chantier[1] + 12, rot: 3, head: 2.5 });
+  addNPC('raflex', { name: 'Raflex', col: '#e0607a', model: makeRaccoon(), x: POI.musee[0] - 6, z: POI.musee[1] + 2, rot: 0.3, head: 2 });
+  addNPC('donovan', { name: 'Donovan le canard', col: '#5a8fd0', model: makeBigDuck(), x: POI.donovan[0], z: POI.donovan[1], rot: 0.5, head: 2.2 });
+  addNPC('noisette', { name: 'Noisette', col: '#c0703a', model: makeSquirrel(), x: POI.noisette[0], z: POI.noisette[1], rot: 0.2, head: 1.3 });
   addNPC('rosa', { name: 'Rosa (épicière)', col: '#c0504a', model: makeHuman(0xd84a3a, 0x3a3a5a, 0x5a3020, { cap: 0xffffff }), x: POI.shop[0] + 2.4, z: POI.shop[1] - 0.8, rot: 0, head: 2.5 });
   addNPC('leon', { name: 'Léon (brocanteur)', col: '#4a6a9a', model: makeHuman(0x5a8fd0, 0x5a4a3a, 0xdddddd), x: POI.broc[0] + 2.4, z: POI.broc[1] - 0.8, rot: 0, head: 2.5 });
   addNPC('nina', { name: 'Nina (café)', col: '#a0583a', model: makeHuman(0xf2c14e, 0x3a3a5a, 0x2a1a10), x: POI.cafe[0] + 2.4, z: POI.cafe[1] - 0.8, rot: 0, head: 2.5 });
@@ -1601,7 +1695,7 @@ function buildInteractions() {
   } });
   for (const bk of baskets) addInter({ x: bk.x, z: bk.z, r: 2.6, icon: '🧺', label: () => 'Chiper le pique-nique', can: () => bk.takenDay !== S.day, act: () => steal(bk) });
   addInter({ x: POI.bed[0], z: POI.bed[1], r: 3, icon: '💤', label: () => S.time > 18 || S.time < 5 ? 'Dormir jusqu\'au matin' : 'Faire une sieste', can: () => true, act: sleep });
-  for (const id of ['max', 'lulu', 'plume', 'rosa', 'leon', 'nina', 'blaireau', 'gisele', 'beton']) {
+  for (const id of ['max', 'lulu', 'plume', 'rosa', 'leon', 'nina', 'blaireau', 'gisele', 'beton', 'raflex', 'donovan', 'noisette']) {
     const n = NPCS[id], at = n.talkAt || [n.x, n.z];
     addInter({ get x() { return n.talkAt ? n.talkAt[0] : n.x; }, get z() { return n.talkAt ? n.talkAt[1] : n.z; }, r: id === 'plume' ? 6 : 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => !n.hidden, act: () => talkTo(id) });
   }
@@ -1836,7 +1930,7 @@ const QUESTS = [
       ['max', 'Monsieur Béton veut raser notre parc pour construire un énorme centre commercial !'],
       ['oscar', 'Quoi ?! Mais c\'est notre maison !'],
       ['max', 'La maire va bientôt décider. Si le parc est propre et plein de vie, elle en fera une réserve naturelle.'],
-      ['max', 'Il faut gagner 5 étoiles du parc. On va y arriver ensemble !'],
+      ['max', 'Il faut gagner 7 étoiles du parc. On va y arriver ensemble !'],
       ['max', 'Mais d\'abord… j\'ai une faim de castor ! Rapporte-moi 3 pique-niques du camping.'],
       ['max', 'Attention à Gérard, le garde forestier. Reste hors des cônes jaunes et cache-toi dans les gros buissons !'],
     ] },
@@ -1867,8 +1961,23 @@ const QUESTS = [
     { t: 'Retourne voir Lulu au ponton', talk: 'lulu', at: () => POI.lulu, lines: [
       ['lulu', 'Bravo ! Avec tous ces poissons, la maire verra que le lac est plein de vie.'],
       ['lulu', 'Tiens, voici ta première étoile du parc !'],
-      ['lulu', 'Papi Blaireau te cherche, au village des arbres, à l\'ouest. Il est très sage.'],
+      ['lulu', 'Mon copain Raflex le raton laveur veut te voir. Il a un musée au sud du lac !'],
     ], done: () => star() },
+  ] },
+  { id: 'musee', title: 'Le musée de Raflex', steps: [
+    { t: 'Va voir Raflex le raton laveur à son musée, au sud du lac', talk: 'raflex', at: () => POI.musee, lines: [
+      ['raflex', 'Yo, Oscar ! Bienvenue au Musée des Trouvailles, le musée le plus cool du parc !'],
+      ['raflex', 'Si Béton rase le parc, mon musée disparaît aussi. Pas question !'],
+      ['raflex', 'Aide-moi à faire la plus belle collection : la maire adore les musées.'],
+      ['raflex', 'Apporte-moi un pique-nique, un poisson et une pomme de pin dorée. Il y en a 12 cachées dans le parc !'],
+    ] },
+    { t: 'Apporte à Raflex : 1 pique-nique, 1 poisson et 1 pomme de pin dorée', talk: 'raflex', at: () => !S.cones.length ? nearestCone() : !FISH_IDS.some(has) ? POI.lulu : !FOODS.some(has) ? nearestBasket() : POI.musee,
+      need: () => { const m = []; if (!FOODS.some(has)) m.push('un pique-nique'); if (!FISH_IDS.some(has)) m.push('un poisson'); if (!S.cones.length) m.push('une pomme de pin dorée'); return m.length ? 'Il me manque encore ' + m.join(', ') + '. Courage, mon pote !' : ''; },
+      lines: [
+        ['raflex', 'Trop stylé ! Je mets tout ça dans mes vitrines…'],
+        ['raflex', 'Et voilà le travail ! Le musée est complet. Tiens, une étoile du parc, tu l\'as méritée !'],
+        ['raflex', 'Papi Blaireau te cherche, au village des arbres, à l\'ouest. Il est très sage.'],
+      ], done: () => { take(FOODS.find(has)); take(FISH_IDS.find(has)); S.flags.musee = 1; showMuseum(true); star(); } },
   ] },
   { id: 'proprete', title: 'Un parc tout propre', steps: [
     { t: 'Va voir Papi Blaireau au village des arbres, à l\'ouest', talk: 'blaireau', at: () => POI.blaireau, lines: [
@@ -1886,8 +1995,34 @@ const QUESTS = [
     { t: 'Retrouve les 3 bébés animaux et ramène-les à leur famille', ev: 'baby', n: 3, at: () => babyTarget() },
     { t: 'Retourne voir Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
       ['blaireau', 'Les familles sont réunies grâce à toi ! Voici une nouvelle étoile du parc.'],
-      ['blaireau', 'Madame Plume la chouette voulait te parler. Elle habite le grand arbre, au nord.'],
+      ['blaireau', 'Donovan le canard organise une grande course, au carrefour près du lac. Va le voir !'],
     ], done: () => star() },
+  ] },
+  { id: 'course', title: 'La course de Donovan', steps: [
+    { t: 'Va voir Donovan le canard au carrefour près du lac', talk: 'donovan', at: () => POI.donovan, lines: [
+      ['donovan', 'Coin coin ! Moi c\'est Donovan, le canard le plus rapide du parc !'],
+      ['donovan', 'Pour montrer à la maire que le parc est plein de sportifs, je veux battre un record !'],
+      ['donovan', 'Passe dans les 10 portes en moins de ' + RACE_LIMIT + ' secondes. Cours avec Maj ou en poussant le joystick à fond !'],
+    ] },
+    { t: 'Parle à Donovan pour lancer la course, puis passe dans les 10 portes', ev: 'race', talk2: 'donovan', at: () => G.race ? RACE[G.race.i] : POI.donovan },
+    { t: 'Retourne voir Donovan', talk: 'donovan', at: () => POI.donovan, lines: [
+      ['donovan', 'Wouah ! Quel champion ! Tu cours presque aussi vite qu\'un canard !'],
+      ['donovan', 'Voici une étoile du parc. Et reviens quand tu veux pour battre ton record !'],
+      ['donovan', 'Au fait, Noisette l\'écureuil pleure dans la forêt du nord. Elle a perdu quelque chose…'],
+    ], done: () => star() },
+  ] },
+  { id: 'noisette', title: 'Les noisettes de Noisette', steps: [
+    { t: 'Va voir Noisette l\'écureuil dans la forêt du nord', talk: 'noisette', at: () => POI.noisette, lines: [
+      ['noisette', 'Snif… Bonjour Oscar. Les bulldozers ont secoué mon arbre !'],
+      ['noisette', 'Toutes mes noisettes pour l\'hiver sont tombées dans la forêt. Il y en a huit.'],
+      ['noisette', 'Tu veux bien m\'aider à les retrouver ?'],
+    ], done: () => showNuts() },
+    { t: 'Ramasse les 8 noisettes dans la forêt du nord', ev: 'nut', n: 8, at: () => nearestOf(NUTS, S.nuts) },
+    { t: 'Rapporte les noisettes à Noisette', talk: 'noisette', at: () => POI.noisette, lines: [
+      ['noisette', 'Toutes mes noisettes ! Merci merci merci !'],
+      ['noisette', 'Tiens, je t\'ai tricoté un bonnet en forme de noisette, et voici 60 pièces.'],
+      ['noisette', 'Madame Plume la chouette voulait te parler. Elle habite le grand arbre, juste à côté.'],
+    ], done: () => { S.hats.noisette = 1; S.wear = 'noisette'; updateHats(); S.coins += 60; sfx.coin(); toast('🌰 Bonnet noisette ! (change de chapeau dans ton sac)'); } },
   ] },
   { id: 'carte', title: 'La carte de Madame Plume', steps: [
     { t: 'Va voir Madame Plume au grand arbre, au nord', talk: 'plume', at: () => POI.owl, lines: [
@@ -1950,13 +2085,14 @@ const QUESTS = [
     { t: 'Écoute la décision de la maire', talk: 'gisele', at: () => [NPCS.gisele.x, NPCS.gisele.z], start: () => { const g = NPCS.gisele; g.x = C.x + 4; g.z = C.z + 2; g.hidden = false; g.model.visible = true; }, lines: [
       ['gisele', 'Quel voyage ! Ce parc est magnifique…'],
       ['gisele', 'Des cerfs, des renards, des cabanes dans les arbres, un lac plein de poissons, et tout est si propre !'],
-      ['gisele', 'C\'est décidé : le parc des Pins devient une RÉSERVE NATURELLE ! Personne n\'y touchera jamais.'],
+      ['gisele', 'Et ce musée, cette course, ces cabanes… C\'est décidé : le parc des Pins devient une RÉSERVE NATURELLE !'],
       ['oscar', 'Hourra ! Le parc est sauvé !'],
       ['gisele', 'Et Monsieur Béton peut remballer ses bulldozers !'],
     ], done: () => { star(); S.done = true; setChantier(false); NPCS.beton.hidden = true; NPCS.beton.model.visible = false; G.fireworks = 14; setTimeout(() => banner('Le parc est sauvé !', 'Merci Oscar 🐻🌲'), 900); sfx.fanfare(); } },
   ] },
 ];
-function star() { S.stars = (S.stars || 0) + 1; setTimeout(() => banner('🌟 Étoile du parc !', S.stars + ' / 5'), 300); sfx.quest(); updateHUD(); }
+const STARS_MAX = 7;
+function star() { S.stars = (S.stars || 0) + 1; setTimeout(() => banner('🌟 Étoile du parc !', S.stars + ' / ' + STARS_MAX), 300); sfx.quest(); updateHUD(); }
 function nearestOf(list, done) { let b = null, bd = 1e9; list.forEach((t, i) => { if (done.includes(i)) return; const d = Math.hypot(t[0] - P.x, t[1] - P.z); if (d < bd) { bd = d; b = t; } }); return b; }
 const qid = () => (QUESTS[S.q] || {}).id;
 function curStep() { const q = QUESTS[S.q]; return q ? q.steps[S.step] : null; }
@@ -1982,7 +2118,14 @@ function advance() {
 function talkTo(id) {
   const st = curStep();
   if (st && st.talk === id) {
+    const miss = st.need && st.need();
+    if (miss) { talk([[id, miss]]); return; }
     talk(st.lines, () => { if (st.done) st.done(); advance(); });
+    return;
+  }
+  if (id === 'donovan' && (st && st.talk2 === 'donovan' || S.flags.raceDone)) {
+    if (G.race) return;
+    talk([['donovan', S.raceBest ? 'Ton record : ' + S.raceBest.toFixed(1).replace('.', ',') + ' s. On recommence ?' : 'Prêt ? Passe dans les 10 portes en moins de ' + RACE_LIMIT + ' secondes !'], ['donovan', '3… 2… 1… PARTEZ !']], startRace);
     return;
   }
   if (id === 'rosa' || id === 'leon' || id === 'nina' || (id === 'gisele' && !S.flags.mayor)) {
@@ -1998,6 +2141,9 @@ function talkTo(id) {
     max: S.done ? [['max', 'Le camping-car volant marche à merveille ! Profite du parc, Oscar !']] : [['max', pick(['Courage Oscar, je compte sur toi !', 'Regarde ta mission en haut à droite de l\'écran.', 'Un castor n\'arrête jamais de bricoler !'])]],
     lulu: [['lulu', has('canne') ? pick(['Les poissons dorés sont très rares… mais ils valent cher !', 'Il paraît qu\'il y a 8 sortes de poissons dans le parc.']) : 'Il te faudrait une canne à pêche ! L\'épicerie du village en vend.']],
     blaireau: [['blaireau', S.done ? 'Grâce à toi, notre forêt vivra pour toujours. Merci, Oscar.' : pick(['La patience est la plus grande qualité d\'un ours.', 'Chaque étoile du parc nous rapproche de la victoire !', 'Les cabanes dans les arbres ont plus de cent ans, tu sais.'])]],
+    raflex: [['raflex', S.flags.musee ? pick(['Mon musée est le plus stylé du parc, grâce à toi !', 'Yo ! Tu as vu mes vitrines ? Trop classe.']) : 'Yo ! Reviens me voir quand tu auras du temps, mon pote.']],
+    donovan: [['donovan', 'Coin ! Je m\'entraîne pour la prochaine course !']],
+    noisette: [['noisette', S.hats.noisette ? 'Ton bonnet noisette te va super bien !' : 'Bonjour Oscar !']],
     beton: [['beton', pick(['Ce parc sera bientôt un parking géant ! Ha ha ha !', 'Les arbres, ça ne sert à rien. Le béton, c\'est l\'avenir !', 'Un ours ? Pfff… Bientôt, il n\'y aura plus de place pour toi ici !'])]],
     plume: [['plume', pick(['Hou hou ! Il paraît que 12 pommes de pin dorées sont cachées dans le parc…', 'La nuit, les campeurs dorment. Mais Gérard fait sa ronde avec sa lampe !'])]],
   };
@@ -2219,6 +2365,87 @@ function updateFireworks(dt) {
   }
 }
 
+// ================= Musée, course, noisettes, ligne guide =================
+let nutMeshes = [];
+function nearestCone() { let b = null, bd = 1e9; CONES.forEach((c, i) => { if (S.cones.includes(i)) return; const d = Math.hypot(c[0] - P.x, c[1] - P.z); if (d < bd) { bd = d; b = c; } }); return b; }
+function showMuseum(anim) {
+  museumShows.forEach(m => { m.visible = !!S.flags.musee; });
+  const lid = museumChest.userData.lid;
+  if (!S.flags.musee) { lid.rotation.x = 0; return; }
+  if (anim) { G.chestT = 1.2; for (let k = 0; k < 4; k++) setTimeout(() => confetti(museumChest.position.x, museumChest.position.y + 1.5, museumChest.position.z), k * 250); sfx.fanfare(); }
+  else lid.rotation.x = -1.9;
+}
+function confetti(x, y, z) { const cols = [[1, 0.5, 0.7], [1, 0.85, 0.3], [0.4, 0.9, 0.8], [0.5, 0.7, 1]]; for (let i = 0; i < 40; i++) { const c = cols[i % 4]; emit(x, y, z, rand(-4, 4), rand(4, 9), rand(-4, 4), rand(1.2, 2), 0.3, c[0], c[1], c[2], -7); } }
+function showNuts() { nutMeshes.forEach((m, i) => { m.visible = !S.nuts.includes(i); }); }
+function buildMoreInteractions() {
+  const nutG = new T.SphereGeometry(0.28, 8, 6), capG = new T.SphereGeometry(0.3, 8, 4, 0, 6.283, 0, 1.3);
+  nutMeshes = NUTS.map((t, i) => {
+    const g = new T.Group(); g.position.set(t[0], walkY(t[0], t[1]) + 0.35, t[1]); g.visible = false; scene.add(g);
+    const n = new T.Mesh(nutG, lam(0xb0703a)); n.scale.y = 1.2; n.castShadow = true; g.add(n);
+    const c = new T.Mesh(capG, lam(0x6e4430)); c.position.y = 0.1; g.add(c);
+    addInter({ x: t[0], z: t[1], r: 2.2, icon: '🌰', label: () => 'Ramasser la noisette', can: () => g.visible, act: () => { g.visible = false; S.nuts.push(i); sfx.pickup(); sparkle(t[0], g.position.y + 0.5, t[1]); questEvent('nut'); } });
+    return g;
+  });
+}
+function startRace() {
+  if (P.mode !== 'walk') return;
+  G.race = { i: 0, t: 0 };
+  raceGates.forEach((g, i) => { g.visible = true; g.scale.setScalar(1); });
+  sfx.alert();
+}
+function updateRace(dt) {
+  const r = G.race;
+  if (!r) return;
+  if (P.mode !== 'walk' || G.talking) { if (P.mode !== 'walk') endRace(false, 'Course annulée.'); return; }
+  r.t += dt;
+  raceGates.forEach((g, i) => { g.scale.setScalar(i === r.i ? 1 + Math.sin(G.t * 6) * 0.08 : 0.85); g.visible = i === r.i || i === r.i + 1; });
+  const gp = RACE[r.i];
+  if (Math.hypot(P.x - gp[0], P.z - gp[1]) < 4.6) {
+    r.i++; sfx.ring(); sparkle(gp[0], walkY(gp[0], gp[1]) + 1.5, gp[1]);
+    if (r.i >= RACE.length) { endRace(r.t <= RACE_LIMIT, ''); return; }
+  }
+  if (r.t > RACE_LIMIT) { endRace(false, 'Trop tard ! Parle à Donovan pour réessayer.'); return; }
+  status('⏱ ' + r.t.toFixed(1).replace('.', ',') + ' s · Porte ' + (r.i + 1) + ' / ' + RACE.length, r.t > RACE_LIMIT - 10 ? 'alert' : 'info', 0.3);
+}
+function endRace(ok, msg) {
+  const r = G.race; G.race = null;
+  raceGates.forEach(g => { g.visible = false; });
+  if (ok) {
+    const best = !S.raceBest || r.t < S.raceBest;
+    if (best) S.raceBest = r.t;
+    banner('Arrivée !', r.t.toFixed(1).replace('.', ',') + ' s' + (best ? ' · Nouveau record !' : ''));
+    sfx.fanfare(); confetti(P.x, P.y + 2, P.z);
+    S.flags.raceDone = 1;
+    questEvent('race'); saveGame();
+  } else { toast(msg); sfx.caught(); }
+}
+// Ligne blanche au sol vers l'objectif
+const GL_N = 34;
+const glGeo = new T.BufferGeometry(), glPos = new Float32Array(GL_N * 4 * 3), glIdx = [];
+for (let i = 0; i < GL_N; i++) { const k = i * 4; glIdx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+glGeo.setAttribute('position', new T.BufferAttribute(glPos, 3).setUsage(T.DynamicDrawUsage)); glGeo.setIndex(glIdx);
+const guide = new T.Mesh(glGeo, new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
+guide.frustumCulled = false; guide.renderOrder = 2; scene.add(guide);
+function updateGuide() {
+  const st = curStep(), tgt = st && st.at && st.at();
+  const on = tgt && (P.mode === 'walk' || P.mode === 'drive') && !G.talking;
+  const d = on ? Math.hypot(tgt[0] - P.x, tgt[1] - P.z) : 0;
+  guide.visible = on && d > 7;
+  if (!guide.visible) return;
+  const ux = (tgt[0] - P.x) / d, uz = (tgt[1] - P.z) / d, L = Math.min(d - 3, 60), seg = L / GL_N, w = 0.22;
+  for (let i = 0; i < GL_N; i++) {
+    const a = 2 + i * seg, b = a + seg * 0.55;
+    const pts = [[a, -w], [a, w], [b, -w], [b, w]];
+    pts.forEach((q, j) => {
+      const x = P.x + ux * q[0] - uz * q[1], z = P.z + uz * q[0] + ux * q[1];
+      const k = (i * 4 + j) * 3;
+      glPos[k] = x; glPos[k + 1] = Math.max(walkY(x, z), WATER_Y) + 0.18; glPos[k + 2] = z;
+    });
+  }
+  glGeo.attributes.position.needsUpdate = true;
+  guide.material.opacity = 0.75 * Math.min(1, (d - 7) / 6);
+}
+
 // ================= État général =================
 const G = { t: 0, wanted: 0, talking: false, talkWho: null, landing: false, saveT: 0, state: 'title', paused: false };
 const isTouch = matchMedia('(pointer: coarse)').matches;
@@ -2320,7 +2547,7 @@ function fadeTo(fn) { $('fade').classList.add('on'); setTimeout(() => { fn(); se
 // ================= Dialogues =================
 const WHO = { oscar: ['Oscar', '#8e3b46'] };
 // Chaque personnage a sa propre voix (plus grave ou plus aiguë)
-const PITCH = { oscar: 0.75, max: 1.45, lulu: 1.7, plume: 1.25, blaireau: 0.55, gisele: 1.15, beton: 0.6, gerard: 0.85, rosa: 1.3, leon: 0.8, nina: 1.5 };
+const PITCH = { raflex: 1.05, donovan: 1.6, noisette: 1.8, oscar: 0.75, max: 1.45, lulu: 1.7, plume: 1.25, blaireau: 0.55, gisele: 1.15, beton: 0.6, gerard: 0.85, rosa: 1.3, leon: 0.8, nina: 1.5 };
 let frVoices = [];
 function loadVoices() { try { frVoices = speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang)); } catch (e) {} }
 if (window.speechSynthesis) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
@@ -2393,7 +2620,7 @@ function updateHUD() {
   $('clockT').textContent = (nightK > 0.5 ? '🌙' : '☀️') + ' Jour ' + S.day + ' · ' + h + ':' + String(m).padStart(2, '0');
   $('energy').firstChild.style.width = S.energy + '%';
   $('bDis').hidden = !S.flags.disguise;
-  $('starN').textContent = (S.stars || 0) + ' / 5';
+  $('starN').textContent = (S.stars || 0) + ' / ' + STARS_MAX;
 }
 function updateQuestUI() {
   const q = QUESTS[S.q], st = curStep();
@@ -2508,7 +2735,7 @@ function renderInv() {
     const b = document.createElement('button'); b.className = 'btn go'; b.textContent = 'Manger ' + ITEMS[invSel].e;
     b.addEventListener('click', () => { eat(invSel); if (!has(invSel)) invSel = null; renderInv(); updateHUD(); }); A.appendChild(b);
   }
-  const hats = [['', 'Sans chapeau', '🐻']].concat([['sun', 'Lunettes', '🕶️'], ['cowboy', 'Cowboy', '🤠'], ['crown', 'Couronne', '👑'], ['golden', 'Chapeau doré', '🌟']].filter(h => S.hats[h[0]]));
+  const hats = [['', 'Sans chapeau', '🐻']].concat([['sun', 'Lunettes', '🕶️'], ['cowboy', 'Cowboy', '🤠'], ['crown', 'Couronne', '👑'], ['golden', 'Chapeau doré', '🌟'], ['noisette', 'Bonnet noisette', '🌰']].filter(h => S.hats[h[0]]));
   if (hats.length > 1) for (const [k, n, e] of hats) {
     const b = document.createElement('button'); b.className = 'btn small' + (S.wear === k ? ' go' : ''); b.textContent = e + ' ' + n;
     b.addEventListener('click', () => { S.wear = k; updateHats(); renderInv(); saveGame(); }); A.appendChild(b);
@@ -2545,7 +2772,7 @@ function drawMap() {
   for (const rv of RIVERS) { const r = rv.pts; g.lineWidth = rv.w * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
   g.fillStyle = '#41b3e6'; g.beginPath(); g.ellipse(X(LAKE.x), Z(LAKE.z), LAKE.rx * k, LAKE.rz * k, 0, 0, 6.283); g.fill();
   for (const p of ALL_PATHS) { g.strokeStyle = p === ROADS[0] ? '#9a7f78' : '#e2cc98'; g.lineWidth = p.w * k * 1.1; g.beginPath(); p.pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
-  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow]];
+  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette]];
   g.font = '700 17px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
@@ -2591,6 +2818,7 @@ function applyState() {
   gi.hidden = inAir; gi.model.visible = !inAir;
   if (qid() === 'maire' && S.step === 4) { gi.x = C.x + 4; gi.z = C.z + 2; } else { gi.x = POI.mairie[0]; gi.z = POI.mairie[1]; }
   NPCS.beton.hidden = !!S.done; NPCS.beton.model.visible = !S.done;
+  showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
   setDisguise(false);
@@ -2737,7 +2965,8 @@ function step(dt) {
     else if (P.mode === 'tree') updateTree(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateFireworks(dt);
+    updateAnimals(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
     updateNPCs(dt);
@@ -2788,12 +3017,13 @@ C.model = makeCamper(); scene.add(C.model);
 buildInteractions();
 buildAnimals();
 buildExtraInteractions();
+buildMoreInteractions();
 S = freshState();
 applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS };
 
 })();
 </script>

@@ -16,14 +16,14 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 11, 07, 03, 08, 06, 04, 05, 09, 12, 02, 10, 01.
+9. **Screenshots** : dans cet ordre : 11, 07, 14, 13, 03, 08, 06, 04, 15, 05, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `fishing`, `browser`, `french`, `family-friendly`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
 
 ## Important
 
-Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Gérard, Gisèle, M. Béton et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
+Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
 
 Pour les dons : un parent doit t'aider pour le compte de paiement. Après la publication, tu peux mettre l'adresse de ta page dans `ours/index.html` (ligne `const SUPPORT_URL = '';`).
 
@@ -33,10 +33,11 @@ Pour les dons : un parent doit t'aider pour le compte de paiement. Après la pub
 
 **Oscar est un ours très malin… et il doit sauver son parc !**
 
-Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centre commercial. Avec ses amis Max le castor, Lulu la loutre, Madame Plume la chouette et Papi Blaireau, Oscar doit gagner 5 étoiles du parc pour convaincre la maire d'en faire une réserve naturelle !
+Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centre commercial. Avec ses amis Max le castor, Lulu la loutre, Raflex le raton laveur, Donovan le canard, Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau, Oscar doit gagner 7 étoiles du parc pour convaincre la maire d'en faire une réserve naturelle !
 
 - **Ramasse les déchets**, **sauve les bébés animaux perdus** et **répare le village des cabanes dans les arbres**.
-
+- **Remplis le musée de Raflex**, **bats le record de la course de Donovan** et **retrouve les noisettes de Noisette**.
+- 14 missions à la suite, avec une ligne guide pour ne jamais se perdre.
 - **Chipe des pique-niques** en restant hors du regard des campeurs.
 - **Déguise-toi** avec un chapeau et un manteau pour aller au village comme un humain.
 - **Pêche** 8 espèces de poissons avec Lulu la loutre.
@@ -54,10 +55,11 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 
 **Oscar is a very clever bear… and he must save his park!**
 
-Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his friends Max the beaver, Lulu the otter, Madame Plume the owl and Grandpa Badger, Oscar must earn 5 park stars to convince the mayor to turn it into a nature reserve!
+Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his friends Max the beaver, Lulu the otter, Raflex the raccoon, Donovan the duck, Noisette the squirrel, Madame Plume the owl and Grandpa Badger, Oscar must earn 7 park stars to convince the mayor to turn it into a nature reserve!
 
 - **Pick up litter**, **rescue lost baby animals** and **repair the treehouse village**.
-
+- **Fill Raflex's museum**, **beat Donovan's race record** and **find Noisette's hazelnuts**.
+- 14 missions in a row, with a guide line so you never get lost.
 - **Snatch picnics** while staying out of the campers' sight.
 - **Put on a disguise** (hat and coat) to visit the village like a human.
 - **Go fishing** for 8 kinds of fish with Lulu the otter.
