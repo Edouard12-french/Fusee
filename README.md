@@ -30,3 +30,17 @@ Tout est prêt dans le dossier `itch/` : le zip du jeu, l'image de couverture, l
 3. Envoie le zip et coche « This file will be played in the browser ».
 4. Taille conseillée : 960 × 640, avec le bouton plein écran activé.
 5. Prix : « No payment required » avec dons, ou « Pay what you want ».
+
+## Jeu : Escadron Phénix
+
+Combat aérien en 3D dans le navigateur (Three.js + WebGL), au-dessus d'un archipel tropical :
+
+- 6 missions de campagne : entraînement (anneaux et drones), interception, destruction de radars, protection d'un convoi contre des bombardiers, attaque d'une flotte avec porte-avions, duel contre le Baron Rouge.
+- Combat libre : des vagues d'ennemis sans fin, avec réparation entre chaque vague.
+- Canon avec aide à la visée, missiles à verrouillage, leurres contre les missiles ennemis, postcombustion.
+- Ennemis pilotés par l'ordinateur (poursuite, esquive, leurres), ailier allié, défense antiaérienne sur les navires et les îles.
+- 3 avions (Faucon, Orage, Titan) et 5 peintures à débloquer avec les étoiles, 12 succès, 3 difficultés.
+- Vues : poursuite, cockpit, cinéma. Radio en français avec voix.
+- Clavier, manette ou écran tactile.
+
+Pour y jouer en local, ouvre `escadron/index.html`. Pour itch.io, tout est dans `itch/escadron/` (zip, couverture, captures et guide `PAGE-ITCH.md`).
