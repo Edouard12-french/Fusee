@@ -12,6 +12,7 @@ import pygame
 # ---------- 1. Les réglages du jeu ----------
 LARGEUR, HAUTEUR = 480, 720
 IMAGES_PAR_SECONDE = 60
+ALTITUDE_AVIONS = 12         # km : les avions de ligne volent en dessous
 ALTITUDE_KARMAN = 100        # km : là où commence l'espace
 ALTITUDE_LUNE = 384400       # km : la distance de la Lune
 
@@ -150,7 +151,9 @@ class Objet:
 
 
 def choisir_obstacle(altitude):
-    """Dans le ciel il y a des ballons, puis des satellites et des astéroïdes."""
+    """Dans le ciel il y a des avions, plus haut des ballons, puis des satellites et des astéroïdes."""
+    if altitude < ALTITUDE_AVIONS:
+        return "avion"
     if altitude < ALTITUDE_KARMAN:
         return "ballon"
     if altitude < 36000:
@@ -320,6 +323,8 @@ async def main():
             ecrire("Espace ou touche l'écran pour décoller", LARGEUR // 2, 380, centre=True)
         else:
             dessiner_infos(fusee, altitude, score)
+            if ALTITUDE_AVIONS < altitude < ALTITUDE_AVIONS + 8:
+                ecrire("Tu es au-dessus des avions de ligne !", LARGEUR // 2, 120, couleur=(255, 220, 120), centre=True)
             if altitude > ALTITUDE_KARMAN and altitude < ALTITUDE_KARMAN + 30:
                 ecrire("Ligne de Kármán : bienvenue dans l'espace !", LARGEUR // 2, 120, couleur=(255, 220, 120), centre=True)
         if etat in ("perdu", "gagne"):
