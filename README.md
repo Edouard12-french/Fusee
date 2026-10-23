@@ -43,4 +43,16 @@ Combat aérien en 3D dans le navigateur (Three.js + WebGL), au-dessus d'un archi
 - Vues : poursuite, cockpit, cinéma. Radio en français avec voix.
 - Clavier, manette ou écran tactile.
 
-Pour y jouer en local, ouvre `escadron/index.html`. Pour itch.io, tout est dans `itch/escadron/` (zip, couverture, captures et guide `PAGE-ITCH.md`).
+Pour y jouer en local, ouvre `escadron/index.html`.
+
+## Jeu : Ours Malin
+
+Aventure 3D tout en douceur dans le parc des Pins. Oscar l'ours chipe des pique-niques, se déguise, pêche, cherche des trésors et fait voler un camping-car.
+
+- 8 missions qui se suivent, avec Max le castor, Lulu la loutre et Madame Plume la chouette.
+- Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
+- Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
+- Camping-car à conduire, puis à faire voler à travers 8 anneaux.
+- 12 pommes de pin dorées à trouver, sauvegarde automatique, clavier ou écran tactile.
+
+Pour y jouer en local, ouvre `ours/index.html`. Pour itch.io, tout est dans `itch/ours/`. Pour itch.io, tout est dans `itch/escadron/` (zip, couverture, captures et guide `PAGE-ITCH.md`).
