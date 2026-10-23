@@ -150,9 +150,7 @@ class Objet:
 
 
 def choisir_obstacle(altitude):
-    """Dans le ciel il y a des avions, plus haut des ballons, puis des satellites et des astéroïdes."""
-    if altitude < 12:
-        return "avion"
+    """Dans le ciel il y a des ballons, puis des satellites et des astéroïdes."""
     if altitude < ALTITUDE_KARMAN:
         return "ballon"
     if altitude < 36000:
