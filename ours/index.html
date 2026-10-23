@@ -39,6 +39,7 @@ body { background: #2f6a3c; color: var(--ink); font-family: var(--ui); overflow:
 #menuBtn { position: absolute; left: max(12px, env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); width: 46px; height: 46px; border-radius: 50%; border: 0; background: rgba(255,248,236,.94); font: 700 22px var(--display); color: var(--ink); box-shadow: 0 3px 0 rgba(0,0,0,.18); pointer-events: auto; cursor: pointer; }
 #coins { left: calc(max(12px, env(safe-area-inset-left)) + 56px); top: calc(16px + env(safe-area-inset-top)); }
 #clock { left: calc(max(12px, env(safe-area-inset-left)) + 56px); top: calc(56px + env(safe-area-inset-top)); font-size: 14px; }
+#starsChip { left: calc(max(12px, env(safe-area-inset-left)) + 56px); top: calc(116px + env(safe-area-inset-top)); font-size: 14px; }
 #energy { position: absolute; left: calc(max(12px, env(safe-area-inset-left)) + 56px); top: calc(94px + env(safe-area-inset-top)); width: 150px; height: 14px; border-radius: 8px; background: rgba(0,0,0,.25); overflow: hidden; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
 #energy i { display: block; height: 100%; width: 50%; background: linear-gradient(90deg, #ffb13d, #ffd84d); border-radius: 8px; transition: width .3s; }
 #energy b { position: absolute; left: 8px; top: -1px; font: 800 11px var(--ui); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
@@ -136,6 +137,7 @@ body { background: #2f6a3c; color: var(--ink); font-family: var(--ui); overflow:
   <div class="chip" id="coins"><span class="ico">🪙</span><span id="coinN">0</span></div>
   <div class="chip" id="clock"><span id="clockT">Jour 1 · 8:00</span></div>
   <div id="energy"><i></i><b>ÉNERGIE</b></div>
+  <div class="chip" id="starsChip"><span class="ico">🌟</span><span id="starN">0 / 5</span></div>
   <div id="quest"><small>Mission</small><b id="qTitle"></b><span id="qText"></span></div>
   <div id="sideBtns">
     <button class="round" id="bInv" aria-label="Sac">🎒<small>SAC</small></button>
@@ -207,6 +209,7 @@ body { background: #2f6a3c; color: var(--ink); font-family: var(--ui); overflow:
   <h2>Options</h2>
   <div class="row"><span style="flex:1;font-weight:800">Musique</span><button class="btn small" id="oMus"></button></div>
   <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Bruitages</span><button class="btn small" id="oSfx"></button></div>
+  <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Voix des personnages</span><button class="btn small" id="oVoice"></button></div>
   <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Qualité graphique</span><button class="btn small" id="oQual"></button></div>
   <button class="btn" data-close style="margin-top:14px">Fermer</button>
 </div></div>
@@ -261,8 +264,8 @@ function canvasTex(w, h, draw) {
 }
 
 // ================= Sauvegarde =================
-const SAVE_KEY = 'ours-malin';
-const OPT = { music: true, sfx: true, quality: 0 };
+const SAVE_KEY = 'ours-malin-2';
+const OPT = { music: true, sfx: true, voice: true, quality: 0 };
 try { Object.assign(OPT, JSON.parse(localStorage.getItem(SAVE_KEY + '-opt') || '{}')); } catch (e) {}
 function saveOpts() { try { localStorage.setItem(SAVE_KEY + '-opt', JSON.stringify(OPT)); } catch (e) {} }
 function loadGame() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
@@ -329,7 +332,9 @@ const HALF = 200;
 const LAKE = { x: 40, z: 72, rx: 46, rz: 36 };
 const RIVER_N = [[62, -212], [55, -150], [48, -100], [30, -60], [34, -20], [38, 42]];
 const RIVER_S = [[64, 100], [78, 140], [84, 175], [92, 214]];
+const STREAM = [[-100, -66], [-80, -74], [-55, -72], [-30, -82], [0, -78], [18, -68], [31, -61]];
 const RIVER_W = 7;
+const RIVERS = [{ pts: RIVER_N, w: 7 }, { pts: RIVER_S, w: 7 }, { pts: STREAM, w: 4.2 }];
 const MOUNT = { x: -165, z: -165, r: 100, h: 40 };
 const WATER_Y = -0.3;
 const POI = {
@@ -347,9 +352,15 @@ const POI = {
   cloth: [-76, 66],
   peak: [-158, -156],
   lakePart: [58, 86],
+  arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
+  chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
+  faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
 };
+const TREEHOUSES = [[-166, 72, 0.25], [-148, 94, -0.2], [-174, 100, 0.1], [-144, 66, -0.3]];
+const TRASH = [[-20, 30], [0, 15], [60, 21], [90, 26], [-56, 92], [4, 96], [-80, 22], [52, -24], [140, -40], [-10, -40]];
+const PLANKS = [[140, -100], [160, -122], [58, -53], [-116, 120], [-30, -16], [150, 100]];
 const CAMPSITES = [[-30, 50, 0.4], [-50, 68, 2.4], [-66, 46, 1.3], [-40, 88, 3.4], [-16, 74, -1.4]];
-const ROADS = [{ w: 7, col: 0x9a7f78, edge: 0x86685f, pts: [[210, 30], [150, 30], [110, 30], [70, 14], [30, 10], [-10, 18], [-45, 32], [-62, 36]] }];
+const ROADS = [{ w: 7, col: 0x8f6260, edge: 0x744b4a, pts: [[210, 30], [150, 30], [110, 30], [70, 14], [30, 10], [-10, 18], [-45, 32], [-62, 36]] }];
 const PATHS = [
   { w: 3.4, pts: [[-58, 34], [-74, 0], [-88, -44], [-98, -80], [-103, -94]] },
   { w: 3.4, pts: [[-14, 17], [-12, -20], [-6, -60], [0, -100]] },
@@ -370,7 +381,28 @@ function segDist(px, pz, ax, az, bx, bz) {
 }
 function polyDist(x, z, pts) { let d = 1e9; for (let i = 0; i < pts.length - 1; i++) d = Math.min(d, segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; }
 const lakeE = (x, z) => ((x - LAKE.x) / LAKE.rx) ** 2 + ((z - LAKE.z) / LAKE.rz) ** 2;
-const riverDist = (x, z) => Math.min(polyDist(x, z, RIVER_N), polyDist(x, z, RIVER_S));
+const riverDist = (x, z) => { let d = 1e9; for (const r of RIVERS) d = Math.min(d, polyDist(x, z, r.pts) * RIVER_W / r.w); return d; };
+// Ponts : partout où un chemin traverse une rivière
+const BRIDGES = (() => {
+  const out = [];
+  for (const p of ROADS.concat(PATHS)) {
+    let run = null;
+    const pts = p.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1], L = Math.hypot(bx - ax, bz - az);
+      for (let k = 0; k <= L; k += 1) {
+        const x = ax + (bx - ax) * k / L, z = az + (bz - az) * k / L, wet = riverDist(x, z) < RIVER_W * 0.95;
+        if (wet) { if (!run) run = { pts: [], a: Math.atan2(bz - az, bx - ax), w: p.w }; run.pts.push([x, z]); }
+        else if (run) { out.push(run); run = null; }
+      }
+    }
+    if (run) out.push(run);
+  }
+  return out.filter(r => r.pts.length > 1).map(r => {
+    const a = r.pts[0], b = r.pts[r.pts.length - 1];
+    return { x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2, a: r.a, hl: Math.hypot(b[0] - a[0], b[1] - a[1]) / 2 + 3, hw: r.w / 2 + 1.2, y: 0.56 };
+  });
+})();
 function groundY(x, z) {
   let y = (fbm(x * 0.02, z * 0.02, 3) - 0.45) * 1.6;
   const dm = Math.hypot(x - MOUNT.x, z - MOUNT.z) / MOUNT.r;
@@ -384,7 +416,10 @@ function groundY(x, z) {
 // Ponton et pont : on peut marcher dessus au-dessus de l'eau
 function deckY(x, z) {
   if (Math.abs(x - POI.dock[0]) < 1.7 && z > POI.dock[1] - 2 && z < POI.dock[1] + 13.2) return 0.42;
-  if (riverDist(x, z) < RIVER_W + 1.5 && polyDist(x, z, ROADS[0].pts) < 4.3) return 0.56;
+  for (const b of BRIDGES) {
+    const dx = x - b.x, dz = z - b.z, c = Math.cos(b.a), s = Math.sin(b.a);
+    if (Math.abs(dx * c + dz * s) < b.hl && Math.abs(-dx * s + dz * c) < b.hw) return b.y;
+  }
   return null;
 }
 const waterDepth = (x, z) => deckY(x, z) !== null ? 0 : Math.max(0, WATER_Y - groundY(x, z));
@@ -395,6 +430,8 @@ function inZone(x, z) {
   if (x > 95 && x < 182 && z > 2 && z < 58) return 'village';
   if (Math.hypot(x - POI.station[0], z - POI.station[1]) < 20) return 'station';
   if (x > 128 && x < 172 && z > -132 && z < -92) return 'junk';
+  if (Math.hypot(x - POI.arbres[0], z - POI.arbres[1]) < 30) return 'arbres';
+  if (x > 170 && x < 200 && z > -32 && z < 4) return 'chantier';
   return '';
 }
 
@@ -485,7 +522,7 @@ function buildGround() {
   const g = new T.PlaneGeometry(HALF * 2 + 40, HALF * 2 + 40, 220, 220);
   g.rotateX(-Math.PI / 2);
   const p = g.attributes.position, n = p.count, col = new Float32Array(n * 3);
-  const A = new T.Color(0x62b96b), B = new T.Color(0x4ea35f), Cl = new T.Color(0x82cc7a), F = new T.Color(0x3d9155), S = new T.Color(0xe6cf9c), R = new T.Color(0x9a90ad), c = new T.Color();
+  const A = new T.Color(0x56b06b), B = new T.Color(0x4aa262), Cl = new T.Color(0x74c67d), F = new T.Color(0x3f9a5a), S = new T.Color(0xe6cf9c), R = new T.Color(0x9a90ad), c = new T.Color();
   for (let i = 0; i < n; i++) {
     const x = p.getX(i), z = p.getZ(i), y = groundY(x, z);
     p.setY(i, y);
@@ -520,17 +557,17 @@ function buildGround() {
   const lt = waterTex.clone(); lt.needsUpdate = true; lt.repeat.set(8, 8); lake.material = wm.clone(); lake.material.map = lt;
   const foam = new T.Mesh(new T.RingGeometry(1, 1.035, 72), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
   foam.rotation.x = -Math.PI / 2; foam.scale.set(LAKE.rx * 1.0, LAKE.rz * 1.0, 1); foam.position.set(LAKE.x, WATER_Y + 0.02, LAKE.z); scene.add(foam);
-  for (const r of [RIVER_N, RIVER_S]) ribbon(r, RIVER_W * 1.3, () => WATER_Y - 0.01, wm, true);
+  for (const r of RIVERS) ribbon(r.pts, r.w * 1.3, () => WATER_Y - 0.01, wm, true);
   waterMats.push(lake.material, wm);
   // Chemins et route
   for (const p of ALL_PATHS) {
     const isRoad = p === ROADS[0];
-    ribbon(p.pts, p.w + (isRoad ? 1.6 : 1.2), (x, z) => roadY(x, z) + 0.05, lam(p.edge || 0xcdb27f, { flatShading: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
-    ribbon(p.pts, p.w, (x, z) => roadY(x, z) + 0.08, lam(p.col || 0xe2cc98, { flatShading: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    ribbon(p.pts, p.w + (isRoad ? 1.6 : 1.2), (x, z) => roadY(x, z) + 0.05, lam(p.edge || 0xc4ab78, { flatShading: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    ribbon(p.pts, p.w, (x, z) => roadY(x, z) + 0.08, lam(p.col || 0xdcc595, { flatShading: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   }
 }
 const waterMats = [];
-const roadY = (x, z) => Math.max(groundY(x, z), riverDist(x, z) < RIVER_W + 2 ? 0.35 : -9);
+const roadY = (x, z) => { const d = deckY(x, z); return d !== null ? d : Math.max(groundY(x, z), riverDist(x, z) < RIVER_W + 2 ? 0.2 : -9); };
 function ribbon(pts, w, yf, mat, uvLong) {
   const curve = new T.CatmullRomCurve3(pts.map(p => new V3(p[0], 0, p[1])));
   const len = curve.getLength(), n = Math.max(8, Math.round(len / 2));
@@ -570,12 +607,22 @@ function buildPlants() {
   seed = 777;
   // Sapin : tronc + 3 étages de feuillage
   const fol = [];
-  for (let i = 0; i < 3; i++) { const c = new T.ConeGeometry(2.2 - i * 0.55, 2.8, 7); c.translate(0, 2.6 + i * 1.6, 0); fol.push(c); }
+  for (let i = 0; i < 4; i++) {
+    const c = new T.ConeGeometry(2.6 - i * 0.5, 2.5, 12); c.rotateY(i * 0.4);
+    const p = c.attributes.position;
+    for (let v = 0; v < p.count; v++) {
+      const x = p.getX(v), z = p.getZ(v), r = Math.hypot(x, z);
+      if (r < 0.01) continue;
+      const k = Math.round((Math.atan2(z, x) - i * 0.4) / (Math.PI / 6)) & 1 ? 0.7 : 1.08;
+      p.setX(v, x * k); p.setZ(v, z * k);
+    }
+    c.translate(0, 2.4 + i * 1.35, 0); c.computeVertexNormals(); fol.push(c);
+  }
   const folGeo = mergeGeos(fol);
   const trunkGeo = new T.CylinderGeometry(0.22, 0.32, 2.4, 6); trunkGeo.translate(0, 1.2, 0);
   const roundGeo = new T.IcosahedronGeometry(2.4, 1); roundGeo.translate(0, 4.4, 0);
   const pines = [], rounds = [];
-  for (let t = 0; t < 26000 && pines.length + rounds.length < 2300; t++) {
+  for (let t = 0; t < 40000 && pines.length + rounds.length < 3400; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
     const k = forestK(x, z);
     if (srand() > 0.08 + k * 0.92) continue;
@@ -596,13 +643,14 @@ function buildPlants() {
     im.castShadow = true; im.receiveShadow = true; scene.add(im);
     return im;
   };
-  const pineCols = [0x2f7a4c, 0x337f50, 0x2a6e47, 0x3a8a58];
+  const pineCols = [0x2e7d4f, 0x358a57, 0x276f46, 0x3f9660];
   mk(folGeo, lam(0xffffff), pines, (c, i) => c.set(pineCols[i % 4]).convertSRGBToLinear());
   mk(trunkGeo, M.trunk, pines.concat(rounds));
   const roundCols = [0x4f9e57, 0x5aa865, 0x6bb25f, 0x8fbf4f];
   mk(roundGeo, lam(0xffffff), rounds, (c, i) => c.set(roundCols[i % 4]).convertSRGBToLinear());
   // Buissons pour se cacher, et buissons à baies
   const bushGeo = new T.IcosahedronGeometry(1, 1);
+  { const p = bushGeo.attributes.position; for (let v = 0; v < p.count; v++) { const x = p.getX(v), y = p.getY(v), z = p.getZ(v); const k = hash2(Math.round(x * 50) + 7, Math.round(y * 50) * 31 + Math.round(z * 50)) > 0.5 ? 1.16 : 0.94; p.setXYZ(v, x * k, y * k, z * k); } bushGeo.computeVertexNormals(); }
   const bl = [];
   for (let t = 0; t < 9000 && bl.length < 260; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
@@ -821,7 +869,8 @@ function buildPlaces() {
   cabin({ x: POI.shop[0], z: POI.shop[1] - 6, rot: 0, w: 11, d: 8, h: 4.5, wall: M.cream, roof: M.roofR, sign: 'ÉPICERIE', signBg: '#c0504a' });
   cabin({ x: POI.broc[0], z: POI.broc[1] - 6, rot: 0, w: 10, d: 8, h: 4.2, wall: lam(0x8fb8e0), roof: lam(0x4a6a9a), sign: 'BROCANTE', signBg: '#4a6a9a' });
   cabin({ x: POI.cafe[0], z: POI.cafe[1] - 6, rot: 0, w: 10, d: 8, h: 4.2, wall: lam(0xf5d77a), roof: M.roofR, sign: 'CAFÉ', signBg: '#a0583a' });
-  [[105, 48, 0xf2a7b5], [128, 48, 0xb8dca0], [152, 48, 0xf3e6c8], [172, 48, 0xc9b8f0]].forEach(h => cabin({ x: h[0], z: h[1], rot: Math.PI, w: 8, d: 7, h: 4, wall: lam(h[2]), roof: M.roofG }));
+  cabin({ x: 128, z: 48, rot: Math.PI, w: 11, d: 8, h: 5, wall: lam(0xf3e6c8), roof: lam(0x4a6a9a), sign: 'MAIRIE', signBg: '#4a6a9a' });
+  [[105, 48, 0xf2a7b5], [152, 48, 0xb8dca0], [172, 48, 0xc9b8f0]].forEach(h => cabin({ x: h[0], z: h[1], rot: Math.PI, w: 8, d: 7, h: 4, wall: lam(h[2]), roof: M.roofG }));
   for (let x = 102; x < 180; x += 16) { lampPost(x, 24); lampPost(x + 8, 37); }
   bench(128, 24, 0); bench(152, 37, Math.PI);
   sign('VILLAGE', 96, 22, 0, 2, 0.8, '#7a4a32');
@@ -863,17 +912,79 @@ function buildPlaces() {
   const wg = mesh(new T.BoxGeometry(1.8, 0.15, 6), lam(0xe8b84a), 1, 0.4, 2.8, wr); wg.rotation.x = 0.3;
   mesh(new T.BoxGeometry(0.15, 1.8, 1.4), lam(0xd84a3a), -3.8, 1.9, 0, wr);
   addBox(wx + 4, wz + 3, 4.5, 2.5, 0.7);
-  // Pont de la route sur la rivière
-  let best = null, bd = 1e9;
-  const rp = ROADS[0].pts;
-  for (let i = 0; i < rp.length - 1; i++) for (let k = 0; k <= 40; k++) { const x = lerp(rp[i][0], rp[i + 1][0], k / 40), z = lerp(rp[i][1], rp[i + 1][1], k / 40), d = riverDist(x, z); if (d < bd) { bd = d; best = [x, z, Math.atan2(rp[i + 1][1] - rp[i][1], rp[i + 1][0] - rp[i][0])]; } }
-  const bg = new T.Group(); bg.position.set(best[0], 0.35, best[1]); bg.rotation.y = -best[2]; scene.add(bg);
-  mesh(new T.BoxGeometry(18, 0.4, 8.5), M.woodL, 0, 0, 0, bg);
-  for (const s of [-1, 1]) { mesh(new T.BoxGeometry(18, 0.25, 0.25), M.wood, 0, 1.1, s * 4.2, bg); for (let k = -8; k <= 8; k += 4) mesh(new T.BoxGeometry(0.25, 1.1, 0.25), M.woodD, k, 0.55, s * 4.2, bg); }
+  // Ponts en bois partout où un chemin traverse l'eau
+  for (const br of BRIDGES) {
+    const bg = new T.Group(); bg.position.set(br.x, br.y - 0.2, br.z); bg.rotation.y = -br.a; scene.add(bg);
+    mesh(new T.BoxGeometry(br.hl * 2, 0.4, br.hw * 2), M.woodL, 0, 0, 0, bg);
+    for (let k = -br.hl + 0.6; k < br.hl; k += 1.2) mesh(new T.BoxGeometry(0.12, 0.42, br.hw * 2 + 0.1), M.wood, k, 0.01, 0, bg);
+    for (const s2 of [-1, 1]) { mesh(new T.BoxGeometry(br.hl * 2, 0.22, 0.22), M.woodD, 0, 1.1, s2 * br.hw, bg); for (let k = -br.hl; k <= br.hl + 0.01; k += br.hl / 2) mesh(new T.BoxGeometry(0.24, 1.1, 0.24), M.woodD, k, 0.55, s2 * br.hw, bg); }
+  }
+  // Source du ruisseau, entourée de rochers
+  for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283, x = POI.spring[0] + Math.cos(a) * 6.5, z = POI.spring[1] + Math.sin(a) * 6.5; mesh(new T.DodecahedronGeometry(srange(0.8, 1.5), 0), M.stone, x, groundY(x, z) + 0.3, z); }
+  // Village des cabanes dans les arbres
+  TREEHOUSES.forEach((t, i) => buildTreehouse(t[0], t[1], t[2], i));
+  ropeBridge(treehouses[0], treehouses[3]); ropeBridge(treehouses[1], treehouses[2]);
+  sign('VILLAGE DES ARBRES', POI.arbres[0] + 24, POI.arbres[1] - 4, -1.4, 2.2, 0.85, '#6e4430');
+  // Chantier de M. Béton (il veut raser le parc !)
+  scene.add(chantier);
+  const [cx2, cz2] = POI.chantier;
+  [[cx2 - 6, cz2 - 4, 0.6], [cx2 + 5, cz2 + 3, -2.4]].forEach(b => bulldozer(b[0], b[1], b[2]));
+  for (const p2 of [[cx2 - 8, cz2 + 8], [cx2 + 8, cz2 - 10], [cx2, cz2 - 12]]) { const pile = mesh(new T.ConeGeometry(3.2, 2.4, 7), lam(0x9a6a4a), p2[0], groundY(p2[0], p2[1]) + 1.1, p2[1], chantier); chantierCols.push(addCircle(p2[0], p2[1], 3)); }
+  for (let k = 0; k < 9; k++) { const x = 172 + k * 3.2, z = 4; mesh(new T.ConeGeometry(0.35, 0.9, 8), lam(0xff7a2f), x, groundY(x, z) + 0.45, z, chantier); }
+  const sb = sign('CENTRE COMMERCIAL BÉTON', cx2 - 2, 7, 0, 2.6, 1.15, '#55575c'); chantier.add(sb);
+  reserveSign = sign('RÉSERVE NATURELLE', cx2 - 2, 7, 0, 2.6, 1.15, '#3e6b4f'); reserveSign.visible = false;
   // Lampadaires du chemin du lac
   lampPost(18, 36); lampPost(28, 108);
 }
-let flagMesh = null, coatMesh = null, hatMesh = null;
+let flagMesh = null, coatMesh = null, hatMesh = null, reserveSign = null;
+const treehouses = [], chantier = new T.Group(), chantierCols = [];
+function buildTreehouse(x, z, rot, i) {
+  const y0 = groundY(x, z), g = new T.Group(); g.position.set(x, y0, z); g.rotation.y = rot; scene.add(g);
+  mesh(new T.CylinderGeometry(1.0, 1.5, 13, 8), M.trunk, 0, 6.5, 0, g);
+  const br2 = mesh(new T.CylinderGeometry(0.35, 0.55, 6, 6), M.trunk, 0, 12, -2.2, g); br2.rotation.x = -0.6;
+  for (const q of [[0, 15.5, -4.2, 3.8], [-3.4, 13.6, -3.4, 2.8], [3.2, 14.2, -3.8, 3], [0.4, 18, -5, 2.6]]) mesh(new T.IcosahedronGeometry(q[3], 1), [M.leaf, M.leafD, M.leafL][i % 3], q[0], q[1], q[2], g);
+  mesh(new T.CylinderGeometry(3.5, 3.5, 0.35, 14), M.woodL, 0, 6.6, 0, g);
+  for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283; if (Math.abs(angDiff(a, Math.PI / 2)) < 0.3) continue; mesh(new T.BoxGeometry(0.15, 1, 0.15), M.woodD, Math.cos(a) * 3.3, 7.2, Math.sin(a) * 3.3, g); }
+  const fixed = new T.Group(), broken = new T.Group(); g.add(fixed, broken);
+  const col = [0xf07a3a, 0x5a8fd0, 0xf2c14e, 0xe0607a][i];
+  mesh(new T.BoxGeometry(3, 2.4, 2.6), M.woodL, 0.4, 8, -0.8, fixed);
+  const tri = new T.Shape([new T.Vector2(-1.9, 0), new T.Vector2(1.9, 0), new T.Vector2(0, 1.5)]);
+  const rg = new T.ExtrudeGeometry(tri, { depth: 3.2, bevelEnabled: false }); rg.translate(0, 0, -1.6);
+  mesh(rg, lam(col), 0.4, 9.2, -0.8, fixed);
+  mesh(new T.BoxGeometry(0.9, 1.5, 0.1), M.woodD, 0.4, 7.6, 0.52, fixed);
+  mesh(new T.BoxGeometry(0.7, 0.6, 0.1), winMat, -0.8, 8.4, 0.52, fixed);
+  for (const fx of [-2.2, 2.4]) { mesh(new T.CylinderGeometry(0.3, 0.22, 0.4, 7), M.rust, fx, 7, 1.6, fixed); mesh(new T.IcosahedronGeometry(0.3, 0), M.pink, fx, 7.4, 1.6, fixed); }
+  const lan = new T.Sprite(glowMat); lan.position.set(1.9, 8.4, 0.6); lan.scale.set(3, 3, 1); fixed.add(lan);
+  mesh(new T.BoxGeometry(3, 1.3, 2.6), lam(0x7d6a5a), 0.4, 7.3, -0.8, broken).rotation.z = 0.14;
+  mesh(new T.BoxGeometry(2.2, 0.12, 1.2), lam(0x7d6a5a), 0.8, 8.1, -0.6, broken).rotation.set(0.3, 0.2, -0.4);
+  for (let k = 0; k < 3; k++) mesh(new T.BoxGeometry(2.4, 0.12, 0.4), lam(0x8a7060), -1 + k * 1.2, 0.1, 2.5 + k * 0.6, broken).rotation.y = k * 0.9;
+  // Échelle
+  for (const sx of [-0.45, 0.45]) mesh(new T.CylinderGeometry(0.07, 0.07, 6.8, 5), M.woodD, sx, 3.4, 3.7, g);
+  for (let y = 0.5; y < 6.6; y += 0.6) mesh(new T.BoxGeometry(1, 0.08, 0.08), M.wood, 0, y, 3.7, g);
+  addCircle(x, z, 1.7);
+  const lx = x + Math.sin(rot) * 4.6, lz = z + Math.cos(rot) * 4.6;
+  treehouses.push({ i, x, z, rot, g, fixed, broken, ladder: [lx, lz], y: y0 + 6.8 });
+}
+function ropeBridge(a, b) {
+  const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz), ang = Math.atan2(dz, dx), n = Math.floor((L - 7) / 0.8);
+  for (let k = 0; k <= n; k++) {
+    const t = (3.5 + k * 0.8) / L, x = a.x + dx * t, z = a.z + dz * t, y = lerp(a.y, b.y, t) - 0.3 - Math.sin(Math.PI * (k / n)) * 1.2;
+    const pl = mesh(new T.BoxGeometry(0.6, 0.1, 1.6), M.woodL, x, y, z); pl.rotation.y = -ang;
+  }
+}
+function bulldozer(x, z, rot) {
+  const g = new T.Group(); g.position.set(x, groundY(x, z), z); g.rotation.y = rot; chantier.add(g);
+  const y = lam(0xf2b632);
+  mesh(new T.BoxGeometry(3, 1.6, 4.2), y, 0, 1.5, 0, g);
+  mesh(new T.BoxGeometry(2.2, 1.7, 2), y, 0, 3.1, -0.8, g);
+  mesh(new T.BoxGeometry(2.24, 1, 1.6), winMat, 0, 3.3, -0.8, g);
+  for (const s of [-1, 1]) mesh(new T.BoxGeometry(0.9, 1.1, 4.8), M.dark, s * 1.7, 0.55, 0, g);
+  mesh(new T.BoxGeometry(4, 1.3, 0.3), M.metal, 0, 0.8, 2.9, g);
+  mesh(new T.CylinderGeometry(0.12, 0.12, 1.4, 6), M.dark, 0.9, 3, 1, g);
+  chantierCols.push(addBox(x, z, 2.2, 2.8, rot));
+}
+function setChantier(on) { chantier.visible = on; if (reserveSign) reserveSign.visible = !on; for (const c of chantierCols) c.off = !on; }
+function setTreehouses(fixed) { for (const t of treehouses) { t.fixed.visible = fixed; t.broken.visible = !fixed; } }
 
 // ================= Personnages =================
 // Chaque personnage est un groupe tourné vers +Z, avec des membres articulés (rig) pour l'animation.
@@ -1055,6 +1166,92 @@ function makePart(kind) {
   return g;
 }
 
+// ================= Animaux de la forêt =================
+function quad(parent, mat, r, len, x, y, z) { return limb(parent, mat, r, len, x, y, z); }
+function makeDeer(baby) {
+  const g = new T.Group(), f = lam(0xc0844a, { flatShading: false }), l = lam(0xf0dcc0, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.5, 0, 1.25, 0, 0.9, 0.8, 1.6);
+  const neck = new T.Mesh(new T.CylinderGeometry(0.16, 0.22, 0.8, 7), f); neck.position.set(0, 1.7, 0.6); neck.rotation.x = 0.5; body.add(neck);
+  const head = new T.Group(); head.position.set(0, 2.05, 0.85); body.add(head);
+  ball(head, f, 0.22, 0, 0, 0, 1, 0.9, 1.3); ball(head, M.dark, 0.06, 0, -0.04, 0.3);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.04, s * 0.12, 0.06, 0.16); const e = new T.Mesh(new T.ConeGeometry(0.08, 0.3, 5), f); e.position.set(s * 0.18, 0.2, -0.05); e.rotation.z = -s * 0.8; head.add(e); }
+  if (!baby) for (const s of [-1, 1]) { const a = new T.Mesh(new T.CylinderGeometry(0.03, 0.04, 0.5, 4), lam(0x8a6a4a)); a.position.set(s * 0.1, 0.38, 0); a.rotation.z = -s * 0.4; head.add(a); }
+  if (baby) for (let k = 0; k < 4; k++) ball(body, l, 0.07, (k % 2 ? 0.3 : -0.3), 1.5, -0.4 + k * 0.25);
+  ball(body, l, 0.12, 0, 1.35, -0.8);
+  const rig = { body, head, legL: quad(g, f, 0.07, 0.95, -0.22, 0.95, 0.5), legR: quad(g, f, 0.07, 0.95, 0.22, 0.95, -0.5), armL: quad(g, f, 0.07, 0.95, -0.22, 0.95, -0.5), armR: quad(g, f, 0.07, 0.95, 0.22, 0.95, 0.5) };
+  g.userData = { rig };
+  if (baby) g.scale.setScalar(0.55);
+  return g;
+}
+function makeRabbit(baby) {
+  const g = new T.Group(), f = lam(baby ? 0xe8dcd0 : 0xb8a898, { flatShading: false }), l = lam(0xffffff, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.32, 0, 0.35, 0, 0.9, 0.85, 1.1);
+  const head = new T.Group(); head.position.set(0, 0.62, 0.25); body.add(head);
+  ball(head, f, 0.2, 0, 0, 0);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.035, s * 0.09, 0.03, 0.16); const e = ball(head, f, 0.07, s * 0.07, 0.3, -0.05, 0.7, 2.6, 0.6); e.rotation.z = -s * 0.15; }
+  ball(head, lam(0xf08aa8), 0.03, 0, -0.03, 0.2);
+  ball(body, l, 0.1, 0, 0.4, -0.35);
+  g.userData = { rig: { body, head, armL: new T.Group(), armR: new T.Group() } };
+  if (baby) g.scale.setScalar(0.6);
+  return g;
+}
+function makeFox(baby) {
+  const g = new T.Group(), f = lam(0xe8803a, { flatShading: false }), l = lam(0xfff4e8, { flatShading: false }), d = lam(0x3a2a2a, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.3, 0, 0.55, 0, 0.9, 0.8, 1.6);
+  const head = new T.Group(); head.position.set(0, 0.8, 0.55); body.add(head);
+  ball(head, f, 0.22, 0, 0, 0);
+  const sn = new T.Mesh(new T.ConeGeometry(0.12, 0.3, 6), l); sn.rotation.x = Math.PI / 2; sn.position.set(0, -0.05, 0.28); head.add(sn);
+  ball(head, d, 0.04, 0, -0.05, 0.43);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.035, s * 0.1, 0.05, 0.17); const e = new T.Mesh(new T.ConeGeometry(0.09, 0.22, 4), f); e.position.set(s * 0.13, 0.24, -0.02); head.add(e); }
+  const tail = new T.Mesh(new T.ConeGeometry(0.16, 0.8, 7), f); tail.position.set(0, 0.55, -0.75); tail.rotation.x = -1.9; g.add(tail);
+  const tip = ball(g, l, 0.08, 0, 0.42, -1.1);
+  const rig = { body, head, tail, legL: quad(g, d, 0.05, 0.4, -0.14, 0.4, 0.28), legR: quad(g, d, 0.05, 0.4, 0.14, 0.4, -0.28), armL: quad(g, d, 0.05, 0.4, -0.14, 0.4, -0.28), armR: quad(g, d, 0.05, 0.4, 0.14, 0.4, 0.28) };
+  g.userData = { rig };
+  if (baby) g.scale.setScalar(0.6);
+  return g;
+}
+function makeDuck() {
+  const g = new T.Group(), w = lam(0xf4f0e8, { flatShading: false });
+  ball(g, w, 0.28, 0, 0.12, 0, 0.9, 0.7, 1.3);
+  const h = ball(g, lam(0x2f8a5a, { flatShading: false }), 0.15, 0, 0.42, 0.28);
+  const b = new T.Mesh(new T.ConeGeometry(0.06, 0.18, 5), lam(0xf2a23a)); b.rotation.x = Math.PI / 2; b.position.set(0, 0.4, 0.46); g.add(b);
+  return g;
+}
+function makeBird(hex) {
+  const g = new T.Group(), m = lam(hex);
+  ball(g, m, 0.18, 0, 0, 0, 0.8, 0.7, 1.4);
+  const wings = [];
+  for (const s of [-1, 1]) { const p = new T.Group(); p.position.x = s * 0.1; g.add(p); const w = new T.Mesh(new T.BoxGeometry(0.6, 0.03, 0.3), m); w.position.x = s * 0.3; p.add(w); wings.push(p); }
+  g.userData = { wings };
+  return g;
+}
+const bflyMats = [0xffd84d, 0xf59ac0, 0x8fd0f2, 0xffffff].map(h => new T.MeshBasicMaterial({ color: h, side: T.DoubleSide }));
+function makeButterfly(i) {
+  const g = new T.Group(), wings = [];
+  for (const s of [-1, 1]) { const p = new T.Group(); g.add(p); const w = new T.Mesh(new T.PlaneGeometry(0.22, 0.18), bflyMats[i % 4]); w.position.x = s * 0.11; w.rotation.x = -Math.PI / 2; p.add(w); wings.push(p); }
+  g.userData = { wings };
+  return g;
+}
+function makeBadger() {
+  const g = new T.Group(), f = lam(0x6a6a72, { flatShading: false }), w = lam(0xf4f0e8, { flatShading: false }), d = lam(0x26262a, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.5, 0, 0.7, 0, 1.05, 1.1, 0.95);
+  ball(body, lam(0x8e5a3a), 0.52, 0, 0.62, 0.05, 1.08, 0.7, 1);
+  const head = new T.Group(); head.position.set(0, 1.35, 0.05); body.add(head);
+  ball(head, w, 0.34, 0, 0, 0);
+  for (const s of [-1, 1]) { const st = ball(head, d, 0.12, s * 0.15, 0.05, 0.12, 0.7, 1.4, 1.6); ball(head, eyeMat, 0.045, s * 0.13, 0.04, 0.3); ball(head, d, 0.09, s * 0.24, 0.27, -0.05); }
+  ball(head, d, 0.06, 0, -0.08, 0.36);
+  const gl = new T.Group(); gl.position.set(0, 0.06, 0.33); head.add(gl);
+  for (const s of [-1, 1]) { const r = new T.Mesh(new T.TorusGeometry(0.09, 0.015, 4, 10), lam(0xc0a040)); r.position.x = s * 0.13; gl.add(r); }
+  const cane = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 1.2, 5), M.woodD); cane.position.set(0.55, 0.6, 0.3); g.add(cane);
+  const rig = { body, head, armL: limb(body, f, 0.1, 0.4, -0.45, 1.0, 0.15), armR: limb(body, f, 0.1, 0.4, 0.45, 1.0, 0.15), legL: limb(g, d, 0.12, 0.3, -0.22, 0.32, 0), legR: limb(g, d, 0.12, 0.3, 0.22, 0.32, 0) };
+  g.userData = { rig };
+  return g;
+}
+
 // ================= Objets du jeu =================
 const ITEMS = {
   sandwich: { n: 'Sandwich', e: '🥪', en: 30, sell: 4 }, gateau: { n: 'Gâteau', e: '🍰', en: 40, sell: 6 }, pomme: { n: 'Pomme', e: '🍎', en: 20, sell: 3 },
@@ -1075,11 +1272,12 @@ const BAG_MAX = 12;
 const CONES = [[-170, -40], [-140, 60], [-60, -150], [10, -182], [92, -80], [182, -30], [186, 160], [64, 172], [-40, 140], [-176, 176], [104, 100], [-92, 8]];
 const TREASURES = [[-92, 152], [112, -152], [176, 84]];
 const PARTS = { helice: [POI.wreck[0] - 2, POI.wreck[1] - 3], aileD: POI.peak, aileG: POI.lakePart, moteur: [POI.shed[0] + 1.5, POI.shed[1] + 3.2] };
+const MAYOR_SAYS = ['Oh, le grand lac !', 'Regardez, des cerfs dans la prairie !', 'Quelle belle montagne !', 'Des cabanes dans les arbres ? Adorable !', 'Que la forêt est verte !', 'Et ces petits renards !', 'Le camping a l\'air si joyeux !', 'Je n\'avais jamais vu le parc comme ça !'];
 const RINGS = [[-60, -60, 22], [0, -132, 30], [62, -150, 26], [150, -62, 22], [170, 62, 28], [82, 140, 24], [-40, 150, 30], [-130, 40, 26]];
 
 let S = null;
 function freshState() {
-  return { day: 1, time: 8, coins: 0, energy: 75, inv: [], q: 0, step: 0, cnt: 0, flags: {}, cones: [], fish: {}, dug: [], parts: {}, hats: {}, wear: '',
+  return { day: 1, time: 8, coins: 0, energy: 75, inv: [], q: 0, step: 0, cnt: 0, flags: {}, cones: [], fish: {}, dug: [], parts: {}, hats: {}, wear: '', stars: 0, trash: [], planks: [], babies: [],
     pos: [POI.bed[0] + 3, POI.bed[1] + 4], camper: [152, -114, 0.4], rings: [], done: false };
 }
 const has = id => S.inv.includes(id);
@@ -1222,6 +1420,9 @@ function buildNPCs() {
   addNPC('max', { name: 'Max le castor', col: '#a0583a', model: makeBeaver(), x: POI.max[0], z: POI.max[1], rot: 2.6, head: 1.9 });
   addNPC('lulu', { name: 'Lulu la loutre', col: '#3a9a9a', model: makeOtter(), x: POI.lulu[0], z: POI.lulu[1], rot: 0, dy: 0, head: 1.9 });
   addNPC('plume', { name: 'Madame Plume', col: '#7a5aa0', model: makeOwl(), x: POI.owl[0] + 3.4, z: POI.owl[1] + 1.2, rot: 0.3, dy: 10.2, head: 12.2, talkAt: [POI.owl[0], POI.owl[1] + 4] });
+  addNPC('blaireau', { name: 'Papi Blaireau', col: '#5a5a66', model: makeBadger(), x: POI.blaireau[0], z: POI.blaireau[1], rot: 1.2, head: 2 });
+  addNPC('gisele', { name: 'Gisèle (la maire)', col: '#4a6a9a', model: makeHuman(0x4a6a9a, 0x2a2a3a, 0xd8a050, {}), x: POI.mairie[0], z: POI.mairie[1], rot: 0, head: 2.5 });
+  addNPC('beton', { name: 'M. Béton', col: '#55575c', model: makeHuman(0x6a6c72, 0x3a3a40, 0x222222, { cap: 0xf2b632 }), x: POI.chantier[0] - 8, z: POI.chantier[1] + 12, rot: 3, head: 2.5 });
   addNPC('rosa', { name: 'Rosa (épicière)', col: '#c0504a', model: makeHuman(0xd84a3a, 0x3a3a5a, 0x5a3020, { cap: 0xffffff }), x: POI.shop[0] + 2.4, z: POI.shop[1] - 0.8, rot: 0, head: 2.5 });
   addNPC('leon', { name: 'Léon (brocanteur)', col: '#4a6a9a', model: makeHuman(0x5a8fd0, 0x5a4a3a, 0xdddddd), x: POI.broc[0] + 2.4, z: POI.broc[1] - 0.8, rot: 0, head: 2.5 });
   addNPC('nina', { name: 'Nina (café)', col: '#a0583a', model: makeHuman(0xf2c14e, 0x3a3a5a, 0x2a1a10), x: POI.cafe[0] + 2.4, z: POI.cafe[1] - 0.8, rot: 0, head: 2.5 });
@@ -1241,7 +1442,7 @@ function buildNPCs() {
   });
 }
 function canSee(n, ignoreDisguise) {
-  if (P.mode === 'fly' || n.hidden) return false;
+  if (P.mode === 'fly' || P.mode === 'tree' || n.hidden) return false;
   const dx = P.x - n.x, dz = P.z - n.z, d = Math.hypot(dx, dz);
   const range = n.range * (nightK > 0.5 ? (n.ranger ? 0.8 : 0.6) : 1);
   if (d > range) return false;
@@ -1400,9 +1601,9 @@ function buildInteractions() {
   } });
   for (const bk of baskets) addInter({ x: bk.x, z: bk.z, r: 2.6, icon: '🧺', label: () => 'Chiper le pique-nique', can: () => bk.takenDay !== S.day, act: () => steal(bk) });
   addInter({ x: POI.bed[0], z: POI.bed[1], r: 3, icon: '💤', label: () => S.time > 18 || S.time < 5 ? 'Dormir jusqu\'au matin' : 'Faire une sieste', can: () => true, act: sleep });
-  for (const id of ['max', 'lulu', 'plume', 'rosa', 'leon', 'nina']) {
+  for (const id of ['max', 'lulu', 'plume', 'rosa', 'leon', 'nina', 'blaireau', 'gisele', 'beton']) {
     const n = NPCS[id], at = n.talkAt || [n.x, n.z];
-    addInter({ x: at[0], z: at[1], r: id === 'plume' ? 6 : 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => true, act: () => talkTo(id) });
+    addInter({ get x() { return n.talkAt ? n.talkAt[0] : n.x; }, get z() { return n.talkAt ? n.talkAt[1] : n.z; }, r: id === 'plume' ? 6 : 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => !n.hidden, act: () => talkTo(id) });
   }
   addInter({ x: POI.bench[0], z: POI.bench[1], r: 2.8, icon: '🎩', label: () => 'Prendre le chapeau', can: () => !has('chapeau') && !S.flags.disguise, act: () => { hatMesh.visible = false; give('chapeau'); questEvent('get:chapeau'); } });
   addInter({ x: POI.cloth[0] - 1, z: POI.cloth[1], r: 2.8, icon: '🧥', label: () => 'Prendre le manteau', can: () => !has('manteau') && !S.flags.disguise, act: () => {
@@ -1602,16 +1803,16 @@ function updateCamper(dt) {
     C.y = Math.max(floor, gy + C.alt);
     if (G.landing && C.y <= floor + 0.05) {
       if (waterDepth(C.x, C.z) > 0.2) { if (!G.waterSaid) { G.waterSaid = true; toast('Au-dessus de l\'eau ! Avance jusqu\'à la terre ferme pour te poser.'); } }
-      else { G.landing = false; G.waterSaid = false; P.mode = 'drive'; C.spd = 4; C.alt = 0; status('Atterrissage réussi !', 'hide', 2.5); sfx.land(); puff(C.x, C.y, C.z, 20, [0.85, 0.78, 0.65], 3); }
+      else { G.landing = false; G.waterSaid = false; P.mode = 'drive'; C.spd = 4; C.alt = 0; status('Atterrissage réussi !', 'hide', 2.5); sfx.land(); questEvent('land'); puff(C.x, C.y, C.z, 20, [0.85, 0.78, 0.65], 3); }
     }
     u.prop.rotation.z += dt * 30;
     u.body.rotation.z = C.bank; u.body.rotation.x = -C.vy * 0.02;
     if (Math.random() < dt * 14) emit(C.x - Math.sin(C.rot) * 4, C.y + 2, C.z - Math.cos(C.rot) * 4, 0, 0, 0, 1.2, 0.5, 1, 1, 1, 0);
     // Anneaux
-    if (qid() === 'ciel' && S.step === 1) RINGS.forEach((r, i) => {
+    if (qid() === 'maire' && S.step === 2) RINGS.forEach((r, i) => {
       if (S.rings.includes(i)) return;
       const m = ringMeshes[i];
-      if (Math.hypot(m.position.x - C.x, m.position.z - C.z) < 7 && Math.abs(m.position.y - (C.y + 2)) < 7) { S.rings.push(i); m.visible = false; sparkle(m.position.x, m.position.y, m.position.z); sfx.ring(); questEvent('ring'); }
+      if (Math.hypot(m.position.x - C.x, m.position.z - C.z) < 7 && Math.abs(m.position.y - (C.y + 2)) < 7) { S.rings.push(i); m.visible = false; sparkle(m.position.x, m.position.y, m.position.z); sfx.ring(); questEvent('ring'); toast('Gisèle : « ' + MAYOR_SAYS[i % MAYOR_SAYS.length] + ' »'); }
     });
     P.x = C.x; P.z = C.z; P.y = C.y;
   } else { C.y = Math.max(groundY(C.x, C.z), -0.6); u.prop.rotation.z += dt * (S.flags.wings ? 0.5 : 0); }
@@ -1623,7 +1824,7 @@ function takeOff() {
   P.mode = 'fly'; C.alt = 0; C.vy = 9; G.landing = false; C.spd = Math.max(C.spd, 8);
   sfx.takeoff(); questEvent('takeoff');
   status('En vol ! Espace / ⬆️ pour monter, C / ⬇️ pour descendre, Action pour atterrir', 'info', 6);
-  for (const i in RINGS) ringMeshes[i].visible = qid() === 'ciel' && S.step === 1 && !S.rings.includes(+i);
+  for (const i in RINGS) ringMeshes[i].visible = qid() === 'maire' && S.step === 2 && !S.rings.includes(+i);
 }
 
 // ================= Missions =================
@@ -1631,11 +1832,13 @@ const QUESTS = [
   { id: 'appetit', title: 'Bon appétit, Oscar !', steps: [
     { t: 'Mange des baies dans un buisson à baies roses', ev: 'berries', at: () => nearestBerry() },
     { t: 'Va voir Max le castor à son atelier, près de la rivière', talk: 'max', at: () => POI.max, lines: [
-      ['max', 'Salut Oscar ! Tu tombes bien, j\'ai une faim de castor !'],
-      ['max', 'Les campeurs ont plein de pique-niques. Tu pourrais m\'en rapporter trois ?'],
-      ['oscar', 'Je suis un ours très discret…'],
-      ['max', 'Attention à Gérard, le garde forestier. S\'il te voit, il te ramène dans la forêt !'],
-      ['max', 'Reste en dehors des cônes jaunes des campeurs. Et cache-toi dans les gros buissons !'],
+      ['max', 'Salut Oscar ! J\'ai une très mauvaise nouvelle…'],
+      ['max', 'Monsieur Béton veut raser notre parc pour construire un énorme centre commercial !'],
+      ['oscar', 'Quoi ?! Mais c\'est notre maison !'],
+      ['max', 'La maire va bientôt décider. Si le parc est propre et plein de vie, elle en fera une réserve naturelle.'],
+      ['max', 'Il faut gagner 5 étoiles du parc. On va y arriver ensemble !'],
+      ['max', 'Mais d\'abord… j\'ai une faim de castor ! Rapporte-moi 3 pique-niques du camping.'],
+      ['max', 'Attention à Gérard, le garde forestier. Reste hors des cônes jaunes et cache-toi dans les gros buissons !'],
     ] },
   ] },
   { id: 'piquenique', title: 'Le grand pique-nique', steps: [
@@ -1643,7 +1846,7 @@ const QUESTS = [
     { t: 'Rapporte les pique-niques à Max', talk: 'max', at: () => POI.max, lines: [
       ['max', 'Miam miam ! Merci Oscar, tu es le meilleur !'],
       ['max', 'Tiens, voici 30 pièces que j\'ai trouvées au fond de la rivière.'],
-      ['max', 'Tu sais quoi ? Avec un déguisement, tu pourrais aller au village comme un humain !'],
+      ['max', 'Pour sauver le parc, tu devras aller au village. Avec un déguisement, tout le monde te prendra pour un humain !'],
       ['max', 'Il te faut un chapeau et un manteau. J\'ai vu un chapeau oublié sur le banc, au sud du lac.'],
     ], done: () => { let k = 0; for (const f of FOODS) while (k < 3 && take(f)) k++; S.coins += 30; sfx.coin(); toast('🪙 +30 pièces'); } },
   ] },
@@ -1653,7 +1856,7 @@ const QUESTS = [
     { t: 'Mets ton déguisement (touche T ou bouton 🎩)', ev: 'disguise', start: () => { S.flags.disguise = 1; $('bDis').hidden = false; } },
     { t: 'Va au village déguisé et achète une canne à pêche à l\'épicerie', ev: 'buy:canne', at: () => POI.shop },
   ] },
-  { id: 'lulu', title: 'Lulu la loutre', steps: [
+  { id: 'lulu', title: 'Un lac plein de vie', steps: [
     { t: 'Va voir Lulu la loutre au bout du ponton du lac', talk: 'lulu', at: () => POI.lulu, lines: [
       ['lulu', 'Oh ! Un ours avec une canne à pêche ! Tu veux que je t\'apprenne ?'],
       ['lulu', 'Mets-toi face à l\'eau et appuie sur Action pour lancer ta ligne.'],
@@ -1662,9 +1865,29 @@ const QUESTS = [
     { t: 'Pêche 3 poissons', ev: 'fish', n: 3, at: () => POI.lulu },
     { t: 'Vends un poisson à Léon, à la brocante du village (déguisé !)', ev: 'sell', at: () => POI.broc },
     { t: 'Retourne voir Lulu au ponton', talk: 'lulu', at: () => POI.lulu, lines: [
-      ['lulu', 'Bravo, tu es un vrai pêcheur maintenant !'],
-      ['lulu', 'Madame Plume la chouette te cherchait. Elle habite le grand arbre, au nord du parc.'],
-    ] },
+      ['lulu', 'Bravo ! Avec tous ces poissons, la maire verra que le lac est plein de vie.'],
+      ['lulu', 'Tiens, voici ta première étoile du parc !'],
+      ['lulu', 'Papi Blaireau te cherche, au village des arbres, à l\'ouest. Il est très sage.'],
+    ], done: () => star() },
+  ] },
+  { id: 'proprete', title: 'Un parc tout propre', steps: [
+    { t: 'Va voir Papi Blaireau au village des arbres, à l\'ouest', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Ah, te voilà, jeune Oscar. Je suis Papi Blaireau.'],
+      ['blaireau', 'Les ouvriers de Monsieur Béton ont jeté des déchets partout dans le parc. Quelle honte !'],
+      ['blaireau', 'Ramasse-les tous, il y en a dix. Ta flèche orange te guidera.'],
+    ], done: () => showTrash() },
+    { t: 'Ramasse les 10 déchets dans le parc', ev: 'trash', n: 10, at: () => nearestOf(TRASH, S.trash) },
+    { t: 'Retourne voir Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Le parc brille comme un sou neuf ! Voici une étoile du parc.'],
+      ['blaireau', 'Hélas, le bruit des bulldozers a fait peur aux bébés animaux. Trois se sont perdus…'],
+    ], done: () => star() },
+  ] },
+  { id: 'animaux', title: 'Les bébés perdus', steps: [
+    { t: 'Retrouve les 3 bébés animaux et ramène-les à leur famille', ev: 'baby', n: 3, at: () => babyTarget() },
+    { t: 'Retourne voir Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Les familles sont réunies grâce à toi ! Voici une nouvelle étoile du parc.'],
+      ['blaireau', 'Madame Plume la chouette voulait te parler. Elle habite le grand arbre, au nord.'],
+    ], done: () => star() },
   ] },
   { id: 'carte', title: 'La carte de Madame Plume', steps: [
     { t: 'Va voir Madame Plume au grand arbre, au nord', talk: 'plume', at: () => POI.owl, lines: [
@@ -1676,14 +1899,27 @@ const QUESTS = [
     { t: 'Creuse aux 3 croix rouges de la carte', ev: 'dig', n: 3, at: () => nearestTreasure() },
     { t: 'Montre tes trouvailles à Madame Plume', talk: 'plume', at: () => POI.owl, lines: [
       ['plume', 'Un plan d\'avion !? Regarde : des ailes, une hélice, un moteur…'],
-      ['plume', 'Avec ça, on pourrait faire voler n\'importe quoi ! Max saurait le construire.'],
+      ['plume', 'Avec ça, on pourrait faire voler n\'importe quoi ! Montre-le à Papi Blaireau.'],
     ] },
+  ] },
+  { id: 'cabanes', title: 'Le village des arbres', steps: [
+    { t: 'Montre le plan d\'avion à Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Un plan d\'avion ? Max sera ravi ! Mais d\'abord, aide notre village.'],
+      ['blaireau', 'Toutes nos cabanes dans les arbres sont cassées. Rapporte-moi 6 planches.'],
+      ['blaireau', 'Il y en a à la casse, chez Max, à la station des gardes… Cherche bien !'],
+    ], done: () => showPlanks() },
+    { t: 'Trouve 6 planches dans le parc', ev: 'plank', n: 6, at: () => nearestOf(PLANKS, S.planks) },
+    { t: 'Rapporte les planches à Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Merveilleux ! Regarde nos cabanes, elles sont comme neuves !'],
+      ['blaireau', 'Tu peux grimper dans les cabanes par les échelles. Il y a peut-être des surprises là-haut…'],
+      ['blaireau', 'Voici ta quatrième étoile ! Maintenant, file montrer le plan d\'avion à Max.'],
+    ], done: () => { S.flags.th = 1; setTreehouses(true); sparkle(POI.arbres[0], 8, POI.arbres[1]); star(); } },
   ] },
   { id: 'campingcar', title: 'Le vieux camping-car', steps: [
     { t: 'Montre le plan d\'avion à Max', talk: 'max', at: () => POI.max, lines: [
       ['max', 'Wouah ! Un plan pour faire voler… n\'importe quoi !'],
+      ['max', 'J\'ai une idée : on va emmener la maire voir le parc d\'en haut. Elle ne pourra pas dire non !'],
       ['max', 'Il nous faut un véhicule. Il y a un vieux camping-car à la casse, au nord du village.'],
-      ['oscar', 'Un camping-car volant ? Je pourrais enfin voir le parc d\'en haut !'],
     ] },
     { t: 'Trouve le vieux camping-car à la casse', ev: 'camperFound', at: () => [C.x, C.z] },
     { t: 'Conduis le camping-car jusqu\'à l\'atelier de Max', ev: 'camperAtMax', at: () => POI.workshop },
@@ -1699,19 +1935,29 @@ const QUESTS = [
     { t: 'Rapporte les pièces à Max', talk: 'max', at: () => POI.max, lines: [
       ['max', 'Toutes les pièces ! Laisse-moi bricoler un peu…'],
       ['max', 'Tac tac tac… Bzzzz… Boum ! Voilà !'],
-      ['max', 'Ton camping-car volant est prêt ! Monte dedans et appuie sur Action pour décoller !'],
+      ['max', 'Ton camping-car volant est prêt ! Va chercher la maire au village et emmène-la voir le parc !'],
     ], done: () => { S.flags.wings = 1; for (const k of ['helice', 'aileG', 'aileD', 'moteur']) take(k); C.x = POI.workshop[0] - 2; C.z = POI.workshop[1] + 14; C.rot = 0.4; sparkle(C.x, 3, C.z); sfx.fanfare(); } },
   ] },
-  { id: 'ciel', title: 'Le parc vu du ciel', steps: [
-    { t: 'Monte dans le camping-car et décolle !', ev: 'takeoff', at: () => [C.x, C.z] },
-    { t: 'Passe dans les 8 anneaux dorés au-dessus du parc', ev: 'ring', n: 8, at: () => nearestRing(), start: () => { RINGS.forEach((r, i) => { ringMeshes[i].visible = !S.rings.includes(i); }); } },
-    { t: 'Atterris et va voir Max', talk: 'max', at: () => POI.max, lines: [
-      ['max', 'Tu as réussi, Oscar ! Tu es le premier ours pilote du monde !'],
-      ['oscar', 'Le parc est encore plus beau vu d\'en haut !'],
-      ['max', 'Maintenant, le parc est à toi : pêche, cherche les pommes de pin dorées, vole où tu veux !'],
-    ], done: () => { S.done = true; setTimeout(() => banner('Bravo !', 'Tu as terminé l\'aventure d\'Oscar 🐻✈️'), 600); sfx.fanfare(); } },
+  { id: 'maire', title: 'Le grand jour', steps: [
+    { t: 'Va chercher la maire à la mairie du village (déguisé !)', talk: 'gisele', at: () => POI.mairie, lines: [
+      ['gisele', 'Bonjour monsieur… euh… vous êtes bien poilu !'],
+      ['oscar', 'Madame la maire, venez voir notre parc d\'en haut, avant de décider !'],
+      ['gisele', 'En camping-car volant ? Quelle drôle d\'idée… D\'accord, allons-y !'],
+    ], done: () => { S.flags.mayor = 1; NPCS.gisele.hidden = true; NPCS.gisele.model.visible = false; } },
+    { t: 'Monte dans le camping-car et décolle avec la maire', ev: 'takeoff', at: () => [C.x, C.z] },
+    { t: 'Fais visiter le parc : passe dans les 8 anneaux dorés', ev: 'ring', n: 8, at: () => nearestRing(), start: () => { RINGS.forEach((r, i) => { ringMeshes[i].visible = !S.rings.includes(i); }); } },
+    { t: 'Atterris quelque part dans le parc', ev: 'land' },
+    { t: 'Écoute la décision de la maire', talk: 'gisele', at: () => [NPCS.gisele.x, NPCS.gisele.z], start: () => { const g = NPCS.gisele; g.x = C.x + 4; g.z = C.z + 2; g.hidden = false; g.model.visible = true; }, lines: [
+      ['gisele', 'Quel voyage ! Ce parc est magnifique…'],
+      ['gisele', 'Des cerfs, des renards, des cabanes dans les arbres, un lac plein de poissons, et tout est si propre !'],
+      ['gisele', 'C\'est décidé : le parc des Pins devient une RÉSERVE NATURELLE ! Personne n\'y touchera jamais.'],
+      ['oscar', 'Hourra ! Le parc est sauvé !'],
+      ['gisele', 'Et Monsieur Béton peut remballer ses bulldozers !'],
+    ], done: () => { star(); S.done = true; setChantier(false); NPCS.beton.hidden = true; NPCS.beton.model.visible = false; G.fireworks = 14; setTimeout(() => banner('Le parc est sauvé !', 'Merci Oscar 🐻🌲'), 900); sfx.fanfare(); } },
   ] },
 ];
+function star() { S.stars = (S.stars || 0) + 1; setTimeout(() => banner('🌟 Étoile du parc !', S.stars + ' / 5'), 300); sfx.quest(); updateHUD(); }
+function nearestOf(list, done) { let b = null, bd = 1e9; list.forEach((t, i) => { if (done.includes(i)) return; const d = Math.hypot(t[0] - P.x, t[1] - P.z); if (d < bd) { bd = d; b = t; } }); return b; }
 const qid = () => (QUESTS[S.q] || {}).id;
 function curStep() { const q = QUESTS[S.q]; return q ? q.steps[S.step] : null; }
 function questEvent(ev) {
@@ -1739,17 +1985,20 @@ function talkTo(id) {
     talk(st.lines, () => { if (st.done) st.done(); advance(); });
     return;
   }
-  if (id === 'rosa' || id === 'leon' || id === 'nina') {
+  if (id === 'rosa' || id === 'leon' || id === 'nina' || (id === 'gisele' && !S.flags.mayor)) {
     if (!P.disguise) {
       const n = NPCS[id];
       talk([[id, pick(['Aaaah ! Un ours dans ma boutique !', 'Au secours ! Gérard !!'])]], () => { n.alert = 1; raiseAlarm(n, 'Un ours au village !'); });
       return;
     }
+    if (id === 'gisele') { talk([['gisele', S.stars >= 4 ? 'Bonjour ! Je réfléchis encore au projet de Monsieur Béton…' : 'Monsieur Béton dit que ce parc ne sert à rien. Je dois bientôt décider…']]); return; }
     openShop(id); return;
   }
   const idle = {
     max: S.done ? [['max', 'Le camping-car volant marche à merveille ! Profite du parc, Oscar !']] : [['max', pick(['Courage Oscar, je compte sur toi !', 'Regarde ta mission en haut à droite de l\'écran.', 'Un castor n\'arrête jamais de bricoler !'])]],
     lulu: [['lulu', has('canne') ? pick(['Les poissons dorés sont très rares… mais ils valent cher !', 'Il paraît qu\'il y a 8 sortes de poissons dans le parc.']) : 'Il te faudrait une canne à pêche ! L\'épicerie du village en vend.']],
+    blaireau: [['blaireau', S.done ? 'Grâce à toi, notre forêt vivra pour toujours. Merci, Oscar.' : pick(['La patience est la plus grande qualité d\'un ours.', 'Chaque étoile du parc nous rapproche de la victoire !', 'Les cabanes dans les arbres ont plus de cent ans, tu sais.'])]],
+    beton: [['beton', pick(['Ce parc sera bientôt un parking géant ! Ha ha ha !', 'Les arbres, ça ne sert à rien. Le béton, c\'est l\'avenir !', 'Un ours ? Pfff… Bientôt, il n\'y aura plus de place pour toi ici !'])]],
     plume: [['plume', pick(['Hou hou ! Il paraît que 12 pommes de pin dorées sont cachées dans le parc…', 'La nuit, les campeurs dorment. Mais Gérard fait sa ronde avec sa lampe !'])]],
   };
   talk(idle[id] || [[id, 'Bonjour !']]);
@@ -1801,6 +2050,172 @@ function renderShop() {
       if (!give(id)) return;
       S.coins -= price; sfx.coin(); questEvent('buy:' + id); renderShop(); updateHUD(); saveGame();
     }, owned);
+  }
+}
+
+// ================= Animaux du parc =================
+const ANIMALS = [], BABIES = [];
+let trashMeshes = [], plankMeshes = [], fishJump = null;
+function addAnimal(kind, x, z, o) {
+  const model = kind === 'deer' ? makeDeer(o && o.baby) : kind === 'rabbit' ? makeRabbit(o && o.baby) : kind === 'fox' ? makeFox(o && o.baby) : kind === 'duck' ? makeDuck() : kind === 'bird' ? makeBird(o.col) : makeButterfly(ANIMALS.length);
+  scene.add(model);
+  const a = Object.assign({ kind, model, x, z, y: 0, home: [x, z], r: 18, tx: x, tz: z, t: rand(0, 4), spd: 0, rot: rand(0, 6), phase: rand(0, 6), ang: rand(0, 6) }, o || {});
+  ANIMALS.push(a);
+  return a;
+}
+function buildAnimals() {
+  for (let i = 0; i < 4; i++) addAnimal('deer', POI.meadow[0] + rand(-10, 10), POI.meadow[1] + rand(-10, 10), { r: 22 });
+  for (let i = 0; i < 3; i++) addAnimal('rabbit', POI.burrow[0] + rand(-6, 6), POI.burrow[1] + rand(-6, 6), { r: 12 });
+  for (let i = 0; i < 3; i++) addAnimal('rabbit', -92 + rand(-6, 6), 40 + rand(-6, 6), { r: 14 });
+  for (let i = 0; i < 2; i++) addAnimal('fox', POI.den[0] + rand(-5, 5), POI.den[1] + rand(-5, 5), { r: 14 });
+  for (let i = 0; i < 6; i++) addAnimal('duck', LAKE.x, LAKE.z, { ang: i * 1.05 + rand(-0.2, 0.2), lr: rand(0.35, 0.75), r: 0 });
+  for (let f = 0; f < 3; f++) { const c = [rand(-80, 80), rand(-80, 80)], col = [0x3a3a4a, 0x5a8fd0, 0xd84a3a][f]; for (let i = 0; i < 5; i++) addAnimal('bird', c[0], c[1], { col, flock: f, off: [rand(-4, 4), rand(-1.5, 1.5), rand(-4, 4)], fr: rand(60, 110), fs: rand(0.06, 0.1) * (f % 2 ? 1 : -1) }); }
+  seed = 4242;
+  for (let i = 0; i < 26; i++) { let x, z, k = 0; do { x = srange(-180, 180); z = srange(-180, 180); k++; } while ((forestK(x, z) > 0.4 || lakeE(x, z) < 1.3 || riverDist(x, z) < 9) && k < 50); addAnimal('bfly', x, z, { r: 5 }); }
+  // Bébés perdus
+  [['faon', 'le faon', POI.faon, POI.meadow, 'deer'], ['lapereau', 'le lapereau', POI.lapereau, POI.burrow, 'rabbit'], ['renardeau', 'le renardeau', POI.renardeau, POI.den, 'fox']].forEach(([id, name, at, home, kind]) => {
+    const a = addAnimal(kind, at[0], at[1], { baby: true, id, name, lost: at, family: home, r: 3 });
+    BABIES.push(a);
+  });
+  // Poisson qui saute dans le lac
+  fishJump = new T.Mesh(new T.ConeGeometry(0.25, 0.9, 6), lam(0xf2a23a)); fishJump.rotation.z = Math.PI / 2; fishJump.visible = false; scene.add(fishJump);
+  fishJump.userData = { t: 3 };
+}
+function updateAnimals(dt) {
+  for (const a of ANIMALS) {
+    const dP = Math.hypot(a.x - P.x, a.z - P.z);
+    if (dP > 140 && a.kind !== 'bird') { a.model.visible = false; continue; }
+    a.model.visible = true;
+    a.t -= dt; a.phase += dt;
+    if (a.kind === 'duck') {
+      a.ang += dt * 0.08 * (a.lr > 0.5 ? 1 : -1);
+      a.x = LAKE.x + Math.cos(a.ang) * LAKE.rx * a.lr; a.z = LAKE.z + Math.sin(a.ang) * LAKE.rz * a.lr;
+      a.y = WATER_Y + Math.sin(a.phase * 2) * 0.04;
+      a.rot = Math.atan2(-Math.sin(a.ang) * (a.lr > 0.5 ? 1 : -1) * LAKE.rx, Math.cos(a.ang) * (a.lr > 0.5 ? 1 : -1) * LAKE.rz);
+    } else if (a.kind === 'bird') {
+      const t = G.t * a.fs + a.flock * 2;
+      const cx = Math.cos(t) * a.fr, cz = Math.sin(t) * a.fr;
+      a.x = cx + a.off[0]; a.z = cz + a.off[2];
+      a.y = Math.max(groundY(a.x, a.z), 0) + 22 + a.off[1] + Math.sin(G.t + a.off[0]) * 0.6;
+      a.rot = Math.atan2(-Math.sin(t) * Math.sign(a.fs), Math.cos(t) * Math.sign(a.fs));
+      for (const [k, w] of a.model.userData.wings.entries()) w.rotation.z = (k ? -1 : 1) * Math.sin(G.t * 12 + a.off[0]) * 0.7;
+    } else if (a.kind === 'bfly') {
+      if (a.t <= 0) { a.t = rand(0.6, 1.6); a.tx = a.home[0] + rand(-a.r, a.r); a.tz = a.home[1] + rand(-a.r, a.r); }
+      a.x += (a.tx - a.x) * dt * 0.8; a.z += (a.tz - a.z) * dt * 0.8;
+      a.y = groundY(a.x, a.z) + 0.9 + Math.sin(a.phase * 3) * 0.4;
+      a.rot = Math.atan2(a.tx - a.x, a.tz - a.z);
+      for (const [k, w] of a.model.userData.wings.entries()) w.rotation.z = (k ? -1 : 1) * (0.3 + Math.sin(G.t * 26 + a.home[0]) * 0.9);
+    } else {
+      // Animaux qui marchent : promenade, fuite si Oscar s'approche, bébés qui suivent
+      let spd = 0, tx = a.tx, tz = a.tz;
+      if (a.follow) {
+        const bx = P.x - Math.sin(P.rot) * 2.6, bz = P.z - Math.cos(P.rot) * 2.6;
+        tx = bx; tz = bz; const d = Math.hypot(tx - a.x, tz - a.z); spd = d > 1 ? Math.min(9, d * 2.2) : 0;
+        if (Math.hypot(a.x - a.family[0], a.z - a.family[1]) < 10) deliverBaby(a);
+      } else {
+        const scared = !a.baby && dP < (a.kind === 'deer' ? 9 : 6) && P.mode === 'walk' && !P.hidden;
+        if (scared) { const dx = a.x - P.x, dz = a.z - P.z; tx = a.x + dx / dP * 10; tz = a.z + dz / dP * 10; spd = a.kind === 'rabbit' ? 6 : 7; a.t = 1.5; a.tx = tx; a.tz = tz; }
+        else {
+          if (a.t <= 0) { a.t = rand(3, 7); a.tx = a.home[0] + rand(-a.r, a.r); a.tz = a.home[1] + rand(-a.r, a.r); a.idle = Math.random() < 0.4; }
+          if (!a.idle) spd = a.kind === 'deer' ? 1.4 : a.kind === 'rabbit' ? 2 : 1.8;
+        }
+      }
+      const dx = tx - a.x, dz = tz - a.z, d = Math.hypot(dx, dz);
+      if (d > 0.4 && spd > 0) {
+        const nx = a.x + dx / d * spd * dt, nz = a.z + dz / d * spd * dt;
+        if (waterDepth(nx, nz) < 0.5 || a.follow) { a.x = nx; a.z = nz; collide(a, 0.4); }
+        else a.t = 0;
+        a.rot += angDiff(a.rot, Math.atan2(dx, dz)) * (1 - Math.exp(-dt * 8));
+        a.spd = spd;
+      } else a.spd = 0;
+      a.y = (a.follow && P.swim ? WATER_Y - 0.3 : walkY(a.x, a.z));
+      if (a.kind === 'rabbit' && a.spd > 0) a.y += Math.abs(Math.sin(a.phase * 9)) * 0.35;
+      if (a.spd > 0) animRig(a.model, a.phase * (a.kind === 'deer' ? 5 : 8), 0.7, dt); else { animRig(a.model, 0, 0, dt); const h = a.model.userData.rig.head; if (h) h.rotation.x = a.kind === 'deer' && a.idle ? 0.9 : 0; }
+    }
+    a.model.position.set(a.x, a.y, a.z); a.model.rotation.y = a.rot;
+  }
+  // Poisson qui saute
+  const fj = fishJump.userData;
+  fj.t -= dt;
+  if (fj.t <= 0 && !fj.on) {
+    fj.on = true; fj.k = 0; const ang = rand(0, 6.28), r = rand(0, 0.6);
+    fj.x = LAKE.x + Math.cos(ang) * LAKE.rx * r; fj.z = LAKE.z + Math.sin(ang) * LAKE.rz * r; fj.dir = rand(0, 6.28);
+    if (Math.hypot(fj.x - P.x, fj.z - P.z) < 90) splash(fj.x, fj.z);
+  }
+  if (fj.on) {
+    fj.k += dt / 0.9;
+    fishJump.visible = true;
+    fishJump.position.set(fj.x + Math.cos(fj.dir) * fj.k * 2, WATER_Y + Math.sin(fj.k * Math.PI) * 1.6, fj.z + Math.sin(fj.dir) * fj.k * 2);
+    fishJump.rotation.set(0, -fj.dir, Math.PI / 2 - (fj.k - 0.5) * 2);
+    if (fj.k >= 1) { fj.on = false; fj.t = rand(3, 7); fishJump.visible = false; splash(fishJump.position.x, fishJump.position.z); }
+  }
+}
+function deliverBaby(a) {
+  a.follow = false; a.home = a.family.slice(); a.r = 14; a.t = 0;
+  if (!S.babies.includes(a.id)) S.babies.push(a.id);
+  hearts(a.x, a.y + 1.5, a.z); sfx.catchFish();
+  toast('❤️ ' + a.name.charAt(0).toUpperCase() + a.name.slice(1) + ' a retrouvé sa famille !');
+  questEvent('baby');
+}
+function babyTarget() {
+  const f = BABIES.find(b => b.follow);
+  if (f) return f.family;
+  const b = BABIES.find(x => !S.babies.includes(x.id));
+  return b ? [b.x, b.z] : null;
+}
+function showTrash() { trashMeshes.forEach((m, i) => { m.visible = !S.trash.includes(i); }); }
+function showPlanks() { plankMeshes.forEach((m, i) => { m.visible = !S.planks.includes(i); }); }
+function buildExtraInteractions() {
+  // Déchets et planches
+  const canG = new T.CylinderGeometry(0.22, 0.22, 0.5, 8), bagG = new T.DodecahedronGeometry(0.45, 0);
+  trashMeshes = TRASH.map((t, i) => {
+    const m = new T.Mesh(i % 2 ? canG : bagG, i % 2 ? M.metal : lam(0x3a3a40)); m.position.set(t[0], walkY(t[0], t[1]) + 0.3, t[1]); m.rotation.z = i % 2 ? Math.PI / 2 : 0; m.castShadow = true; m.visible = false; scene.add(m);
+    addInter({ x: t[0], z: t[1], r: 2.4, icon: '🗑️', label: () => 'Ramasser le déchet', can: () => m.visible, act: () => { m.visible = false; S.trash.push(i); sfx.pickup(); puff(t[0], m.position.y, t[1], 6, [1, 1, 1], 1.5); questEvent('trash'); } });
+    return m;
+  });
+  plankMeshes = PLANKS.map((t, i) => {
+    const m = new T.Mesh(new T.BoxGeometry(2.4, 0.15, 0.5), M.woodL); m.position.set(t[0], walkY(t[0], t[1]) + 0.12, t[1]); m.rotation.y = i; m.castShadow = true; m.visible = false; scene.add(m);
+    addInter({ x: t[0], z: t[1], r: 2.6, icon: '🪵', label: () => 'Prendre la planche', can: () => m.visible, act: () => {
+      if (i === 4 && witnesses()) { raiseAlarm(firstWitness(), 'Hé ! Ces planches sont à moi !'); return; }
+      m.visible = false; S.planks.push(i); sfx.pickup(); sparkle(t[0], m.position.y + 1, t[1]); questEvent('plank');
+    } });
+    return m;
+  });
+  // Bébés animaux
+  for (const b of BABIES) addInter({ get x() { return b.x; }, get z() { return b.z; }, r: 2.8, icon: '🐾', label: () => 'Emmener ' + b.name + ' avec toi', can: () => qid() === 'animaux' && S.step === 0 && !b.follow && !S.babies.includes(b.id) && !BABIES.some(o => o.follow), act: () => { b.follow = true; hearts(b.x, b.y + 1, b.z); sfx.step(); toast('🐾 ' + b.name.charAt(0).toUpperCase() + b.name.slice(1) + ' te suit ! Ramène-le à sa famille.'); } });
+  // Échelles des cabanes
+  for (const t of treehouses) addInter({ x: t.ladder[0], z: t.ladder[1], r: 2.6, icon: '🪜', label: () => S.flags.th ? 'Grimper dans la cabane' : 'Cabane cassée…', can: () => true, act: () => { if (!S.flags.th) { toast('Cette cabane est cassée. Papi Blaireau aura besoin d\'aide.'); return; } climb(t); } });
+}
+function climb(t) {
+  P.mode = 'tree'; P.tree = t;
+  P.x = t.x + Math.sin(t.rot) * 2.3; P.z = t.z + Math.cos(t.rot) * 2.3; P.y = t.y; P.vx = P.vz = 0;
+  sfx.step();
+  if (!S.flags['th' + t.i]) { S.flags['th' + t.i] = 1; const g = [25, 40, 30, 50][t.i]; S.coins += g; sfx.coin(); sparkle(P.x, P.y + 1, P.z); toast('🎁 Un coffre caché dans la cabane : +' + g + ' pièces !'); updateHUD(); saveGame(); }
+}
+function updateTree(dt) {
+  const t = P.tree;
+  let ix = IN.x, iz = IN.z; const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
+  P.vx += (ix * 3 - P.vx) * (1 - Math.exp(-dt * 10)); P.vz += (iz * 3 - P.vz) * (1 - Math.exp(-dt * 10));
+  P.x += P.vx * dt; P.z += P.vz * dt;
+  const dx = P.x - t.x, dz = P.z - t.z, d = Math.hypot(dx, dz);
+  if (d > 2.9) { P.x = t.x + dx / d * 2.9; P.z = t.z + dz / d * 2.9; }
+  if (d < 1.4) { P.x = t.x + dx / (d || 1) * 1.4; P.z = t.z + dz / (d || 1) * 1.4; }
+  P.spd = Math.hypot(P.vx, P.vz);
+  if (P.spd > 0.3) P.rot += angDiff(P.rot, Math.atan2(P.vx, P.vz)) * (1 - Math.exp(-dt * 12));
+  P.phase += dt * P.spd * 2.2; P.y = t.y;
+  P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot;
+  animRig(P.model, P.phase, clamp(P.spd / 4, 0, 1), dt);
+}
+function leaveTree() { const t = P.tree; P.mode = 'walk'; P.x = t.ladder[0]; P.z = t.ladder[1]; P.y = walkY(P.x, P.z); P.tree = null; }
+// Feu d'artifice de la victoire
+function updateFireworks(dt) {
+  if (!(G.fireworks > 0)) return;
+  G.fireworks -= dt;
+  if (Math.random() < dt * 3) {
+    const x = P.x + rand(-25, 25), z = P.z + rand(-30, -5), y = walkY(x, z) + rand(18, 28);
+    const c = pick([[1, 0.4, 0.4], [1, 0.85, 0.3], [0.5, 0.8, 1], [0.7, 1, 0.5], [1, 0.6, 0.9]]);
+    for (let i = 0; i < 40; i++) { const a = rand(0, 6.28), b = rand(-1.4, 1.4), s = rand(6, 10); emit(x, y, z, Math.cos(a) * Math.cos(b) * s, Math.sin(b) * s, Math.sin(a) * Math.cos(b) * s, rand(1, 1.6), 0.5, c[0], c[1], c[2], -4); }
+    sfx.pickup();
   }
 }
 
@@ -1904,6 +2319,21 @@ function fadeTo(fn) { $('fade').classList.add('on'); setTimeout(() => { fn(); se
 
 // ================= Dialogues =================
 const WHO = { oscar: ['Oscar', '#8e3b46'] };
+// Chaque personnage a sa propre voix (plus grave ou plus aiguë)
+const PITCH = { oscar: 0.75, max: 1.45, lulu: 1.7, plume: 1.25, blaireau: 0.55, gisele: 1.15, beton: 0.6, gerard: 0.85, rosa: 1.3, leon: 0.8, nina: 1.5 };
+let frVoices = [];
+function loadVoices() { try { frVoices = speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang)); } catch (e) {} }
+if (window.speechSynthesis) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function speak(who, text) {
+  if (!OPT.voice || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/[«»…]/g, ' '));
+    u.lang = 'fr-FR'; if (frVoices.length) u.voice = frVoices[who === 'gisele' || who === 'lulu' || who === 'rosa' || who === 'nina' || who === 'plume' ? Math.min(1, frVoices.length - 1) : 0];
+    u.pitch = PITCH[who] || 1; u.rate = who === 'blaireau' ? 0.9 : 1.05; u.volume = 0.9;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
 let typeT = 0, typeFull = '';
 function talk(lines, done) {
   G.talking = true; G.talkLines = lines; G.talkI = 0; G.talkDone = done;
@@ -1920,6 +2350,7 @@ function showLine() {
   typeFull = text; typeT = 0;
   b.querySelector('.txt').textContent = '';
   b.hidden = false;
+  speak(who, text);
   if (who !== 'oscar' && NPCS[who]) { const n = NPCS[who]; if (who !== 'plume') n.rot = Math.atan2(P.x - n.x, P.z - n.z); P.rot = Math.atan2(n.x - P.x, n.z - P.z); }
 }
 function nextLine() {
@@ -1927,7 +2358,7 @@ function nextLine() {
   if (typeT < typeFull.length) { typeT = typeFull.length; $('bubble').querySelector('.txt').textContent = typeFull; return; }
   G.talkI++;
   if (G.talkI >= G.talkLines.length) {
-    $('bubble').hidden = true; G.talking = false; G.talkWho = null;
+    $('bubble').hidden = true; G.talking = false; G.talkWho = null; try { speechSynthesis.cancel(); } catch (e) {}
     const d = G.talkDone; G.talkDone = null; if (d) d();
     return;
   }
@@ -1942,6 +2373,10 @@ function updateTalk(dt) {
     $('bubble').querySelector('.txt').textContent = typeFull.slice(0, Math.floor(typeT));
   }
   const who = G.talkWho;
+  // La tête de celui qui parle bouge
+  const sm = who === 'oscar' ? P.model : NPCS[who] && NPCS[who].model;
+  const hd = sm && sm.userData.rig && sm.userData.rig.head;
+  if (hd) { if (hd.userData.by === undefined) hd.userData.by = hd.position.y; hd.position.y = hd.userData.by + (typeT < typeFull.length ? Math.abs(Math.sin(G.t * 16)) * 0.08 : 0); hd.rotation.z = typeT < typeFull.length ? Math.sin(G.t * 7) * 0.08 : 0; }
   const p = who === 'oscar' || !NPCS[who] ? new V3(P.x, P.y + 3.4, P.z) : new V3(NPCS[who].x, NPCS[who].y + NPCS[who].head + 0.6, NPCS[who].z);
   p.project(camera);
   const b = $('bubble');
@@ -1958,11 +2393,12 @@ function updateHUD() {
   $('clockT').textContent = (nightK > 0.5 ? '🌙' : '☀️') + ' Jour ' + S.day + ' · ' + h + ':' + String(m).padStart(2, '0');
   $('energy').firstChild.style.width = S.energy + '%';
   $('bDis').hidden = !S.flags.disguise;
+  $('starN').textContent = (S.stars || 0) + ' / 5';
 }
 function updateQuestUI() {
   const q = QUESTS[S.q], st = curStep();
   if (!q) {
-    $('qTitle').textContent = 'Le parc est à toi !';
+    $('qTitle').textContent = 'Le parc est sauvé ! 🌟';
     $('qText').textContent = 'Pommes de pin dorées : ' + S.cones.length + ' / ' + CONES.length + ' · Poissons : ' + FISH_IDS.filter(f => S.fish[f]).length + ' / ' + FISH_IDS.length;
     return;
   }
@@ -1977,6 +2413,7 @@ function updateAction() {
   else if (P.mode === 'fish') { label = FS && FS.state === 'bite' ? 'Ferrer !' : 'Relever la ligne'; icon = '🎣'; }
   else if (P.mode === 'drive') { label = S.flags.wings && Math.abs(C.spd) > 3 ? 'Décoller !' : 'Descendre'; icon = S.flags.wings && Math.abs(C.spd) > 3 ? '✈️' : '🚪'; }
   else if (P.mode === 'fly') { label = G.landing ? 'Atterrissage…' : 'Atterrir'; icon = '🛬'; }
+  else if (P.mode === 'tree') { label = 'Descendre l\'échelle'; icon = '🪜'; }
   else if (P.mode === 'walk') { actNow = findInteraction(); if (actNow) { label = actNow.label(); icon = actNow.icon; } else on = false; }
   else on = false;
   $('actLbl').textContent = label;
@@ -1989,6 +2426,7 @@ function doAction() {
   if (P.mode === 'fish') { fishAction(); return; }
   if (P.mode === 'drive') { if (S.flags.wings && Math.abs(C.spd) > 3) takeOff(); else exitCamper(); return; }
   if (P.mode === 'fly') { G.landing = true; return; }
+  if (P.mode === 'tree') { leaveTree(); return; }
   if (P.mode === 'walk' && actNow) actNow.act();
 }
 
@@ -2104,10 +2542,10 @@ function drawMap() {
     if (groundY(x, z) > 8) { g.fillStyle = 'rgba(155,145,175,.75)'; g.fillRect(X(x - 2.5), Z(z - 2.5), 5 * k + 1, 5 * k + 1); }
   }
   g.strokeStyle = '#41b3e6'; g.lineCap = 'round'; g.lineJoin = 'round';
-  for (const r of [RIVER_N, RIVER_S]) { g.lineWidth = RIVER_W * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
+  for (const rv of RIVERS) { const r = rv.pts; g.lineWidth = rv.w * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
   g.fillStyle = '#41b3e6'; g.beginPath(); g.ellipse(X(LAKE.x), Z(LAKE.z), LAKE.rx * k, LAKE.rz * k, 0, 0, 6.283); g.fill();
   for (const p of ALL_PATHS) { g.strokeStyle = p === ROADS[0] ? '#9a7f78' : '#e2cc98'; g.lineWidth = p.w * k * 1.1; g.beginPath(); p.pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
-  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station]];
+  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow]];
   g.font = '700 17px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
@@ -2117,8 +2555,9 @@ function drawMap() {
   g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
   g.restore();
 }
-const optLabel = () => { $('oMus').textContent = OPT.music ? 'Oui' : 'Non'; $('oSfx').textContent = OPT.sfx ? 'Oui' : 'Non'; $('oQual').textContent = ['Auto', 'Basse', 'Haute'][OPT.quality]; };
+const optLabel = () => { $('oVoice').textContent = OPT.voice ? 'Oui' : 'Non'; $('oMus').textContent = OPT.music ? 'Oui' : 'Non'; $('oSfx').textContent = OPT.sfx ? 'Oui' : 'Non'; $('oQual').textContent = ['Auto', 'Basse', 'Haute'][OPT.quality]; };
 $('oMus').addEventListener('click', () => { OPT.music = !OPT.music; saveOpts(); sfx.setVol(); optLabel(); });
+$('oVoice').addEventListener('click', () => { OPT.voice = !OPT.voice; saveOpts(); optLabel(); if (!OPT.voice) try { speechSynthesis.cancel(); } catch (e) {} });
 $('oSfx').addEventListener('click', () => { OPT.sfx = !OPT.sfx; saveOpts(); sfx.setVol(); optLabel(); });
 $('oQual').addEventListener('click', () => { OPT.quality = (OPT.quality + 1) % 3; saveOpts(); applyQuality(); optLabel(); });
 $('bOpt').addEventListener('click', () => { optLabel(); openPanel('pOpt'); });
@@ -2143,7 +2582,15 @@ function applyState() {
   coatMesh.visible = !has('manteau') && !S.flags.disguise;
   xMarks.forEach((m, i) => { m.visible = has('carte') && !S.dug.includes(i); });
   for (const k in partMeshes) partMeshes[k].visible = qid() === 'ailes' && S.step === 0 && !S.parts[k];
-  RINGS.forEach((r, i) => { ringMeshes[i].visible = qid() === 'ciel' && S.step === 1 && !S.rings.includes(i); });
+  RINGS.forEach((r, i) => { ringMeshes[i].visible = qid() === 'maire' && S.step === 2 && !S.rings.includes(i); });
+  setTreehouses(!!S.flags.th); setChantier(!S.done);
+  trashMeshes.forEach((m, i) => { m.visible = qid() === 'proprete' && S.step === 1 && !S.trash.includes(i); });
+  plankMeshes.forEach((m, i) => { m.visible = qid() === 'cabanes' && S.step === 1 && !S.planks.includes(i); });
+  for (const b of BABIES) { b.follow = false; const done = S.babies.includes(b.id), at = done ? b.family : b.lost; b.x = at[0] + (done ? rand(-4, 4) : 0); b.z = at[1] + (done ? rand(-4, 4) : 0); b.home = at.slice(); b.r = done ? 14 : 3; }
+  const gi = NPCS.gisele, inAir = S.flags.mayor && !S.done && qid() === 'maire' && S.step < 4;
+  gi.hidden = inAir; gi.model.visible = !inAir;
+  if (qid() === 'maire' && S.step === 4) { gi.x = C.x + 4; gi.z = C.z + 2; } else { gi.x = POI.mairie[0]; gi.z = POI.mairie[1]; }
+  NPCS.beton.hidden = !!S.done; NPCS.beton.model.visible = !S.done;
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
   setDisguise(false);
@@ -2230,7 +2677,7 @@ function drawOverlay() {
   // Flèche vers l'objectif de la mission
   const st = curStep(), tgt = st && st.at && st.at();
   if (tgt && !G.talking) {
-    const ty = P.mode === 'fly' && qid() === 'ciel' && S.step === 1 ? groundY(tgt[0], tgt[1]) + RINGS.find(r => r[0] === tgt[0])[2] : groundY(tgt[0], tgt[1]) + 4;
+    const ty = P.mode === 'fly' && qid() === 'maire' && S.step === 2 ? groundY(tgt[0], tgt[1]) + RINGS.find(r => r[0] === tgt[0])[2] : groundY(tgt[0], tgt[1]) + 4;
     const s = toScreen(tgt[0], ty, tgt[1]);
     const d = Math.hypot(tgt[0] - P.x, tgt[1] - P.z);
     const on = s.front && s.x > 30 && s.x < innerWidth - 30 && s.y > 60 && s.y < innerHeight - 30;
@@ -2287,8 +2734,10 @@ function step(dt) {
     else if (P.mode === 'fish') updateFishing(dt);
     else if (P.mode === 'dig') updateDig(dt);
     else if (P.mode === 'caught') { animRig(P.model, 0, 0, dt); }
-    if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig') { P.model.position.set(P.x, P.y, P.z); }
+    else if (P.mode === 'tree') updateTree(dt);
+    if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
+    updateAnimals(dt); updateFireworks(dt);
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
     updateNPCs(dt);
@@ -2337,12 +2786,14 @@ buildNPCs();
 P.model = makeBear(); scene.add(P.model);
 C.model = makeCamper(); scene.add(C.model);
 buildInteractions();
+buildAnimals();
+buildExtraInteractions();
 S = freshState();
 applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { get S() { return S; }, P, C, G, NPCS, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS };
+window.__ours = { get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS };
 
 })();
 </script>

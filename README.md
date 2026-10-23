@@ -47,9 +47,11 @@ Pour y jouer en local, ouvre `escadron/index.html`.
 
 ## Jeu : Ours Malin
 
-Aventure 3D tout en douceur dans le parc des Pins. Oscar l'ours chipe des pique-niques, se déguise, pêche, cherche des trésors et fait voler un camping-car.
+Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M. Béton veut raser, en gagnant 5 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis fait voler un camping-car pour montrer le parc à la maire.
 
-- 8 missions qui se suivent, avec Max le castor, Lulu la loutre et Madame Plume la chouette.
+- 11 missions qui se suivent, avec Max le castor, Lulu la loutre, Madame Plume la chouette et Papi Blaireau.
+- Animaux de la forêt (cerfs, lapins, renards, canards, oiseaux, papillons, poissons qui sautent) et personnages qui parlent avec leur voix.
+- Une rivière, un ruisseau avec des ponts, un lac, une montagne et beaucoup d'arbres.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.
