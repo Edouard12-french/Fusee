@@ -294,11 +294,11 @@ scene.add(hemi);
 const SKY_KEYS = [
   [0, 0x14204a, 0x1a2858, [0.55, 0.65, 1], 0.12, 0x2a3a70, 0x101820, 0.32],
   [5, 0x2a3466, 0x3a4478, [0.7, 0.7, 1], 0.15, 0x3a4a80, 0x1a2020, 0.36],
-  [6.5, 0xf6a77a, 0xf3b58a, [1, 0.72, 0.5], 0.55, 0xffd0b0, 0x5a5040, 0.5],
-  [8.5, 0x8fd0f2, 0xb8e2f4, [1, 0.95, 0.85], 0.85, 0xd8ecff, 0x5a7a40, 0.6],
-  [12, 0x7cc8f0, 0xaadcf2, [1, 1, 0.96], 0.95, 0xd8ecff, 0x5a7a40, 0.62],
-  [17, 0x84c8ee, 0xb0dcf0, [1, 0.94, 0.82], 0.85, 0xd8ecff, 0x5a7a40, 0.6],
-  [19.3, 0xf59a6a, 0xf5b080, [1, 0.62, 0.4], 0.6, 0xffc0a0, 0x5a4a40, 0.5],
+  [6.5, 0xf6a77a, 0xf3b58a, [1, 0.75, 0.55], 0.4, 0xffd8c0, 0x5a6040, 0.72],
+  [8.5, 0x8fd0f2, 0xc8e6ee, [1, 0.97, 0.9], 0.42, 0xd8f0ea, 0x6a8a50, 0.74],
+  [12, 0x7cc8f0, 0xc0e2ec, [1, 1, 0.97], 0.45, 0xd8f0ea, 0x6a8a50, 0.76],
+  [17, 0x84c8ee, 0xc0e0ea, [1, 0.95, 0.86], 0.42, 0xd8f0ea, 0x6a8a50, 0.74],
+  [19.3, 0xf59a6a, 0xf5b080, [1, 0.66, 0.45], 0.42, 0xffc8b0, 0x5a5a40, 0.72],
   [20.8, 0x5a4a8a, 0x6a5a90, [0.75, 0.6, 0.9], 0.25, 0x6a5a9a, 0x202030, 0.38],
   [22, 0x18244e, 0x1e2c5c, [0.55, 0.65, 1], 0.12, 0x2a3a70, 0x101820, 0.32],
   [24, 0x14204a, 0x1a2858, [0.55, 0.65, 1], 0.12, 0x2a3a70, 0x101820, 0.32],
@@ -337,6 +337,7 @@ const RIVER_W = 7;
 const RIVERS = [{ pts: RIVER_N, w: 7 }, { pts: RIVER_S, w: 7 }, { pts: STREAM, w: 4.2 }];
 const MOUNT = { x: -165, z: -165, r: 100, h: 40 };
 const WATER_Y = -0.3;
+const PLATEAUS = [[90, -135, 18, 7], [-150, -58, 20, 6], [30, 158, 15, 6], [-108, 172, 16, 7], [172, -62, 14, 5]];
 const POI = {
   cave: [-104, -96], bed: [-101, -93],
   workshop: [52, -63], max: [46, -55],
@@ -409,7 +410,12 @@ const BRIDGES = (() => {
 function groundY(x, z) {
   let y = (fbm(x * 0.02, z * 0.02, 3) - 0.45) * 1.6;
   const dm = Math.hypot(x - MOUNT.x, z - MOUNT.z) / MOUNT.r;
-  if (dm < 1) { const m = 1 - dm * dm; y += m * m * MOUNT.h * (0.75 + 0.5 * fbm(x * 0.03 + 5, z * 0.03, 3)); }
+  if (dm < 1) {
+    const m = 1 - dm * dm, h = m * m * MOUNT.h * (0.75 + 0.5 * fbm(x * 0.03 + 5, z * 0.03, 3));
+    const f = h / 7, fl = Math.floor(f);
+    y += (fl + sstep(0.72, 1, f - fl)) * 7;
+  }
+  for (const p of PLATEAUS) { const d = Math.hypot(x - p[0], z - p[1]); if (d < p[2] + 3) y += p[3] * sstep(p[2] + 2.6, p[2], d); }
   const e = lakeE(x, z);
   if (e < 1.15) y = lerp(y, -2.6, sstep(1.15, 0.8, e));
   const rd = riverDist(x, z);
@@ -425,6 +431,7 @@ function deckY(x, z) {
   }
   return null;
 }
+function slopeAt(x, z) { const e = 1.5; return Math.hypot(groundY(x + e, z) - groundY(x - e, z), groundY(x, z + e) - groundY(x, z - e)) / (2 * e); }
 const waterDepth = (x, z) => deckY(x, z) !== null ? 0 : Math.max(0, WATER_Y - groundY(x, z));
 const walkY = (x, z) => { const d = deckY(x, z); return d !== null ? Math.max(d, groundY(x, z)) : groundY(x, z); };
 const pathDist = (x, z) => { let d = 1e9; for (const p of ALL_PATHS) d = Math.min(d, polyDist(x, z, p.pts) - p.w / 2); return d; };
@@ -479,7 +486,8 @@ function collide(p, r) {
 }
 
 // ================= Matériaux =================
-const lam = (hex, o) => new T.MeshPhongMaterial(Object.assign({ color: colorL(hex), flatShading: true, shininess: 6, specular: 0x0b0b0b }, o || {}));
+const toonGrad = (() => { const d = new Uint8Array([165, 165, 165, 255, 225, 225, 225, 255, 255, 255, 255, 255]); const t = new T.DataTexture(d, 3, 1, T.RGBAFormat); t.minFilter = t.magFilter = T.NearestFilter; t.needsUpdate = true; return t; })();
+const lam = (hex, o) => { o = Object.assign({}, o || {}); delete o.flatShading; return new T.MeshToonMaterial(Object.assign({ color: colorL(hex), gradientMap: toonGrad }, o)); };
 const M = {
   trunk: lam(0x8e3b46), wood: lam(0x9a6440), woodD: lam(0x6e4430), woodL: lam(0xc08a5a), roofG: lam(0x3e6b4f), roofR: lam(0xc0504a),
   stone: lam(0x9d93b5), stoneD: lam(0x7d7396), white: lam(0xf4efe6), dark: lam(0x2c2630), metal: lam(0x8a929a), rust: lam(0xa0583a),
@@ -525,14 +533,15 @@ function buildGround() {
   const g = new T.PlaneGeometry(HALF * 2 + 40, HALF * 2 + 40, 220, 220);
   g.rotateX(-Math.PI / 2);
   const p = g.attributes.position, n = p.count, col = new Float32Array(n * 3);
-  const A = new T.Color(0x56b06b), B = new T.Color(0x4aa262), Cl = new T.Color(0x74c67d), F = new T.Color(0x3f9a5a), S = new T.Color(0xe6cf9c), R = new T.Color(0x9a90ad), c = new T.Color();
+  const A = new T.Color(0x55a86a), B = new T.Color(0x4aa262), Cl = new T.Color(0x6cbc7a), F = new T.Color(0x469a60), S = new T.Color(0xe6cf9c), R = new T.Color(0x8a4f5c), c = new T.Color();
   for (let i = 0; i < n; i++) {
     const x = p.getX(i), z = p.getZ(i), y = groundY(x, z);
     p.setY(i, y);
-    c.copy(A).lerp(B, sstep(0.35, 0.7, fbm(x * 0.015 + 3, z * 0.015, 3)));
-    c.lerp(Cl, sstep(0.55, 0.75, fbm(x * 0.008 - 7, z * 0.008 + 2, 2)) * 0.8);
-    c.lerp(F, forestK(x, z) * 0.6);
-    if (y > 8) c.lerp(R, sstep(8, 24, y + fbm(x * 0.05, z * 0.05, 2) * 8));
+    c.copy(A);
+    if (fbm(x * 0.02 + 3, z * 0.02, 3) > 0.58) c.copy(Cl);
+    if (forestK(x, z) > 0.55) c.copy(F);
+    const sl = slopeAt(x, z);
+    if (sl > 0.45) c.lerp(R, sstep(0.45, 0.75, sl));
     const shore = Math.min(sstep(1.5, 1.0, lakeE(x, z)), 1) + (1 - sstep(RIVER_W * 0.9, RIVER_W * 1.4, riverDist(x, z)));
     c.lerp(S, clamp(shore, 0, 1) * 0.9);
     if (y < -0.8) c.lerp(new T.Color(0x6aa89a), 0.6);
@@ -541,7 +550,7 @@ function buildGround() {
   }
   g.setAttribute('color', new T.BufferAttribute(col, 3));
   g.computeVertexNormals();
-  const m = new T.Mesh(g, new T.MeshLambertMaterial({ vertexColors: true }));
+  const m = new T.Mesh(g, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad }));
   m.receiveShadow = true; scene.add(m);
   // Eau : lac et rivière, avec des vaguelettes qui bougent
   waterTex = canvasTex(256, 256, (gg, w, h) => {
@@ -561,6 +570,8 @@ function buildGround() {
   const foam = new T.Mesh(new T.RingGeometry(1, 1.035, 72), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
   foam.rotation.x = -Math.PI / 2; foam.scale.set(LAKE.rx * 1.0, LAKE.rz * 1.0, 1); foam.position.set(LAKE.x, WATER_Y + 0.02, LAKE.z); scene.add(foam);
   for (const r of RIVERS) ribbon(r.pts, r.w * 1.3, () => WATER_Y - 0.01, wm, true);
+  const edgeMat = new T.MeshBasicMaterial({ color: 0xeaf8ff });
+  for (const r of RIVERS) ribbon(r.pts, r.w * 1.46, () => WATER_Y - 0.04, edgeMat, true);
   waterMats.push(lake.material, wm);
   // Chemins et route
   for (const p of ALL_PATHS) {
@@ -578,7 +589,8 @@ function ribbon(pts, w, yf, mat, uvLong) {
   const pos = [], uv = [], idx = [];
   for (let i = 0; i <= n; i++) {
     const a = sp[Math.max(0, i - 1)], b = sp[Math.min(n, i + 1)];
-    const tx = b.x - a.x, tz = b.z - a.z, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl * w / 2, nz = tx / tl * w / 2;
+    const wv = uvLong ? 1 : 1 + 0.16 * Math.sin(sp[i].x * 0.31 + sp[i].z * 0.17) + 0.1 * Math.cos(sp[i].z * 0.43);
+    const tx = b.x - a.x, tz = b.z - a.z, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl * w * wv / 2, nz = tx / tl * w * wv / 2;
     for (const s of [-1, 1]) {
       const x = sp[i].x + nx * s, z = sp[i].z + nz * s;
       pos.push(x, yf(x, z), z);
@@ -646,7 +658,7 @@ function buildPlants() {
     im.castShadow = true; im.receiveShadow = true; scene.add(im);
     return im;
   };
-  const pineCols = [0x2e7d4f, 0x358a57, 0x276f46, 0x3f9660];
+  const pineCols = [0x2c6e47, 0x337a4f, 0x265f3f, 0x3a8656];
   mk(folGeo, lam(0xffffff), pines, (c, i) => c.set(pineCols[i % 4]).convertSRGBToLinear());
   mk(trunkGeo, M.trunk, pines.concat(rounds));
   const roundCols = [0x4f9e57, 0x5aa865, 0x6bb25f, 0x8fbf4f];
@@ -712,6 +724,17 @@ function buildPlants() {
   }
   const fim = mk(flGeo, lam(0xffffff), fl, (cc, i) => cc.set([0xffd84d, 0xffffff, 0xf59ac0, 0xffb347][i % 4]).convertSRGBToLinear());
   fim.castShadow = false;
+  // Petites touffes d'herbe
+  const blades = [];
+  for (let k = 0; k < 3; k++) { const b = new T.ConeGeometry(0.09, 0.55, 3); b.translate(0, 0.27, 0); b.rotateZ((k - 1) * 0.45); b.rotateY(k * 1.2); blades.push(b); }
+  const tuftGeo = mergeGeos(blades), tf = [];
+  for (let t = 0; t < 9000 && tf.length < 2600; t++) {
+    const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
+    if (!isFree(x, z, 0.8) && !inZone(x, z)) continue;
+    if (lakeE(x, z) < 1.2 || riverDist(x, z) < RIVER_W + 1 || pathDist(x, z) < 0.6) continue;
+    tf.push([x, groundY(x, z), z, srange(0.8, 1.4), srand() * 6]);
+  }
+  const tim = mk(tuftGeo, lam(0x7cc88a), tf); tim.castShadow = false;
 }
 let berryInst = null, berryMatrix = [];
 function setBerries(b, visible) {
