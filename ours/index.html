@@ -1059,11 +1059,11 @@ function ball(parent, mat, r, x, y, z, sx, sy, sz) {
 }
 const eyeMat = lam(0x1d1416, { flatShading: false });
 function makeBear() {
-  // Oscar : grosse tête ronde, petit corps rond, pattes courtes (style dessin animé)
-  const g = new T.Group(), fur = lam(0x9a5f3c), furD = lam(0x7a4a2e), light = lam(0xe8c08a), pink = lam(0xf2a0a0), white = new T.MeshBasicMaterial({ color: 0xffffff });
+  // Oscar debout (quand il est déguisé) : ours noir au museau clair
+  const g = new T.Group(), fur = lam(0x2f2a2d), furD = lam(0x221e20), light = lam(0xc89a6c), pink = lam(0x4a3a3e), white = new T.MeshBasicMaterial({ color: 0xffffff });
   const body = new T.Group(); g.add(body);
   ball(body, fur, 0.72, 0, 1.05, 0, 1, 1.0, 0.92);
-  ball(body, light, 0.5, 0, 1.0, 0.36, 0.95, 1.0, 0.55);
+  ball(body, lam(0x3a3437), 0.5, 0, 1.0, 0.36, 0.95, 1.0, 0.55);
   ball(body, furD, 0.16, 0, 0.75, -0.66);
   const head = new T.Group(); head.position.set(0, 2.05, 0.06); body.add(head);
   ball(head, fur, 0.64, 0, 0, 0, 1.05, 0.95, 1);
@@ -1375,6 +1375,51 @@ function makeBigDuck() {
   return g;
 }
 
+// Oscar à quatre pattes : un vrai ours noir
+function bearHats(head, y) {
+  const extra = {};
+  const mk = (k, build) => { const gg = new T.Group(); gg.position.y = y; gg.visible = false; head.add(gg); build(gg); extra[k] = gg; };
+  mk('cowboy', gg => { gg.add(new T.Mesh(new T.CylinderGeometry(0.75, 0.75, 0.06, 16), lam(0xa0703a))); const c = new T.Mesh(new T.CylinderGeometry(0.32, 0.4, 0.4, 12), lam(0xa0703a)); c.position.y = 0.22; gg.add(c); });
+  mk('crown', gg => { const c = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, 0.26, 8, 1, true), lam(0xffc53d, { side: T.DoubleSide })); c.position.y = 0.13; gg.add(c); for (let i = 0; i < 8; i++) { const q = new T.Mesh(new T.ConeGeometry(0.07, 0.2, 4), lam(0xffc53d)); q.position.set(Math.cos(i / 8 * 6.283) * 0.34, 0.34, Math.sin(i / 8 * 6.283) * 0.34); gg.add(q); } });
+  mk('golden', gg => { gg.add(new T.Mesh(new T.CylinderGeometry(0.62, 0.62, 0.06, 16), lam(0xffc53d))); const c = new T.Mesh(new T.ConeGeometry(0.36, 0.7, 10), lam(0xffc53d)); c.position.y = 0.37; gg.add(c); });
+  mk('noisette', gg => { const c = new T.Mesh(new T.SphereGeometry(0.42, 12, 8, 0, 6.283, 0, 1.5), lam(0x8a5a30)); c.scale.y = 0.7; gg.add(c); const st = new T.Mesh(new T.CylinderGeometry(0.05, 0.06, 0.22, 5), lam(0x5a3a20)); st.position.y = 0.32; gg.add(st); });
+  return extra;
+}
+function makeBearQuad() {
+  const g = new T.Group(), fur = lam(0x2f2a2d), furD = lam(0x221e20), muz = lam(0xc89a6c), claw = lam(0xd8d0c0), white = new T.MeshBasicMaterial({ color: 0xffffff });
+  const body = new T.Group(); g.add(body);
+  ball(body, fur, 0.72, 0, 1.05, 0, 0.95, 0.85, 1.45);
+  ball(body, fur, 0.5, 0, 1.42, 0.5, 1.1, 0.8, 1.1);
+  ball(body, furD, 0.62, 0, 1.0, -0.62, 1, 0.95, 0.9);
+  ball(body, furD, 0.13, 0, 1.15, -1.25);
+  const head = new T.Group(); head.position.set(0, 1.42, 1.22); body.add(head);
+  ball(head, fur, 0.42, 0, 0, 0, 1, 0.92, 1.05);
+  ball(head, muz, 0.22, 0, -0.1, 0.42, 0.85, 0.72, 1.45);
+  ball(head, eyeMat, 0.085, 0, -0.03, 0.73, 1.2, 0.9, 0.9);
+  for (const s2 of [-1, 1]) {
+    ball(head, eyeMat, 0.06, s2 * 0.17, 0.11, 0.3);
+    const hl = new T.Mesh(new T.SphereGeometry(0.022, 5, 4), white); hl.position.set(s2 * 0.17 + 0.02, 0.14, 0.35); head.add(hl);
+    ball(head, fur, 0.14, s2 * 0.27, 0.33, -0.06, 1, 1, 0.7);
+    ball(head, lam(0x4a3a3e), 0.07, s2 * 0.27, 0.33, 0.01, 1, 1, 0.4);
+  }
+  const leg = (x, y, z) => {
+    const l = limb(g, fur, 0.2, 0.82, x, y, z);
+    for (let k = -1; k <= 1; k++) { const c = new T.Mesh(new T.ConeGeometry(0.035, 0.14, 4), claw); c.rotation.x = Math.PI / 2; c.position.set(k * 0.08, -0.84, 0.2); l.add(c); }
+    return l;
+  };
+  const rig = { body, head, armL: leg(-0.36, 0.98, 0.75), armR: leg(0.36, 0.98, 0.75), legL: leg(-0.36, 0.98, -0.72), legR: leg(0.36, 0.98, -0.72) };
+  g.userData = { rig, extra: bearHats(head, 0.36) };
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+function makeOscar() {
+  const g = new T.Group(), quad = makeBearQuad(), up = makeBear();
+  up.visible = false; g.add(quad, up);
+  const u = up.userData;
+  g.userData = { quad, up, rig: quad.userData.rig, dis: u.dis, hat: u.hat, glasses: u.glasses, extra: u.extra, extraQ: quad.userData.extra };
+  return g;
+}
+
 // ================= Objets du jeu =================
 const ITEMS = {
   sandwich: { n: 'Sandwich', e: '🥪', en: 30, sell: 4 }, gateau: { n: 'Gâteau', e: '🍰', en: 40, sell: 6 }, pomme: { n: 'Pomme', e: '🍎', en: 20, sell: 3 },
@@ -1466,6 +1511,7 @@ function setDisguise(on) {
   if (on && !S.flags.disguise) return;
   P.disguise = on;
   const u = P.model.userData;
+  u.quad.visible = !on; u.up.visible = on; u.rig = on ? u.up.userData.rig : u.quad.userData.rig;
   u.dis.visible = on; u.hat.visible = on && !S.wear;
   updateHats();
   $('bDis').classList.toggle('on', on);
@@ -1474,7 +1520,10 @@ function setDisguise(on) {
 function updateHats() {
   const u = P.model.userData;
   for (const k in u.extra) u.extra[k].visible = false;
+  for (const k in u.extraQ) u.extraQ[k].visible = false;
   if (S.wear && u.extra[S.wear]) u.extra[S.wear].visible = true;
+  if (S.wear && u.extraQ[S.wear]) u.extraQ[S.wear].visible = true;
+  if (S.wear === 'sun') u.glasses.visible = true;
   u.hat.visible = P.disguise && !S.wear;
   if (P.disguise) u.glasses.visible = true;
 }
@@ -3045,7 +3094,7 @@ buildGround();
 buildPlants();
 buildPlaces();
 buildNPCs();
-P.model = makeBear(); scene.add(P.model);
+P.model = makeOscar(); P.model.scale.setScalar(1.15); scene.add(P.model);
 C.model = makeCamper(); scene.add(C.model);
 buildInteractions();
 buildAnimals();
