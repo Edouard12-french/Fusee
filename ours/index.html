@@ -3549,7 +3549,7 @@ function sideFollower(id) { const a = sideFollowers[id]; return a ? [a.x, a.z] :
 // Elles ne s'affichent qu'au début du jeu (les deux premières missions)
 const GUIDE_UNTIL = 2;
 function guideTarget() {
-  if (!S || S.q >= GUIDE_UNTIL) return null;
+  if (!S || S.q >= GUIDE_UNTIL || P.x > 1500) return null;
   const st = curStep(), t = st && st.at && st.at();
   return t || null;
 }
@@ -4492,7 +4492,7 @@ function updateLaunch(dt) {
     if (!L.t2) L.t2 = t;
     const k = clamp((t - L.t2) / 16, 0, 1), e = k * k * (3 - 2 * k);
     G.spaceK = 1;
-    C.x = lerp(MOON.x + 40, MCAMP[0] + 6, e); C.z = lerp(MOON.z + 520, MCAMP[1] + 4, e); C.y = lerp(320, moonY(MCAMP[0] + 6, MCAMP[1] + 4) + 0.8, Math.pow(e, 0.7));
+    C.x = lerp(MOON.x + 40, MCAMP[0] + 16, e); C.z = lerp(MOON.z + 520, MCAMP[1] + 4, e); C.y = lerp(320, moonY(MCAMP[0] + 16, MCAMP[1] + 4) + 0.8, Math.pow(e, 0.7));
     C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(-0.1 * (1 - k), Math.PI, 0);
     camera.position.set(C.x + 10, C.y + 9 + (1 - e) * 20, C.z + 26); camera.lookAt(C.x, C.y, C.z - 20 * (1 - e));
     if (Math.random() < dt * 30) emit(C.x + rand(-1.5, 1.5), C.y - 1, C.z + rand(-1.5, 1.5), rand(-1, 1), -4, rand(-1, 1), 1, 1.2, 1, 0.7, 0.3, 0);
@@ -4503,7 +4503,7 @@ function skipLaunch() { if (!G.cine || G.cine.done || G.cine.t < 3) return; G.ci
 function endLaunch() {
   launchCrowd.forEach(m => scene.remove(m)); launchCrowd = [];
   G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
-  C.x = MCAMP[0] + 6; C.z = MCAMP[1] + 4; C.rot = Math.PI; C.y = moonY(C.x, C.z) + 0.8; C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
+  C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; C.y = moonY(C.x, C.z) + 0.8; C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
   P.mode = 'walk'; P.model.visible = true; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; P.y = moonY(P.x, P.z);
   const first = !S.flags.moon; S.flags.moon = 1; if (S.mq === undefined) { S.mq = 0; S.mstep = 0; S.mcnt = 0; }
   refreshMoon(); updateQuestUI(); saveGame();
@@ -4512,7 +4512,7 @@ function endLaunch() {
 function quickTravel(toMoon) {
   fadeTo(() => {
     G.spaceK = 0; G.wanted = 0; if (P.disguise) setDisguise(false);
-    if (toMoon) { C.x = MCAMP[0] + 6; C.z = MCAMP[1] + 4; C.rot = Math.PI; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; status('🚀 Le camping-car spatial file vers la Lune… Bienvenue au camp de base !', 'info', 4); }
+    if (toMoon) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; status('🚀 Le camping-car spatial file vers la Lune… Bienvenue au camp de base !', 'info', 4); }
     else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status('🌍 Retour sur Terre, au parc des Pins !', 'info', 4); }
     C.y = groundY(C.x, C.z) + (toMoon ? 0.8 : 0.8); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
     P.mode = 'walk'; P.y = walkY(P.x, P.z); refreshMoon(); updateQuestUI(); saveGame();
@@ -5265,7 +5265,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500) { C.x = MCAMP[0] + 6; C.z = MCAMP[1] + 4; C.rot = Math.PI; } refreshMoon(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } refreshMoon(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
