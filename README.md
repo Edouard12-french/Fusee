@@ -66,6 +66,8 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
 - 6 aventures du Grand Nord en plus de l'histoire : le louveteau perdu (Elliot), le chocolat chaud d'Yvette, les cristaux de glace et la luge dorée (Cabriole), le marais tout propre (Gaspard le héron), les poules de Josette et le petit bison de Bernard. La flèche orange guide vers l'aventure en cours une fois l'histoire finie.
 - La météo change : averses de pluie (ou de neige en montagne) avec arc-en-ciel après, lucioles la nuit et loups qui hurlent.
 - Une patinoire sur le lac gelé du Glacier, où Oscar glisse sur la glace.
+- De nouveaux amis, de vrais animaux : Maurice et Praline les carlins (cache-cache), Roquette le raton laveur (course de luge) et Filou le renard (devinettes).
+- Oscar ressemble à un vrai ours brun, à quatre pattes ou dressé sur ses pattes arrière.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.

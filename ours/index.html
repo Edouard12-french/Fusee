@@ -281,7 +281,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = T.PCFSoftShadowMap;
 const scene = new T.Scene();
 scene.fog = new T.Fog(0xa8d8f0, 140, 340);
-const camera = new T.PerspectiveCamera(40, 1, 0.5, 700);
+const camera = new T.PerspectiveCamera(40, 1, 0.5, 380);
 const sun = new T.DirectionalLight(0xffffff, 0.9);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -356,7 +356,7 @@ const POI = {
   lakePart: [58, 86],
   arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
   chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
-  cabanesLac: [104, 86], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
+  cabanesLac: [104, 86], niche: [84, -2], roquette: [-44, -216], filou: [-168, 134], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
   moulin: [282, 40], ferme: [284, -16], gaspard: [-12, 246.6], bernard: [256, -76], josette: [280, -13], loups: [-284, -84], canyon: [262, 236], marais: [-30, 266], grotteCristal: [-146, -112], grotteFossile: [90, -114],
   faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
   musee: [-14, 128], donovan: [4, 24], noisette: [-40, -120],
@@ -1276,60 +1276,66 @@ function ball(parent, mat, r, x, y, z, sx, sy, sz) {
 }
 const eyeMat = lam(0x1d1416, { flatShading: false });
 function makeBear() {
-  // Oscar debout (déguisé), d'après le dessin : un grand corps en forme de haricot, sans cou
-  const g = new T.Group(), fur = lam(0x52302c), furD = lam(0x3a201e), muz = lam(0x93605a), white = new T.MeshBasicMaterial({ color: 0xffffff });
+  // Oscar debout comme un vrai ours dressé sur ses pattes arrière : gros ventre, bosse aux épaules, vraie tête d'ours
+  const g = new T.Group(), fur = lam(0x5b3a2a), furD = lam(0x40291e), muz = lam(0x9a7256), claw = lam(0xd8d0c0), white = new T.MeshBasicMaterial({ color: 0xffffff });
   const body = new T.Group(); g.add(body);
-  // Grand corps en haricot : le ventre en bas, la tête qui continue le corps en haut
-  ball(body, fur, 0.74, 0, 1.12, 0, 1, 1.05, 0.92);
-  ball(body, fur, 0.6, 0, 2.0, 0.03, 1, 1.4, 0.9);
-  const head = new T.Group(); head.position.set(0, 2.55, 0.08); body.add(head);
-  ball(head, fur, 0.44, 0, 0.12, 0.08, 1, 0.9, 0.9);
-  // Gros museau clair tourné vers le haut, petit nez noir au bout
-  const sn = ball(head, muz, 0.38, 0, 0.06, 0.58, 0.88, 0.7, 1.4); sn.rotation.x = -0.55;
-  const chin = ball(head, furD, 0.24, 0, -0.22, 0.48, 1.1, 0.55, 0.95); chin.rotation.x = -0.35;
-  ball(head, eyeMat, 0.1, 0, 0.44, 1.03, 1.35, 0.85, 1);
-  const mouth = new T.Mesh(new T.BoxGeometry(0.26, 0.025, 0.025), eyeMat); mouth.position.set(0, -0.06, 0.93); mouth.rotation.x = -0.55; head.add(mouth);
+  ball(body, fur, 0.72, 0, 1.2, -0.02, 1, 1.0, 0.9);
+  ball(body, fur, 0.62, 0, 1.95, 0.0, 1.02, 0.95, 0.88);
+  ball(body, fur, 0.42, 0, 2.4, -0.12, 1.1, 0.75, 0.9);
+  ball(body, furD, 0.5, 0, 1.05, -0.35, 1, 0.9, 0.7);
+  const head = new T.Group(); head.position.set(0, 2.55, 0.32); body.add(head);
+  ball(head, fur, 0.4, 0, 0.05, 0, 1, 0.92, 1.0);
+  ball(head, fur, 0.32, 0, -0.08, -0.12, 1.2, 0.9, 0.9);
+  ball(head, muz, 0.2, 0, -0.07, 0.4, 0.85, 0.72, 1.4);
+  ball(head, lam(0x2c1c16), 0.11, 0, -0.17, 0.47, 1, 0.35, 1.3);
+  ball(head, eyeMat, 0.075, 0, -0.01, 0.68, 1.25, 0.9, 0.9);
   for (const s2 of [-1, 1]) {
-    ball(head, eyeMat, 0.055, s2 * 0.27, 0.38, 0.42, 0.9, 1.1, 0.6);
-    const hl = new T.Mesh(new T.SphereGeometry(0.018, 5, 4), white); hl.position.set(s2 * 0.27 + 0.015, 0.41, 0.46); head.add(hl);
-    ball(head, fur, 0.13, s2 * 0.36, 0.48, -0.08, 1, 1, 0.6);
-    ball(head, furD, 0.07, s2 * 0.36, 0.48, -0.02, 1, 1, 0.4);
+    ball(head, eyeMat, 0.05, s2 * 0.16, 0.14, 0.3);
+    const hl = new T.Mesh(new T.SphereGeometry(0.017, 5, 4), white); hl.position.set(s2 * 0.16 + 0.015, 0.16, 0.345); head.add(hl);
+    ball(head, fur, 0.13, s2 * 0.26, 0.34, -0.06, 1, 1, 0.6);
+    ball(head, furD, 0.065, s2 * 0.26, 0.34, 0.0, 1, 1, 0.4);
   }
-  // Longs bras qui pendent jusqu'aux genoux, avec des pattes plus foncées
-  const oval = (parent, mat, x, y, z, rx, ry, rz, hand) => { const pv = new T.Group(); pv.position.set(x, y, z); parent.add(pv); const m = new T.Mesh(new T.SphereGeometry(1, 12, 9), mat); m.scale.set(rx, ry, rz); m.position.y = -ry * 0.9; m.castShadow = true; pv.add(m); if (hand) { const h = new T.Mesh(new T.SphereGeometry(1, 10, 8), hand); h.scale.set(rx * 1.15, rx * 1.2, rz * 1.15); h.position.y = -ry * 1.72; h.castShadow = true; pv.add(h); } return pv; };
-  const rig = { body, head, armL: oval(body, fur, -0.7, 2.2, 0.05, 0.19, 0.76, 0.21, furD), armR: oval(body, fur, 0.7, 2.2, 0.05, 0.19, 0.76, 0.21, furD), legL: oval(g, furD, -0.32, 0.36, 0.08, 0.24, 0.24, 0.36), legR: oval(g, furD, 0.32, 0.36, 0.08, 0.24, 0.24, 0.36) };
-  rig.armL.rotation.z = -0.12; rig.armR.rotation.z = 0.12;
+  // Pattes avant épaisses tenues devant le ventre, griffes claires ; pattes arrière courtes et larges
+  const leg = (parent, x, y, z, r, len, front) => {
+    const l = limb(parent, front ? fur : furD, r, len, x, y, z);
+    const paw = new T.Mesh(new T.SphereGeometry(r * 1.25, 9, 7), furD); paw.scale.set(1, 0.7, front ? 1.1 : 1.6); paw.position.set(0, -len - r * 0.4, front ? 0.05 : 0.14); l.add(paw);
+    for (let k = -1; k <= 1; k++) { const c = new T.Mesh(new T.ConeGeometry(0.03, 0.13, 4), claw); c.rotation.x = Math.PI / 2; c.position.set(k * 0.07, -len - r * 0.45, front ? r * 1.2 : r * 1.9); l.add(c); }
+    return l;
+  };
+  const rig = { body, head, armL: leg(body, -0.55, 2.15, 0.28, 0.17, 0.72, true), armR: leg(body, 0.55, 2.15, 0.28, 0.17, 0.72, true), legL: leg(g, -0.34, 0.62, 0.0, 0.24, 0.32, false), legR: leg(g, 0.34, 0.62, 0.0, 0.24, 0.32, false) };
+  rig.armL.rotation.x = rig.armR.rotation.x = -0.55; rig.armL.rotation.z = -0.15; rig.armR.rotation.z = 0.15;
   // Déguisement : chapeau, manteau à carreaux et lunettes
   const dis = new T.Group(); dis.visible = false; body.add(dis);
   const coat = new T.Mesh(new T.CylinderGeometry(0.74, 0.84, 1.35, 14), lam(0xc0392b)); coat.position.set(0, 1.3, 0); coat.scale.z = 0.98; coat.castShadow = true; dis.add(coat);
   const collar = new T.Mesh(new T.TorusGeometry(0.66, 0.12, 6, 14), lam(0x8e2a20)); collar.position.set(0, 1.98, 0.02); collar.rotation.x = Math.PI / 2; dis.add(collar);
-  const hat = new T.Group(); hat.position.set(0, 0.6, -0.05); head.add(hat); hat.visible = false;
+  const hat = new T.Group(); hat.position.set(0, 0.36, -0.05); head.add(hat); hat.visible = false;
   hat.add(new T.Mesh(new T.CylinderGeometry(0.72, 0.72, 0.06, 16), lam(0x3e5a3a)));
   const crown = new T.Mesh(new T.CylinderGeometry(0.4, 0.45, 0.5, 14), lam(0x3e5a3a)); crown.position.y = 0.26; hat.add(crown);
   const band = new T.Mesh(new T.CylinderGeometry(0.46, 0.46, 0.1, 14), lam(0xd84a3a)); band.position.y = 0.1; hat.add(band);
-  const glasses = new T.Group(); glasses.position.set(0, 0.42, 0.4); head.add(glasses); glasses.visible = false;
-  for (const s of [-1, 1]) { const l = new T.Mesh(new T.BoxGeometry(0.22, 0.15, 0.05), lam(0x111111)); l.position.set(s * 0.27, 0, 0.06); l.rotation.y = s * 0.5; glasses.add(l); }
-  { const br = new T.Mesh(new T.BoxGeometry(0.3, 0.04, 0.04), lam(0x111111)); br.position.set(0, 0.05, 0.14); glasses.add(br); }
+  const glasses = new T.Group(); glasses.position.set(0, 0.14, 0.28); head.add(glasses); glasses.visible = false;
+  for (const s of [-1, 1]) { const l = new T.Mesh(new T.BoxGeometry(0.22, 0.15, 0.05), lam(0x111111)); l.position.set(s * 0.17, 0, 0.06); l.rotation.y = s * 0.3; glasses.add(l); }
+  { const br = new T.Mesh(new T.BoxGeometry(0.3, 0.04, 0.04), lam(0x111111)); br.position.set(0, 0.03, 0.08); glasses.add(br); }
   // Chapeaux bonus achetés au village
   const extra = {};
-  extra.cowboy = new T.Group(); extra.cowboy.position.y = 0.56; head.add(extra.cowboy); extra.cowboy.visible = false;
+  extra.cowboy = new T.Group(); extra.cowboy.position.y = 0.36; head.add(extra.cowboy); extra.cowboy.visible = false;
   extra.cowboy.add(new T.Mesh(new T.CylinderGeometry(0.85, 0.85, 0.06, 16), lam(0xa0703a)));
   const cc = new T.Mesh(new T.CylinderGeometry(0.36, 0.44, 0.45, 12), lam(0xa0703a)); cc.position.y = 0.25; extra.cowboy.add(cc);
-  extra.crown = new T.Group(); extra.crown.position.y = 0.55; head.add(extra.crown); extra.crown.visible = false;
+  extra.crown = new T.Group(); extra.crown.position.y = 0.34; head.add(extra.crown); extra.crown.visible = false;
   const cr = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.3, 8, 1, true), lam(0xffc53d, { side: T.DoubleSide })); cr.position.y = 0.15; extra.crown.add(cr);
   for (let i = 0; i < 8; i++) { const p = new T.Mesh(new T.ConeGeometry(0.08, 0.22, 4), lam(0xffc53d)); p.position.set(Math.cos(i / 8 * 6.283) * 0.4, 0.38, Math.sin(i / 8 * 6.283) * 0.4); extra.crown.add(p); }
-  extra.golden = new T.Group(); extra.golden.position.y = 0.56; head.add(extra.golden); extra.golden.visible = false;
+  extra.golden = new T.Group(); extra.golden.position.y = 0.36; head.add(extra.golden); extra.golden.visible = false;
   extra.golden.add(new T.Mesh(new T.CylinderGeometry(0.72, 0.72, 0.06, 16), lam(0xffc53d)));
   const gc = new T.Mesh(new T.ConeGeometry(0.42, 0.8, 10), lam(0xffc53d)); gc.position.y = 0.42; extra.golden.add(gc);
   extra.sun = glasses;
-  extra.noisette = new T.Group(); extra.noisette.position.y = 0.48; head.add(extra.noisette); extra.noisette.visible = false;
+  extra.noisette = new T.Group(); extra.noisette.position.y = 0.28; head.add(extra.noisette); extra.noisette.visible = false;
   const nc = new T.Mesh(new T.SphereGeometry(0.5, 12, 8, 0, 6.283, 0, 1.5), lam(0x8a5a30)); nc.scale.y = 0.7; extra.noisette.add(nc);
   const ns = new T.Mesh(new T.CylinderGeometry(0.05, 0.06, 0.25, 5), lam(0x5a3a20)); ns.position.y = 0.38; extra.noisette.add(ns);
   // Bonnet à pompon (station de ski) et chapeau d'explorateur (carnet sauvage)
-  extra.bonnet = new T.Group(); extra.bonnet.position.y = 0.42; head.add(extra.bonnet); extra.bonnet.visible = false;
+  extra.bonnet = new T.Group(); extra.bonnet.position.y = 0.22; head.add(extra.bonnet); extra.bonnet.visible = false;
   { const b = new T.Mesh(new T.SphereGeometry(0.52, 14, 9, 0, 6.283, 0, 1.6), lam(0xd84a3a)); b.scale.y = 0.9; extra.bonnet.add(b); const r = new T.Mesh(new T.TorusGeometry(0.5, 0.09, 6, 16), lam(0xf4efe6)); r.rotation.x = Math.PI / 2; r.position.y = 0.02; extra.bonnet.add(r); const pp = new T.Mesh(new T.SphereGeometry(0.16, 10, 8), lam(0xf4efe6)); pp.position.y = 0.52; extra.bonnet.add(pp); }
-  extra.explo = new T.Group(); extra.explo.position.y = 0.52; head.add(extra.explo); extra.explo.visible = false;
+  extra.explo = new T.Group(); extra.explo.position.y = 0.32; head.add(extra.explo); extra.explo.visible = false;
   { extra.explo.add(new T.Mesh(new T.CylinderGeometry(0.85, 0.85, 0.05, 16), lam(0xd8c08a))); const c = new T.Mesh(new T.SphereGeometry(0.45, 12, 8, 0, 6.283, 0, 1.6), lam(0xd8c08a)); c.position.y = 0.02; extra.explo.add(c); const b = new T.Mesh(new T.CylinderGeometry(0.46, 0.46, 0.1, 14), lam(0x6e4430)); b.position.y = 0.08; extra.explo.add(b); }
+  for (const h of [hat, extra.cowboy, extra.crown, extra.golden, extra.noisette, extra.bonnet, extra.explo]) h.scale.setScalar(0.74);
   g.userData = { rig, dis, hat, glasses, extra };
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -1614,7 +1620,7 @@ function bearHats(head, y) {
   return extra;
 }
 function makeBearQuad() {
-  const g = new T.Group(), fur = lam(0x52302c), furD = lam(0x3a201e), muz = lam(0x93605a), claw = lam(0xd8d0c0), white = new T.MeshBasicMaterial({ color: 0xffffff });
+  const g = new T.Group(), fur = lam(0x5b3a2a), furD = lam(0x40291e), muz = lam(0x9a7256), claw = lam(0xd8d0c0), white = new T.MeshBasicMaterial({ color: 0xffffff });
   const body = new T.Group(); g.add(body);
   ball(body, fur, 0.72, 0, 1.05, 0, 0.95, 0.85, 1.45);
   ball(body, fur, 0.5, 0, 1.42, 0.5, 1.1, 0.8, 1.1);
@@ -1623,14 +1629,14 @@ function makeBearQuad() {
   const head = new T.Group(); head.position.set(0, 1.42, 1.22); body.add(head);
   ball(head, fur, 0.42, 0, 0, 0, 1, 0.92, 1.05);
   ball(head, muz, 0.22, 0, -0.1, 0.42, 0.85, 0.72, 1.45);
-  ball(head, lam(0x3a201e), 0.12, 0, -0.22, 0.5, 1, 0.35, 1.3);
+  ball(head, lam(0x2c1c16), 0.12, 0, -0.22, 0.5, 1, 0.35, 1.3);
   for (const s2 of [-1, 1]) { const t = new T.Mesh(new T.ConeGeometry(0.025, 0.07, 4), white); t.position.set(s2 * 0.05, -0.19, 0.64); t.rotation.x = Math.PI; head.add(t); }
   ball(head, eyeMat, 0.085, 0, -0.03, 0.73, 1.2, 0.9, 0.9);
   for (const s2 of [-1, 1]) {
     ball(head, eyeMat, 0.06, s2 * 0.17, 0.11, 0.3);
     const hl = new T.Mesh(new T.SphereGeometry(0.022, 5, 4), white); hl.position.set(s2 * 0.17 + 0.02, 0.14, 0.35); head.add(hl);
     ball(head, fur, 0.14, s2 * 0.27, 0.33, -0.06, 1, 1, 0.7);
-    ball(head, lam(0x3a201e), 0.07, s2 * 0.27, 0.33, 0.01, 1, 1, 0.4);
+    ball(head, lam(0x40291e), 0.07, s2 * 0.27, 0.33, 0.01, 1, 1, 0.4);
   }
   const leg = (x, y, z) => {
     const l = limb(g, fur, 0.2, 0.82, x, y, z);
@@ -2996,7 +3002,7 @@ function stopSki(msg) {
 function updateSki(dt) {
   const skis = P.board === 'skis', e = 1.2;
   const gx = (groundY(P.x + e, P.z) - groundY(P.x - e, P.z)) / (2 * e), gz = (groundY(P.x, P.z + e) - groundY(P.x, P.z - e)) / (2 * e);
-  if (P.crashT > 0) { P.crashT -= dt; animRig(P.model, 0, 0, dt); if (!skis) sitPose(dt, true); P.model.position.set(P.x, P.y, P.z); if (P.crashT <= 0) toast('On repart !'); return; }
+  if (P.crashT > 0) { P.crashT -= dt; animRig(P.model, 0, 0, dt); if (!skis) sitPose(dt, true); P.model.position.set(P.x, P.y, P.z); if (P.crashT <= 0) { if (G.rocket && G.rocket.t < 3) { P.skiSpd = 6; status('🛷 Partez !', 'info', 1); } else toast('On repart !'); } return; }
   const l = Math.min(1, Math.hypot(IN.x, IN.z));
   if (l > 0.15) P.rot += clamp(angDiff(P.rot, Math.atan2(IN.x, IN.z)), -1, 1) * dt * (skis ? 3.2 : 2.4);
   else { const fall = Math.atan2(-gx, -gz); if (Math.hypot(gx, gz) > 0.08) P.rot += clamp(angDiff(P.rot, fall), -1, 1) * dt * 0.5; }
@@ -3021,7 +3027,7 @@ function updateSki(dt) {
   if (G.slalom) updateSlalom(dt);
   // Fin de la neige ou arrêt complet
   if (!onSnow() && P.skiSpd < 2) stopSki('Fin de la glissade !');
-  else if (P.skiSpd < 0.3 && Math.hypot(gx, gz) < 0.05) stopSki('');
+  else if (P.skiSpd < 0.3 && Math.hypot(gx, gz) < 0.05 && !G.rocket) stopSki('');
 }
 // ---------- Slalom de Cabriole ----------
 function buildSlalomGates() {
@@ -3364,7 +3370,7 @@ function updateWild(dt) {
   S.wild = S.wild || {};
   for (const a of ANIMALS) {
     if (!a.sp || S.wild[a.sp] || !a.model.visible) continue;
-    const d = Math.hypot(a.x - P.x, a.z - P.z), lim = a.sp === 'aigle' ? 50 : 12;
+    const d = Math.hypot(a.x - P.x, a.z - P.z), lim = a.sp === 'aigle' ? 50 : 15;
     if (d < lim) {
       S.wild[a.sp] = 1; sfx.cone();
       const n = Object.keys(S.wild).length;
@@ -3446,6 +3452,13 @@ const SIDEQ = [
     { t: 'Le petit bison s\'est perdu dans le canyon rouge. Va le chercher !', at: () => sideFollower('bisonneau') },
     { t: 'Ramène le petit bison au troupeau, dans la grande prairie.', at: () => POI.bernard },
     { t: 'Parle à Bernard le bison.', at: () => POI.bernard }] },
+  { id: 'praline', friend: 1, title: '🐶 Cache-cache avec Praline', who: 'Maurice le carlin (niche près de la mare aux grenouilles)', steps: [0, 1, 2, 3].map(i => ({ get t() { return 'Praline se cache ' + PRALINE_SPOTS[i][1] + '. Trouve-la !'; }, at: () => null })).concat([{ t: 'Retourne voir Maurice à la niche.', at: () => POI.niche }]) },
+  { id: 'roquette', friend: 1, title: '🛷 La course de Roquette', who: 'Roquette le raton laveur (au pied des pistes)', steps: [
+    { t: 'Bats Roquette à la course de luge sur la piste des Oursons.', at: () => POI.roquette },
+    { t: 'Va voir Roquette : il a quelque chose pour toi.', at: () => POI.roquette }] },
+  { id: 'filou', friend: 1, title: '🦊 Les devinettes de Filou', who: 'Filou le renard (près du village des arbres)', steps: [
+    { t: 'Trouve 3 réponses aux devinettes de Filou.', at: () => POI.filou },
+    { t: 'Retourne voir Filou pour son trésor.', at: () => POI.filou }] },
 ];
 function nearestFree(list, done) { let b = null, bd = 1e9; list.forEach((p, i) => { if (done.includes(i)) return; const d = Math.hypot(p[0] - P.x, p[1] - P.z); if (d < bd) { bd = d; b = p; } }); return b; }
 const sideFollowers = {};
@@ -3464,8 +3477,8 @@ function sideTarget() {
 function sideDone(id, coins, msg) {
   S.sq[id] = 'done'; S.coins += coins; sfx.fanfare(); confetti(P.x, P.y + 2, P.z);
   banner('Aventure réussie !', msg || ('+' + coins + ' pièces'));
-  const n = SIDEQ.filter(q => sqState(q.id) === 'done').length;
-  if (n === SIDEQ.length && !S.flags.nordDone) { S.flags.nordDone = 1; S.coins += 200; setTimeout(() => banner('🏅 Héros du Grand Nord !', 'Toutes les aventures · +200 pièces'), 3500); }
+  const NORD = SIDEQ.filter(q => !q.friend), n = NORD.filter(q => sqState(q.id) === 'done').length;
+  if (n === NORD.length && !S.flags.nordDone) { S.flags.nordDone = 1; S.coins += 200; setTimeout(() => banner('🏅 Héros du Grand Nord !', 'Toutes les aventures · +200 pièces'), 3500); }
   S.sqActive = (SIDEQ.find(q => sqState(q.id) !== undefined && sqState(q.id) !== 'done') || {}).id;
   updateHUD(); updateQuestUI(); saveGame(); refreshSide();
 }
@@ -3611,6 +3624,179 @@ function sideYvette() {
   if (s === 0 && has('lait') && has('choco')) { talk([['yvette', 'Merveilleux ! Les skieurs vont être ravis.'], ['yvette', 'Voici 50 pièces. Et pour vous, le chocolat chaud sera toujours gratuit !']], () => { take('lait'); take('choco'); S.flags.chocoFree = 1; sideDone('chocolat', 50); }); return true; }
   return false;
 }
+
+// ================= Nouveaux amis d'Oscar : Maurice et Praline (carlins), Roquette (raton laveur), Filou (renard) =================
+// De vrais animaux : proportions et couleurs naturelles, pas de vêtements
+function makePug(girl) {
+  const g = new T.Group(), f = lam(girl ? 0xe2c192 : 0xd2ad7e, { flatShading: false }), d = lam(0x2a2224, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.36, 0, 0.55, 0, 0.95, 0.88, 1.35);
+  ball(body, f, 0.3, 0, 0.6, 0.28, 1, 0.95, 0.9);
+  const head = new T.Group(); head.position.set(0, 0.82, 0.52); body.add(head);
+  ball(head, f, 0.27, 0, 0, 0, 1.1, 0.95, 0.95);
+  ball(head, d, 0.15, 0, -0.07, 0.2, 1.3, 0.85, 0.65);
+  ball(head, d, 0.05, 0, -0.01, 0.31, 1.3, 0.8, 0.7);
+  for (const s of [-1, 1]) {
+    ball(head, f, 0.06, s * 0.08, 0.06, 0.24, 1.2, 0.5, 0.5);
+    ball(head, eyeMat, 0.05, s * 0.13, 0.07, 0.21);
+    const e = ball(head, d, 0.1, s * 0.25, 0.17, -0.02, 0.55, 0.9, 0.35); e.rotation.z = s * 0.7;
+  }
+  const tail = new T.Mesh(new T.TorusGeometry(0.09, 0.04, 6, 12, 4.8), f); tail.position.set(0, 0.85, -0.45); tail.rotation.y = Math.PI / 2; g.add(tail);
+  const collar = new T.Mesh(new T.TorusGeometry(0.22, 0.035, 6, 14), girl ? M.pink : M.blue); collar.rotation.x = Math.PI / 2 - 0.5; collar.position.set(0, 0.74, 0.38); body.add(collar);
+  g.userData = { rig: Object.assign({ body, head, tail }, legs4(g, f, 0.065, 0.32, 0.17, 0.28, -0.28, 0.32)) };
+  return g;
+}
+function makeRoquette() {
+  // Raton laveur à quatre pattes : dos rond, masque noir, queue à anneaux
+  const g = new T.Group(), f = lam(0x7d7a80, { flatShading: false }), l = lam(0xdcdad8, { flatShading: false }), d = lam(0x26232a, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.36, 0, 0.6, -0.1, 0.95, 0.9, 1.3); ball(body, f, 0.28, 0, 0.55, 0.3, 0.95, 0.85, 0.9);
+  const head = new T.Group(); head.position.set(0, 0.72, 0.6); body.add(head);
+  ball(head, f, 0.22, 0, 0, 0, 1.1, 0.9, 1);
+  const sn = new T.Mesh(new T.ConeGeometry(0.1, 0.24, 7), l); sn.rotation.x = Math.PI / 2; sn.position.set(0, -0.06, 0.25); head.add(sn);
+  ball(head, d, 0.04, 0, -0.06, 0.37);
+  ball(head, d, 0.2, 0, 0.04, 0.1, 1.2, 0.38, 0.9);
+  for (const s of [-1, 1]) { ball(head, l, 0.06, s * 0.1, 0.12, 0.17, 1.3, 0.5, 0.6); ball(head, eyeMat, 0.035, s * 0.1, 0.04, 0.2); const e = new T.Mesh(new T.ConeGeometry(0.07, 0.14, 4), f); e.position.set(s * 0.14, 0.2, -0.04); head.add(e); ball(head, l, 0.03, s * 0.14, 0.27, -0.02); }
+  const tail = new T.Group(); tail.position.set(0, 0.6, -0.5); g.add(tail);
+  for (let k = 0; k < 6; k++) ball(tail, k % 2 ? d : f, 0.13 - k * 0.008, 0, -k * 0.05, -k * 0.13);
+  tail.rotation.x = 0.4;
+  g.userData = { rig: Object.assign({ body, head, tail }, legs4(g, d, 0.06, 0.4, 0.18, 0.3, -0.36, 0.4)) };
+  g.scale.setScalar(1.2);
+  return g;
+}
+function makeFilou() {
+  // Un renard roux, un peu plus grand que les renards de la forêt
+  const g = makeFox(false); g.scale.setScalar(1.45);
+  return g;
+}
+// Cachettes de Praline (avec un indice pour chacune)
+const PRALINE_SPOTS = [[[-24, 134], 'près du musée de Raflex'], [[27, 33], 'près du ponton du grand lac'], [[-58, 80], 'au camping, près des tentes'], [[60, -72], 'à côté de l\'atelier de Max']];
+const RIDDLES = [
+  ['Je suis pleine de trous mais je garde l\'eau. Qui suis-je ?', ['Une éponge', 'Un seau', 'Un caillou'], 0],
+  ['Je monte et je descends sans jamais bouger. Qui suis-je ?', ['Un oiseau', 'L\'escalier', 'Un ascenseur'], 1],
+  ['Je n\'ai pas de jambes mais je cours toujours. Qui suis-je ?', ['Un serpent', 'Une tortue', 'La rivière'], 2],
+  ['Je suis jaune, je brille et je réchauffe tout le parc. Qui suis-je ?', ['Le soleil', 'Une banane', 'Un lampadaire'], 0],
+  ['C\'est à toi, mais les autres l\'utilisent plus que toi. Qu\'est-ce que c\'est ?', ['Ton vélo', 'Ton prénom', 'Ta brosse à dents'], 1],
+];
+let pralineNPC = null, roquetteRacer = null;
+function buildFriends() {
+  addNPC('maurice', { name: 'Maurice le carlin', col: '#a07848', model: makePug(false), x: POI.niche[0] + 2.5, z: POI.niche[1] + 2, rot: 0.3, head: 1.5 });
+  addNPC('praline', { name: 'Praline la carline', col: '#e0607a', model: makePug(true), x: POI.niche[0] - 2.5, z: POI.niche[1] + 2.2, rot: -0.3, head: 1.5 });
+  addNPC('roquette', { name: 'Roquette', col: '#f07a3a', model: makeRoquette(), x: POI.roquette[0], z: POI.roquette[1], rot: 0.5, head: 2 });
+  addNPC('filou', { name: 'Filou le renard', col: '#e8803a', model: makeFilou(), x: POI.filou[0], z: POI.filou[1], rot: 0.6, head: 1.8 });
+  Object.assign(PITCH, { maurice: 0.9, praline: 1.7, roquette: 1.4, filou: 1.3 });
+  pralineNPC = NPCS.praline;
+  // Niche des carlins
+  const [nx, nz] = POI.niche, ny = groundY(nx, nz), ng = new T.Group(); ng.position.set(nx, ny, nz); scene.add(ng);
+  mesh(new T.BoxGeometry(2.4, 1.6, 2.2), lam(0xd84a3a), 0, 0.8, -1.2, ng);
+  const tri = new T.Shape([new T.Vector2(-1.5, 0), new T.Vector2(1.5, 0), new T.Vector2(0, 1.1)]), rg = new T.ExtrudeGeometry(tri, { depth: 2.5, bevelEnabled: false }); rg.translate(0, 0, -1.25);
+  mesh(rg, M.white, 0, 1.6, -1.2, ng);
+  mesh(new T.CircleGeometry(0.5, 14, 0, Math.PI), M.dark, 0, 0.3, -0.09, ng).castShadow = false;
+  const bowl = mesh(new T.CylinderGeometry(0.4, 0.3, 0.25, 12), M.blue, 1.6, 0.12, 0.6, ng);
+  addBox(nx, nz - 1.2, 1.3, 1.2, 0);
+  sign('MAURICE ET PRALINE', nx + 3.5, nz - 2.5, -0.3, 1.6, 0.6, '#d84a3a');
+  for (const id of ['maurice', 'praline', 'roquette', 'filou']) {
+    const n = NPCS[id];
+    addInter({ get x() { return n.x; }, get z() { return n.z; }, r: id === 'filou' ? 3.6 : 3, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => !n.hidden, act: () => talkFriend(id) });
+  }
+  // Roquette qui dévale la piste pendant la course
+  const curve = new T.CatmullRomCurve3(PISTES[0].pts.map(p => new V3(p[0], 0, p[1])));
+  roquetteRacer = { curve, len: curve.getLength(), u: 0, on: false };
+}
+// ---------- Cache-cache avec Praline ----------
+function hidePraline(i) {
+  const n = pralineNPC, sp = PRALINE_SPOTS[i][0];
+  n.x = sp[0]; n.z = sp[1]; n.model.position.set(sp[0], groundY(sp[0], sp[1]), sp[1]);
+  n.hidden = true; n.model.visible = true;
+}
+function homePraline() { const n = pralineNPC; n.x = POI.niche[0] - 2.5; n.z = POI.niche[1] + 2.2; n.hidden = false; n.model.visible = true; n.model.position.set(n.x, groundY(n.x, n.z), n.z); }
+function updateFriends(dt) {
+  const s = sqState('praline');
+  if (typeof s === 'number' && s < PRALINE_SPOTS.length) {
+    const n = pralineNPC, sp = PRALINE_SPOTS[s][0];
+    if (Math.hypot(n.x - sp[0], n.z - sp[1]) > 0.5) hidePraline(s);
+    n.model.position.y = groundY(n.x, n.z) + (Math.sin(G.t * 9) > 0.92 ? 0.25 : 0);
+    if (Math.hypot(P.x - sp[0], P.z - sp[1]) < 3.6 && !G.talking && !G.praFound) {
+      G.praFound = true;
+      hearts(sp[0], groundY(sp[0], sp[1]) + 1.5, sp[1]); sfx.ring();
+      const next = s + 1;
+      if (next < PRALINE_SPOTS.length) talk([['praline', pick(['Ouaf ! Trouvée !', 'Hi hi ! Tu m\'as eue !', 'Zut, tu es trop fort !'])], ['praline', 'On recommence ! Cette fois je me cache ' + PRALINE_SPOTS[next][1] + '… Compte jusqu\'à dix !']], () => { G.praFound = false; sqSet('praline', next); });
+      else talk([['praline', 'Ouaf ouaf ! Tu m\'as trouvée partout ! Retournons voir Maurice à la niche.']], () => { G.praFound = false; homePraline(); sqSet('praline', PRALINE_SPOTS.length); });
+    }
+  }
+  // Course de luge contre Roquette
+  const R = roquetteRacer, n = NPCS.roquette;
+  if (G.rocket) {
+    const r = G.rocket; r.t += dt;
+    if (r.t > 2.2) R.u = Math.min(1, R.u + dt * 1 / r.dur);
+    const p = R.curve.getPointAt(R.u), tg = R.curve.getTangentAt(R.u);
+    n.x = p.x; n.z = p.z; n.model.position.set(p.x, groundY(p.x, p.z) + 0.1, p.z); n.model.rotation.y = Math.atan2(tg.x, tg.z);
+    if (Math.random() < dt * 25 && R.u > 0) emit(p.x, groundY(p.x, p.z) + 0.2, p.z, rand(-1, 1), rand(1, 2), rand(-1, 1), 0.5, 0.3, 1, 1, 1, 6);
+    const end = PISTES[0].pts[PISTES[0].pts.length - 1];
+    const youIn = P.z > end[1] - 2 && Math.abs(P.x - end[0]) < 14, heIn = R.u >= 1;
+    if (r.t > 2.2) status('🛷 Course contre Roquette ! Arrivée en bas de la piste des Oursons', 'info', 0.3);
+    if (youIn || heIn || P.mode !== 'ski' && r.t > 3) endRocket(youIn && !heIn);
+  }
+}
+function startRocket() {
+  const st = PISTES[0].pts[0];
+  fadeTo(() => {
+    P.x = st[0] + 3; P.z = st[1] + 2; P.rot = 0; P.vx = P.vz = 0;
+    startSki(has('skis') ? 'skis' : 'luge'); P.skiSpd = 0; P.crashT = 2.2;
+    roquetteRacer.u = 0; G.rocket = { t: 0, dur: has('skis') || S.flags.lugeOr ? 6.4 : 7.2 };
+    status('3… 2… 1…', 'info', 2.2); sfx.alert();
+  });
+}
+function endRocket(win) {
+  G.rocket = null; const n = NPCS.roquette;
+  n.x = POI.roquette[0]; n.z = POI.roquette[1]; n.model.position.set(n.x, groundY(n.x, n.z), n.z);
+  if (win) { banner('Tu as battu Roquette !', 'Quelle glissade !'); sfx.fanfare(); confetti(P.x, P.y + 2, P.z); if (sqState('roquette') === 0) sqSet('roquette', 1); }
+  else { banner('Roquette a gagné !', 'Parle-lui pour une revanche'); sfx.caught(); }
+}
+// ---------- Devinettes de Filou ----------
+function openRiddle() {
+  const i = S.riddle || 0, [q, opts, ok] = RIDDLES[i % RIDDLES.length];
+  $('shopName').textContent = 'Devinette de Filou (' + (S.riddleOk || 0) + ' / 3)'; $('shopTxt').textContent = q;
+  const L = $('shopList'); L.innerHTML = '';
+  opts.forEach((o, k) => {
+    const d = document.createElement('div'); d.innerHTML = '<i>❓</i><span></span>'; d.querySelector('span').textContent = o;
+    const b = document.createElement('button'); b.className = 'btn small go'; b.textContent = 'Choisir';
+    b.addEventListener('click', () => {
+      closePanels(); S.riddle = i + 1;
+      if (k === ok) { S.riddleOk = (S.riddleOk || 0) + 1; sfx.ring(); talk([['filou', 'Bravo ! C\'est ' + o.toLowerCase() + ' !' + (S.riddleOk >= 3 ? '' : ' Encore une ?')]], () => { if (S.riddleOk >= 3) sqSet('filou', 1); else saveGame(); }); }
+      else { sfx.bite(); talk([['filou', 'Hé hé ! Raté ! La réponse était : ' + opts[ok].toLowerCase() + '. Reviens me voir pour une autre devinette !']]); saveGame(); }
+    });
+    d.appendChild(b); L.appendChild(d);
+  });
+  openPanel('pShop');
+}
+// ---------- Dialogues ----------
+function talkFriend(id) {
+  if (id === 'maurice') {
+    const s = sqState('praline');
+    if (s === undefined) return talk([['maurice', 'Wouf ! Salut Oscar ! Moi c\'est Maurice, et voici ma sœur Praline.'], ['praline', 'Ouaf ! On joue à cache-cache ? Je me cache, et toi tu me cherches !'], ['maurice', 'Elle est très forte… Je te donne un indice : elle adore se cacher ' + PRALINE_SPOTS[0][1] + '.'], ['praline', 'Compte jusqu\'à dix ! Hi hi !']], () => sqSet('praline', 0));
+    if (s === PRALINE_SPOTS.length) return talk([['maurice', 'Tu l\'as trouvée quatre fois ? Incroyable ! Tu es le roi du cache-cache.'], ['maurice', 'Tiens, voici nos économies de croquettes… enfin, 60 pièces !']], () => sideDone('praline', 60));
+    if (s === 'done') return talk([['maurice', pick(['Wouf ! Reviens jouer quand tu veux !', 'Praline dit que tu es son meilleur ami.', 'Les carlins aiment les siestes. Et les ours aussi, non ?'])]]);
+    return talk([['maurice', 'Praline se cache ' + PRALINE_SPOTS[Math.max(0, s)][1] + '. Cherche bien !']]);
+  }
+  if (id === 'praline') return talk([['praline', sqState('praline') === 'done' ? 'Ouaf ! Tu es le champion du cache-cache !' : 'Ouaf ! Parle à Maurice si tu veux jouer !']]);
+  if (id === 'roquette') {
+    const s = sqState('roquette');
+    if (!has('luge') && !has('skis')) return talk([['roquette', 'Salut ! Moi c\'est Roquette, le raton laveur le plus rapide du parc ! Je suis le cousin de Raflex.'], ['roquette', 'Reviens avec une luge et je te défie à la course ! Cabriole en donne une au sommet du Pic.']]);
+    if (s === undefined || s === 0) return talk([['roquette', s === undefined ? 'Salut ! Moi c\'est Roquette, le cousin de Raflex. Rien ne va plus vite que moi !' : 'Une revanche ? Ha ha, je suis prêt !'], ['roquette', 'Course de luge sur la piste des Oursons, du sommet jusqu\'en bas. Le premier arrivé gagne !'], ['roquette', 'Attention… 3… 2… 1…']], () => { if (s === undefined) sqSet('roquette', 0); startRocket(); });
+    if (s === 1) return talk([['roquette', 'Tu m\'as battu… Personne ne m\'avait jamais battu ! Respect, Oscar.'], ['roquette', 'Prends ces 80 pièces, champion.']], () => sideDone('roquette', 80));
+    return talk([['roquette', 'On refait une course ? Je m\'entraîne tous les jours !']], startRocket);
+  }
+  if (id === 'filou') {
+    const s = sqState('filou');
+    if (s === undefined) return talk([['filou', 'Bonjour, gros ours ! Je suis Filou, le renard le plus malin de la forêt.'], ['filou', 'Je connais plein de devinettes. Si tu en trouves trois, je te donne mon trésor !']], () => { sqSet('filou', 0); openRiddle(); });
+    if (s === 1) return talk([['filou', 'Trois bonnes réponses ! Tu es presque aussi malin qu\'un renard.'], ['filou', 'Voici mon trésor : 70 pièces brillantes !']], () => sideDone('filou', 70));
+    if (s === 'done') return talk([['filou', pick(['Je prépare de nouvelles devinettes…', 'Un ours malin et un renard malin : quelle équipe !'])]]);
+    return talk([['filou', 'Une nouvelle devinette ?']], openRiddle);
+  }
+}
+
+function endRocketQuiet() { const n = NPCS.roquette; if (!n) return; n.x = POI.roquette[0]; n.z = POI.roquette[1]; n.model.position.set(n.x, groundY(n.x, n.z), n.z); }
 
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
@@ -4044,7 +4230,7 @@ function openJournal() {
     [S.flags.carnetDone, '📖 Carnet sauvage d\'Elliot : ' + nw + ' / ' + WILD.length, S.flags.carnet ? 'Approche-toi des animaux sauvages pour les noter.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.'],
   ];
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
-  for (const q of SIDEQ) { const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
+  for (const q of SIDEQ) { if (q.friend && !L.querySelector('.amis')) { const h3 = document.createElement('div'); h3.className = 'amis'; h3.innerHTML = '<b>🐾 Jeux avec les amis</b><p>Maurice, Praline, Roquette et Filou t\'attendent !</p>'; L.appendChild(h3); } const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
   const h = document.createElement('div'); h.innerHTML = '<b>🏔️ Défis de l\'aventure</b><p>Pour jouer encore plus longtemps !</p>'; L.appendChild(h);
   for (const [ok, t, sub] of defis) { const d = document.createElement('div'); if (ok) d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (ok ? '✔ ' : '⭐ ') + t; d.querySelector('p').textContent = ok ? 'Réussi !' : sub; L.appendChild(d); }
   openPanel('pJournal');
@@ -4072,7 +4258,7 @@ function drawMap() {
   for (const rv of RIVERS) { const r = rv.pts; g.lineWidth = rv.w * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
   g.fillStyle = '#41b3e6'; for (const L of LAKES) { g.beginPath(); g.ellipse(X(L.x), Z(L.z), L.rx * k, L.rz * k, 0, 0, 6.283); g.fill(); }
   for (const p of ALL_PATHS) { g.strokeStyle = p === ROADS[0] ? '#9a7f78' : '#e2cc98'; g.lineWidth = p.w * k * 1.1; g.beginPath(); p.pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
-  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile], ['Station de ski', [0, -192]], ['Pic Grizzly', [10, -296]], ['Grande forêt', [-262, -20]], ['Grande prairie', [262, -80]], ['Ferme', POI.ferme], ['Moulin', POI.moulin], ['Canyon rouge', POI.canyon], ['Marais', POI.marais], ['Elliot', POI.elliot]].concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
+  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile], ['Station de ski', [0, -192]], ['Pic Grizzly', [10, -296]], ['Grande forêt', [-262, -20]], ['Grande prairie', [262, -80]], ['Ferme', POI.ferme], ['Moulin', POI.moulin], ['Canyon rouge', POI.canyon], ['Marais', POI.marais], ['Elliot', POI.elliot], ['Maurice et Praline', POI.niche], ['Roquette', POI.roquette], ['Filou', POI.filou]].concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
@@ -4122,7 +4308,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide();
+  showMushrooms(); refreshSide(); G.rocket = null; G.praFound = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -4283,7 +4469,7 @@ function step(dt) {
     else if (P.mode === 'lift') updateLift(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateWild(dt); updateSide(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -4348,6 +4534,7 @@ buildAnimals();
 buildWild();
 buildWildNPCs();
 buildSideQuests();
+buildFriends();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();

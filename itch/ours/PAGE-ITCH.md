@@ -16,14 +16,14 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 33, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 06, 31, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 33, 34, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `fishing`, `skiing`, `open-world`, `family-friendly`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
 
 ## Important
 
-Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
+Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
 
 Pour les dons : un parent doit t'aider pour le compte de paiement. Après la publication, tu peux mettre l'adresse de ta page dans `ours/index.html` (ligne `const SUPPORT_URL = '';`).
 
@@ -45,6 +45,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Répare un vieux camping-car**… et fais-le **voler** pour montrer le parc à la maire !
 - **Va skier au Pic Grizzly** : monte en télésiège, descends en luge ou à skis et bats le slalom de Cabriole la chèvre !
 - **Explore un monde immense** : la grande forêt et ses séquoias, la grande prairie des bisons, le canyon rouge et le marais.
+- **De nouveaux amis** : joue à cache-cache avec Praline la carline, fais la course de luge contre Roquette le raton laveur et réponds aux devinettes de Filou le renard !
 - **6 aventures du Grand Nord** : ramène le louveteau perdu, attrape les poules de Josette, nettoie le marais de Gaspard le héron, trouve les cristaux de glace…
 - **La météo change** : pluie, arc-en-ciel, neige en montagne et lucioles la nuit. Patine sur le lac gelé !
 - **Remplis le carnet sauvage d'Elliot l'élan** : loups, bisons, aigles, marmottes, lynx… 10 animaux à trouver.
@@ -74,6 +75,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Fix an old camper van**… and make it **fly** to show the park to the mayor!
 - **Go skiing on Grizzly Peak**: ride the chairlift, slide down on a sled or skis and beat Cabriole the goat's slalom!
 - **Explore a huge world**: the great forest with giant sequoias, the bison prairie, the red canyon and the marsh.
+- **New friends**: play hide-and-seek with Praline the pug, race Roquette the raccoon on a sled and solve Filou the fox's riddles!
 - **6 Great North adventures**: bring back the lost wolf cub, catch Josette's runaway hens, clean Gaspard the heron's marsh, find the ice crystals…
 - **Changing weather**: rain showers, rainbows, snow in the mountains and fireflies at night. Go ice skating on the frozen lake!
 - **Fill Elliot the moose's wildlife notebook**: wolves, bison, eagles, marmots, a lynx… 10 animals to find.
