@@ -126,11 +126,13 @@ body { background: #2f6a3c; color: var(--ink); font-family: var(--ui); overflow:
 @media (max-height: 480px) {
   #sideBtns { top: auto; bottom: calc(150px + env(safe-area-inset-bottom)); right: calc(max(12px, env(safe-area-inset-right)) + 120px); flex-direction: row; }
 }
+#vig { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(14,24,34,.26) 100%); z-index: 1; }
 </style>
 </head>
 <body>
 <canvas id="gl"></canvas>
 <canvas id="ov"></canvas>
+<div id="vig"></div>
 
 <div id="hud" hidden>
   <button id="menuBtn" aria-label="Menu">☰</button>
@@ -449,6 +451,7 @@ const REG = {
 };
 const MESAS = [[252, 206, 13, 12], [292, 246, 10, 17], [244, 280, 12, 9], [302, 184, 8, 11], [270, 300, 9, 14]];
 function groundY(x, z) {
+  if (x > 1500) return moonY(x, z);
   if (x > 700) return 0;
   let y = (fbm(x * 0.02, z * 0.02, 3) - 0.45) * 1.6;
   const dm = Math.hypot(x - MOUNT.x, z - MOUNT.z) / MOUNT.r;
@@ -484,7 +487,7 @@ function deckY(x, z) {
   return null;
 }
 function slopeAt(x, z) { const e = 1.5; return Math.hypot(groundY(x + e, z) - groundY(x - e, z), groundY(x, z + e) - groundY(x, z - e)) / (2 * e); }
-const waterDepth = (x, z) => deckY(x, z) !== null ? 0 : Math.max(0, WATER_Y - groundY(x, z));
+const waterDepth = (x, z) => x > 1500 || deckY(x, z) !== null ? 0 : Math.max(0, WATER_Y - groundY(x, z));
 const walkY = (x, z) => { const d = deckY(x, z); return d !== null ? Math.max(d, groundY(x, z)) : groundY(x, z); };
 const pathDist = (x, z) => { let d = 1e9; for (const p of ALL_PATHS) d = Math.min(d, polyDist(x, z, p.pts) - p.w / 2); return d; };
 function inZone(x, z) {
@@ -537,6 +540,7 @@ function collide(p, r) {
     }
   }
   if (p.x < 700) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
+  else if (p.x > 1500) { const dx = p.x - MOON.x, dz = p.z - MOON.z, d = Math.hypot(dx, dz), m = MOON.r - 4; if (d > m) { p.x = MOON.x + dx / d * m; p.z = MOON.z + dz / d * m; } }
 }
 
 // Y a-t-il un arbre entre la caméra et ce point ? (pour montrer Oscar sous les arbres)
@@ -633,7 +637,8 @@ function buildGround() {
     }
   });
   waterTex.wrapS = waterTex.wrapT = T.RepeatWrapping;
-  const wm = new T.MeshLambertMaterial({ map: waterTex, color: 0xffffff, emissive: colorL(0x0a3a55), emissiveIntensity: 0.25 });
+  // L'eau brille au soleil (reflets)
+  const wm = new T.MeshPhongMaterial({ map: waterTex, color: 0xffffff, emissive: colorL(0x0a3a55), emissiveIntensity: 0.25, specular: 0x9ab8cc, shininess: 70 });
   const lake = new T.Mesh(new T.CircleGeometry(1, 72), wm);
   lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx * 1.06, LAKE.rz * 1.06, 1); lake.position.set(LAKE.x, WATER_Y, LAKE.z);
   lake.receiveShadow = true; scene.add(lake);
@@ -785,13 +790,13 @@ function buildPlants() {
     addCircle(x, z, 0.45 * s).tree = 1;
   }
   const pineCols = [0x2c6e47, 0x337a4f, 0x265f3f, 0x3a8656];
-  tiledInst(folGeo, lam(0xffffff), pines, { h: 6, col: (c, i) => c.set(pineCols[i % 4]).convertSRGBToLinear() });
-  tiledInst(capGeo, lam(0xf4f8ff), snowP, { h: 6, sy: e => e[3] * (0.9 + (e[5] % 7) * 0.04) * 1.01 });
+  tiledInst(folGeo, windLam(0.006), pines, { h: 6, col: (c, i) => c.set(pineCols[i % 4]).convertSRGBToLinear() });
+  tiledInst(capGeo, addWind(lam(0xf4f8ff), 0.006), snowP, { h: 6, sy: e => e[3] * (0.9 + (e[5] % 7) * 0.04) * 1.01 });
   tiledInst(trunkGeo, M.trunk, pines.concat(rounds), { h: 2 });
   const roundCols = [0x4f9e57, 0x5aa865, 0x6bb25f, 0x8fbf4f];
-  tiledInst(roundGeo, lam(0xffffff), rounds, { h: 5, col: (c, i) => c.set(roundCols[i % 4]).convertSRGBToLinear() });
-  tiledInst(seqGeo, vcMat, seqs, { h: 14, sy: e => e[3] });
-  tiledInst(birchGeo, vcMat, birches, { h: 5 });
+  tiledInst(roundGeo, windLam(0.004), rounds, { h: 5, col: (c, i) => c.set(roundCols[i % 4]).convertSRGBToLinear() });
+  tiledInst(seqGeo, windLam(0.0006, { vertexColors: true }), seqs, { h: 14, sy: e => e[3] });
+  tiledInst(birchGeo, windLam(0.004, { vertexColors: true }), birches, { h: 5 });
   // Buissons pour se cacher, et buissons à baies
   const bushGeo = new T.IcosahedronGeometry(1, 1);
   { const p = bushGeo.attributes.position; for (let v = 0; v < p.count; v++) { const x = p.getX(v), y = p.getY(v), z = p.getZ(v); const k = hash2(Math.round(x * 50) + 7, Math.round(y * 50) * 31 + Math.round(z * 50)) > 0.5 ? 1.16 : 0.94; p.setXYZ(v, x * k, y * k, z * k); } bushGeo.computeVertexNormals(); }
@@ -819,8 +824,8 @@ function buildPlants() {
   }
   const bushCol = (c, i, e) => isSnowy(e[0], e[2], e[1]) ? c.set([0x3f8a62, 0x4a9468][i % 2]).convertSRGBToLinear() : c.set([0x4aa35a, 0x56ad60, 0x3f9852][i % 3]).convertSRGBToLinear();
   const blA = bl.filter((e, i) => i % 3 !== 1), blB = bl.filter((e, i) => i % 3 === 1);
-  tiledInst(bushGeo, lam(0xffffff), blA, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i, e) });
-  tiledInst(bush2, lam(0xffffff), blB, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i + 1, e) });
+  tiledInst(bushGeo, windLam(0.035), blA, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i, e) });
+  tiledInst(bush2, windLam(0.035), blB, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i + 1, e) });
   const m4 = new T.Matrix4();
   const berryPos = [];
   bl.forEach((e, i) => {
@@ -865,7 +870,7 @@ function buildPlants() {
     const pr = REG.prairie(x, z);
     tf.push([x, groundY(x, z), z, srange(0.8, 1.4) * (1 + pr * 0.7), srand() * 6]);
   }
-  tiledInst(tuftGeo, lam(0xffffff), tf, { h: 1, shadow: false, col: (c, i, e) => c.set(REG.prairie(e[0], e[2]) > 0.5 ? (i % 3 ? 0xd8c860 : 0xc0b850) : REG.canyon(e[0], e[2]) > 0.5 ? 0xb8a860 : 0x7cc88a).convertSRGBToLinear() });
+  tiledInst(tuftGeo, windLam(0.35), tf, { h: 1, shadow: false, col: (c, i, e) => c.set(REG.prairie(e[0], e[2]) > 0.5 ? (i % 3 ? 0xd8c860 : 0xc0b850) : REG.canyon(e[0], e[2]) > 0.5 ? 0xb8a860 : 0x7cc88a).convertSRGBToLinear() });
   // Fougères dans les forêts
   const fernParts = [];
   for (let k = 0; k < 6; k++) { const l = new T.ConeGeometry(0.22, 1.5, 4); l.scale(1, 1, 0.3); l.translate(0, 0.75, 0); l.rotateX(1.0); l.rotateY(k * 1.05); fernParts.push(l); }
@@ -875,7 +880,7 @@ function buildPlants() {
     if (forestK(x, z) < 0.6 || isSnowy(x, z, groundY(x, z)) || !isFree(x, z, 1)) continue;
     ferns.push([x, groundY(x, z), z, srange(0.7, 1.3), srand() * 6]);
   }
-  tiledInst(fernGeo, lam(0xffffff), ferns, { h: 1, shadow: false, col: (c, i) => c.set([0x3f9a50, 0x4aa85a, 0x358a48][i % 3]).convertSRGBToLinear() });
+  tiledInst(fernGeo, windLam(0.12), ferns, { h: 1, shadow: false, col: (c, i) => c.set([0x3f9a50, 0x4aa85a, 0x358a48][i % 3]).convertSRGBToLinear() });
   // Roseaux et nénuphars du marais
   const reedGeo = mergeCol([[new T.CylinderGeometry(0.035, 0.05, 1.8, 4).translate(0, 0.9, 0), 0x5a9a4a], [new T.CylinderGeometry(0.1, 0.1, 0.45, 6).translate(0, 1.65, 0), 0x7a4a2a], [new T.CylinderGeometry(0.03, 0.04, 1.4, 4).rotateZ(0.2).translate(0.25, 0.7, 0.1), 0x6aa85a], [new T.CylinderGeometry(0.03, 0.04, 1.2, 4).rotateZ(-0.25).translate(-0.2, 0.6, -0.1), 0x6aa85a]]);
   const padGeo = mergeCol([[new T.CircleGeometry(0.7, 9, 0.5, 5.6).rotateX(-Math.PI / 2), 0x4a9a4a]]);
@@ -888,14 +893,14 @@ function buildPlants() {
     if (y > -0.75 && y < 0.15) reeds.push([x, Math.max(y, WATER_Y - 0.3), z, srange(0.8, 1.3), srand() * 6]);
     else if (y < -0.7 && REG.marsh(x, z) > 0.5 && pads.length + padsF.length < 500) (srand() < 0.2 ? padsF : pads).push([x, WATER_Y + 0.03, z, srange(0.7, 1.3), srand() * 6]);
   }
-  tiledInst(reedGeo, vcMat, reeds, { h: 1, shadow: false });
+  tiledInst(reedGeo, windLam(0.05, { vertexColors: true }), reeds, { h: 1, shadow: false });
   tiledInst(padGeo, vcMat, pads, { h: 0, shadow: false, sy: () => 1 });
   tiledInst(padFl, vcMat, padsF, { h: 0, shadow: false, sy: () => 1 });
   // Champ de tournesols de la ferme
   const sunGeo = mergeCol([[new T.CylinderGeometry(0.06, 0.08, 2.2, 5).translate(0, 1.1, 0), 0x4a8a3a], [new T.CylinderGeometry(0.45, 0.45, 0.1, 10).rotateX(1.2).translate(0, 2.25, 0.08), 0xffc53d], [new T.CylinderGeometry(0.22, 0.22, 0.14, 8).rotateX(1.2).translate(0, 2.26, 0.12), 0x6a3a1a], [new T.ConeGeometry(0.2, 0.6, 4).scale(1, 1, 0.3).rotateZ(1.2).translate(0.25, 1.2, 0), 0x5a9a3a]]);
   const suns = [];
   for (let x = 236; x < 300; x += 2.2) for (let z = -58; z < -32; z += 2.4) { const jx = x + srange(-0.5, 0.5), jz = z + srange(-0.5, 0.5); if (pathDist(jx, jz) > 1.5) { suns.push([jx, groundY(jx, jz), jz, srange(0.85, 1.15), -0.3 + srange(-0.2, 0.2)]); } }
-  tiledInst(sunGeo, vcMat, suns, { h: 2 });
+  tiledInst(sunGeo, windLam(0.03, { vertexColors: true }), suns, { h: 2 });
   // Détails de la forêt : souches, troncs couchés, rochers moussus
   const stumpGeo = mergeCol([[new T.CylinderGeometry(0.45, 0.6, 0.6, 9).translate(0, 0.3, 0), 0x7a4a34], [new T.CylinderGeometry(0.44, 0.44, 0.04, 9).translate(0, 0.61, 0), 0xd8b080], [new T.CylinderGeometry(0.2, 0.2, 0.05, 8).translate(0, 0.63, 0), 0xb08a60]]);
   const logGeo = mergeCol([[new T.CylinderGeometry(0.35, 0.4, 3.6, 9).rotateZ(Math.PI / 2).translate(0, 0.36, 0), 0x6a4030], [new T.CylinderGeometry(0.34, 0.34, 0.04, 9).rotateZ(Math.PI / 2).translate(1.81, 0.36, 0), 0xd8b080], [new T.SphereGeometry(0.25, 6, 4).scale(1.4, 0.5, 1).translate(-0.6, 0.66, 0.1), 0x5aa04a], [new T.SphereGeometry(0.2, 6, 4).scale(1.4, 0.5, 1).translate(0.8, 0.64, -0.1), 0x4a9040]]);
@@ -1727,6 +1732,7 @@ const ITEMS = {
   brochet: { n: 'Brochet', e: '🐟', sell: 16, fish: 1 }, anguille: { n: 'Anguille', e: '🐍', sell: 18, fish: 1 }, saumon: { n: 'Saumon', e: '🐠', sell: 22, fish: 1 },
   silure: { n: 'Poisson-chat', e: '🐡', sell: 26, fish: 1 }, dore: { n: 'Poisson doré', e: '🐠', sell: 60, fish: 1 },
   lait: { n: 'Lait', e: '🥛', en: 20, sell: 4 }, luge: { n: 'Luge', e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: 'Champignon', e: '🍄', en: 15, sell: 5 },
+  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 },
   p_chassis: { n: 'Vieux châssis', e: '🛻', key: 1 }, p_roues: { n: 'Quatre roues', e: '🛞', key: 1 }, p_carrosserie: { n: 'Carrosserie', e: '🚐', key: 1 }, p_volant: { n: 'Volant et sièges', e: '🪑', key: 1 }, p_moteur: { n: 'Moteur de camion', e: '⚙️', key: 1 }, p_phares: { n: 'Phares', e: '💡', key: 1 },
   coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, cristal: { n: 'Cristal bleu', e: '💎', sell: 80 }, fossile: { n: 'Fossile', e: '🦴', sell: 60 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
   chapeau: { n: 'Chapeau', e: '🎩', key: 1 }, manteau: { n: 'Manteau', e: '🧥', key: 1 }, canne: { n: 'Canne à pêche', e: '🎣', key: 1 }, pelle: { n: 'Pelle', e: '⛏️', key: 1 },
@@ -1872,6 +1878,8 @@ function updatePlayer(dt) {
   P.spd = Math.hypot(P.vx, P.vz);
   if (P.spd > 0.3) P.rot += angDiff(P.rot, Math.atan2(P.vx, P.vz)) * (1 - Math.exp(-dt * 12));
   P.y = P.swim ? WATER_Y - 1.35 + Math.sin(G.t * 3) * 0.05 : walkY(P.x, P.z);
+  // Sur la Lune, Oscar fait de grands bonds
+  if (P.x > 1500) { P.y += Math.abs(Math.sin(P.phase * 0.55)) * 1.1 * clamp(P.spd / 4, 0, 1); if (P.spd > 1 && Math.random() < dt * 3) puff(P.x, walkY(P.x, P.z) + 0.1, P.z, 3, [0.75, 0.75, 0.8], 1); }
   // Énergie
   S.energy = Math.max(0, S.energy - dt * (running ? 0.5 : P.spd > 0.5 ? 0.05 : 0.02));
   if (S.energy <= 0 && !G.tiredSaid) { G.tiredSaid = true; toast('Oscar a faim… Mange quelque chose (sac) !'); }
@@ -2167,7 +2175,7 @@ function fishSpot() {
   const fx = P.x + Math.sin(P.rot) * 3.5, fz = P.z + Math.cos(P.rot) * 3.5;
   return waterDepth(fx, fz) > 0.4 || (Math.abs(P.x - POI.dock[0]) < 1.6 && P.z > POI.dock[1] + 6);
 }
-function camperNear() { return P.mode === 'walk' && Math.hypot(C.x - P.x, C.z - P.z) < 4.2; }
+function camperNear() { return P.mode === 'walk' && P.x < 1500 && Math.hypot(C.x - P.x, C.z - P.z) < 4.2; }
 function findInteraction() {
   if (P.mode !== 'walk' || G.talking) return null;
   let best = null, bd = 1e9;
@@ -2264,6 +2272,7 @@ function exitCamper() {
   S.camper = [C.x, C.z, C.rot]; saveGame();
 }
 function updateCamper(dt) {
+  if (P.mode === 'cine') return; // pendant le grand voyage, c'est la cinématique qui pilote
   const u = C.model.userData;
   if (P.mode === 'drive') {
     const l = Math.min(1, Math.hypot(IN.x, IN.z));
@@ -4202,13 +4211,17 @@ function pontoonDeck(x, z) {
 function depositRocket() {
   S.rocket = S.rocket || 0;
   if (!S.flags.wings) return talk([['max', 'Le camping-car spatial ? D\'abord, il faut réparer le vieux camping-car et le faire voler !'], ['max', 'Après, je te promets de le transformer pour aller dans l\'espace.']]);
-  if (S.rocket >= ROCKET_GOAL) return talk([['max', 'Ton camping-car spatial est prêt ! Le grand voyage vers la Lune… ce sera pour le chapitre 2 !']]);
+  if (S.rocket >= ROCKET_GOAL) return talk([['max', S.flags.moon ? 'Le camping-car spatial t\'attend à la base de lancement, ou sur la Lune !' : 'Ton camping-car spatial est prêt ! On t\'attend tous à la base de lancement du canyon rouge.']]);
   if (S.coins <= 0) return toast('Ta bourse est vide ! Travaille pour gagner des pièces (panneau « Offres d\'emploi » au village).');
   const put = Math.min(S.coins, ROCKET_GOAL - S.rocket); S.coins -= put; S.rocket += put; sfx.coin(); sparkle(POI.tirelire[0], groundY(POI.tirelire[0], POI.tirelire[1]) + 2, POI.tirelire[1]);
   toast('🐷 +' + put + ' pièces dans la tirelire : ' + S.rocket + ' / ' + ROCKET_GOAL);
   const before = rocketParts.filter(p => p.visible).length; showRocket(); const after = rocketParts.filter(p => p.visible).length;
-  if (after > before) { banner('Le camping-car spatial avance !', ['Max a installé les réacteurs', 'La coque spatiale est posée', 'La bulle d\'oxygène est prête', 'Le camping-car spatial est terminé !'][after - 1]); sfx.fanfare(); confetti(C.x, C.y + 4, C.z); }
-  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['max', 'Ça y est, Oscar ! Ton camping-car peut voler jusque dans l\'espace !'], ['oscar', 'J\'ai travaillé si dur pour ça… Merci Max !'], ['max', 'Bientôt, tu décolleras de la base de lancement du canyon. Direction la Lune : ce sera le chapitre 2 !']]), 2500);
+  if (after > before) {
+    banner('Le camping-car spatial avance !', ['Les réacteurs sont installés', 'La coque spatiale est posée', 'La bulle d\'oxygène est prête', 'Le camping-car spatial est terminé !'][after - 1]); sfx.fanfare(); confetti(C.x, C.y + 4, C.z);
+    const help = [[['roquette', 'Les réacteurs ? C\'est pour moi ! Rien ne va plus vite que moi !'], ['max', 'Merci Roquette ! Tac tac tac… Les réacteurs sont posés.']], [['raflex', 'Yo ! J\'ai trouvé des plaques argentées trop stylées pour la coque.'], ['noisette', 'Et moi, je visse les petites vis ! J\'ai des pattes très agiles.']], [['lulu', 'La bulle de verre, c\'est comme un aquarium à l\'envers ! Je la nettoie.'], ['donovan', 'Coin ! J\'ai rempli les réservoirs d\'oxygène. On pourra respirer là-haut !']], [['plume', 'Hou hou ! J\'ai réglé l\'antenne pour parler avec la Terre.'], ['blaireau', 'Et voilà le drapeau. Tout le parc a construit ce camping-car, petit.'], ['maurice', 'Wouf ! Praline et moi, on a gardé les outils !']]][after - 1];
+    setTimeout(() => talk(help.filter(l => NPCS[l[0]])), 1600);
+  }
+  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['max', 'Ça y est, Oscar ! Ton camping-car peut voler jusque dans l\'espace !'], ['oscar', 'J\'ai travaillé si dur pour ça… Merci Max !'], ['max', 'Et tu ne pars pas seul : on vient TOUS avec toi !'], ['max', 'Rendez-vous à la base de lancement du canyon rouge. Direction la Lune !']]), 2500);
   updateHUD(); saveGame();
 }
 function showRocket() { const k = (S.rocket || 0) / ROCKET_GOAL; rocketParts.forEach((p, i) => { p.visible = k >= (i + 1) / 4; }); }
@@ -4296,6 +4309,334 @@ function cpartTalk(id) {
   return false;
 }
 
+// ================= Chapitre 2 : le grand voyage vers la Lune et les Zoublis =================
+// Tous les amis montent dans le camping-car spatial. Le décollage prend son temps pour admirer le parc,
+// puis sur la Lune, les héros découvrent par hasard des extraterrestres à aider : les Zoublis.
+const MOON = { x: 2000, z: 0, r: 165 };
+const onMoon = () => P.x > 1500;
+const MCAMP = [MOON.x - 20, MOON.z + 40];
+const SHIP = [MOON.x + 62, MOON.z - 52];
+const MCRATERS = [[62, -52, 30, 6], [-90, -80, 22, 7], [40, 72, 12, 2], [-62, 34, 10, 2], [104, 40, 16, 3], [-118, 6, 14, 3], [18, -112, 15, 3], [-32, -36, 8, 1.5], [122, -108, 12, 2], [-128, 100, 14, 2], [70, 120, 9, 1.5]];
+const MOUNTL = [-100, 110, 46, 24];
+const MSCOPES = [[MOON.x - 100, MOON.z + 110, 'Mont Lunaire'], [MOON.x + 62, MOON.z - 86, 'bord du grand cratère'], [MOON.x + 130, MOON.z + 88, 'colline de l\'est']];
+const MCRYSTALS = [[MOON.x - 130, MOON.z - 40], [MOON.x + 20, MOON.z - 140], [MOON.x + 140, MOON.z - 10], [MOON.x - 40, MOON.z + 140], [MOON.x + 90, MOON.z + 120]];
+const MICE = [[MOON.x - 96, MOON.z - 84], [MOON.x - 84, MOON.z - 74], [MOON.x - 92, MOON.z - 70]];
+function moonY(x, z) {
+  const dx = x - MOON.x, dz = z - MOON.z;
+  let y = (fbm(dx * 0.03 + 40, dz * 0.03, 3) - 0.5) * 2.4;
+  for (const c of MCRATERS) { const d = Math.hypot(dx - c[0], dz - c[1]) / c[2]; if (d < 1.5) y += (d < 1 ? -c[3] * (1 - d * d) : 0) + c[3] * 0.4 * Math.exp(-((d - 1) * (d - 1)) / 0.03); }
+  const dm = Math.hypot(dx - MOUNTL[0], dz - MOUNTL[1]) / MOUNTL[2]; if (dm < 1) y += MOUNTL[3] * (1 - dm * dm) ** 2;
+  const dh = Math.hypot(dx - 130, dz - 88) / 26; if (dh < 1) y += 9 * (1 - dh * dh) ** 2;
+  // La Lune est une petite planète ronde : le sol se courbe doucement
+  const d = Math.hypot(dx, dz), RB = 260; y += Math.sqrt(Math.max(RB * RB - d * d, 0)) - RB;
+  return y;
+}
+// ---------- Modèles ----------
+function makeZoubli(col, chief) {
+  const g = new T.Group(), c = lam(col, { flatShading: false }), w = new T.MeshBasicMaterial({ color: 0xffffff }), glow = new T.MeshBasicMaterial({ color: chief ? 0xffd84d : 0x9fffd0 });
+  const body = new T.Group(); g.add(body);
+  ball(body, c, 0.38, 0, 0.62, 0, 0.9, 1.05, 0.85);
+  ball(body, lam(0xe8fff0, { flatShading: false }), 0.24, 0, 0.6, 0.18, 0.9, 1, 0.6);
+  const head = new T.Group(); head.position.set(0, 1.25, 0.02); body.add(head);
+  ball(head, c, 0.46, 0, 0, 0, 1.1, 0.95, 1);
+  for (const s of [-1, 1]) {
+    ball(head, w, 0.15, s * 0.18, 0.04, 0.36, 1, 1.25, 0.6); ball(head, eyeMat, 0.09, s * 0.18, 0.03, 0.44, 1, 1.25, 0.6);
+    const hl = new T.Mesh(new T.SphereGeometry(0.03, 6, 4), w); hl.position.set(s * 0.18 + 0.04, 0.09, 0.5); head.add(hl);
+    const an = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.5, 5), c); an.position.set(s * 0.22, 0.58, 0); an.rotation.z = -s * 0.35; head.add(an);
+    const tip = new T.Mesh(new T.SphereGeometry(0.08, 8, 6), glow); tip.position.set(s * 0.32, 0.84, 0); head.add(tip);
+  }
+  const sm = new T.Mesh(new T.TorusGeometry(0.1, 0.02, 4, 10, Math.PI), eyeMat); sm.position.set(0, -0.16, 0.44); sm.rotation.z = Math.PI; head.add(sm);
+  if (chief) for (let k = -1; k <= 1; k++) { const cr = new T.Mesh(new T.SphereGeometry(0.07, 6, 4), glow); cr.position.set(k * 0.15, 0.46, 0.15); head.add(cr); }
+  const rig = { body, head, armL: limb(body, c, 0.06, 0.32, -0.34, 0.85, 0.05), armR: limb(body, c, 0.06, 0.32, 0.34, 0.85, 0.05), legL: limb(g, c, 0.08, 0.22, -0.15, 0.25, 0), legR: limb(g, c, 0.08, 0.22, 0.15, 0.25, 0) };
+  g.userData = { rig };
+  if (chief) g.scale.setScalar(1.3);
+  return g;
+}
+function makeUFO() {
+  const g = new T.Group(), silver = lam(0xc8ccd8), dark = lam(0x5a5e6a);
+  const disc = mesh(new T.SphereGeometry(4, 24, 12), silver, 0, 1.6, 0, g); disc.scale.set(1, 0.24, 1);
+  mesh(new T.CylinderGeometry(2.2, 3, 0.6, 20), dark, 0, 1.1, 0, g);
+  const dome = new T.Mesh(new T.SphereGeometry(1.9, 18, 10, 0, 6.283, 0, Math.PI / 2), new T.MeshPhongMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.5, shininess: 90 })); dome.position.y = 2.2; g.add(dome);
+  const lights = [];
+  for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283; const l = new T.Mesh(new T.SphereGeometry(0.22, 8, 6), new T.MeshBasicMaterial({ color: 0x555555 })); l.position.set(Math.cos(a) * 3.7, 1.6, Math.sin(a) * 3.7); g.add(l); lights.push(l); }
+  for (let k = 0; k < 3; k++) { const a = k / 3 * 6.283; const lg = mesh(new T.CylinderGeometry(0.08, 0.12, 1.6, 6), dark, Math.cos(a) * 2.4, 0.6, Math.sin(a) * 2.4, g); lg.rotation.z = Math.cos(a) * 0.3; lg.rotation.x = -Math.sin(a) * 0.3; }
+  g.userData = { lights };
+  return g;
+}
+function earthTex() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#2f7fd0'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#4caf5a'; for (let i = 0; i < 9; i++) { g.beginPath(); g.ellipse(rand(0, w), rand(30, h - 30), rand(18, 50), rand(12, 34), rand(0, 3), 0, 6.283); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,.75)'; for (let i = 0; i < 14; i++) { g.beginPath(); g.ellipse(rand(0, w), rand(0, h), rand(14, 40), rand(4, 9), rand(-0.3, 0.3), 0, 6.283); g.fill(); }
+    g.fillStyle = '#f4f8ff'; g.fillRect(0, 0, w, 14); g.fillRect(0, h - 14, w, 14);
+  });
+}
+// ---------- Construction ----------
+let starPts = null, earthM = null, homeBall = null, moonBall = null, ufo = null, mCrystalM = [], mIceM = [], moonFriends = [], launchCrowd = [];
+const MOON_FRIENDS = [['max', 'Max le castor', '#a0583a', () => makeBeaver()], ['lulu', 'Lulu la loutre', '#3a9a9a', () => makeOtter()], ['raflex', 'Raflex', '#e0607a', () => makeRaccoon()], ['donovan', 'Donovan le canard', '#5a8fd0', () => makeBigDuck()], ['noisette', 'Noisette', '#c0703a', () => makeSquirrel()], ['blaireau', 'Papi Blaireau', '#5a5a66', () => makeBadger()], ['plume', 'Madame Plume', '#7a5aa0', () => makeOwl()], ['maurice', 'Maurice le carlin', '#a07848', () => makePug(false)], ['praline', 'Praline la carline', '#e0607a', () => makePug(true)], ['roquette', 'Roquette', '#f07a3a', () => makeRoquette()], ['filou', 'Filou le renard', '#e8803a', () => makeFilou()]];
+function addHelmet(model, head) {
+  model.updateMatrixWorld(true);
+  const box = new T.Box3().setFromObject(head), c = new V3(), sz = new V3(), ws = new V3();
+  box.getCenter(c); box.getSize(sz); head.getWorldScale(ws);
+  head.worldToLocal(c);
+  const r = Math.max(sz.x, sz.y, sz.z) * 0.62 / ws.x;
+  const hm = new T.Mesh(new T.SphereGeometry(r, 16, 12), new T.MeshPhongMaterial({ color: 0xcfefff, transparent: true, opacity: 0.32, shininess: 100, depthWrite: false }));
+  hm.position.copy(c); head.add(hm);
+  const ring = new T.Mesh(new T.TorusGeometry(r * 0.75, r * 0.08, 6, 16), lam(0xe8eaf0)); ring.position.copy(c); ring.position.y -= r * 0.75; ring.rotation.x = Math.PI / 2; head.add(ring);
+  return [hm, ring];
+}
+function buildMoon() {
+  // Sol lunaire gris avec des cratères, un peu arrondi au bord
+  const gg = new T.RingGeometry(0.01, MOON.r + 70, 160, 90); gg.rotateX(-Math.PI / 2);
+  const p = gg.attributes.position, col = new Float32Array(p.count * 3), c = new T.Color();
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + MOON.x, z = p.getZ(i) + MOON.z, y = moonY(x, z); p.setX(i, x); p.setZ(i, z); p.setY(i, y);
+    c.set(fbm(x * 0.04, z * 0.04, 3) > 0.52 ? 0xa8a8b2 : 0xbcbcc6);
+    if (y < -1) c.lerp(new T.Color(0x8a8a96), clamp(-y / 6, 0, 1));
+    if (y > 4) c.lerp(new T.Color(0xd8d8e0), clamp((y - 4) / 12, 0, 0.6));
+    c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.computeVertexNormals();
+  const gm = new T.Mesh(gg, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad })); gm.receiveShadow = true; scene.add(gm);
+  // Rochers lunaires
+  seed = 4040; const rocks = [];
+  for (let t = 0; t < 4000 && rocks.length < 220; t++) { const x = MOON.x + srange(-MOON.r, MOON.r), z = MOON.z + srange(-MOON.r, MOON.r); if (Math.hypot(x - MOON.x, z - MOON.z) > MOON.r - 8 || Math.hypot(x - MCAMP[0], z - MCAMP[1]) < 18 || Math.hypot(x - SHIP[0], z - SHIP[1]) < 12) continue; const s = srange(0.4, 1.6); rocks.push([x, moonY(x, z) + s * 0.2, z, s, srand() * 6]); if (s > 1) addCircle(x, z, s * 0.8); }
+  tiledInst(new T.DodecahedronGeometry(1, 0), lam(0xffffff), rocks, { h: 2, col: (cc, i) => cc.set([0x9a9aa6, 0x8a8a96, 0xb0b0ba][i % 3]).convertSRGBToLinear() });
+  // Étoiles et Terre dans le ciel
+  const n = 1600, sp = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, r = 1200, s = Math.sqrt(1 - u * u); sp[i * 3] = Math.cos(a) * s * r; sp[i * 3 + 1] = u * r; sp[i * 3 + 2] = Math.sin(a) * s * r; }
+  const sg = new T.BufferGeometry(); sg.setAttribute('position', new T.BufferAttribute(sp, 3));
+  starPts = new T.Points(sg, new T.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false })); starPts.frustumCulled = false; scene.add(starPts);
+  earthM = new T.Mesh(new T.SphereGeometry(70, 32, 20), new T.MeshBasicMaterial({ map: earthTex(), fog: false })); earthM.position.set(MOON.x + 260, 230, MOON.z - 700); scene.add(earthM);
+  // Vue de l'espace, le parc est posé sur une grande planète bleue
+  { const tx = earthTex(); tx.wrapS = T.RepeatWrapping; tx.repeat.set(3, 1);
+    homeBall = new T.Mesh(new T.SphereGeometry(1400, 64, 32), new T.MeshLambertMaterial({ map: tx, fog: false, transparent: true, opacity: 0 }));
+    homeBall.position.set(0, -1445, 0); homeBall.visible = false; scene.add(homeBall); }
+  moonBall = new T.Mesh(new T.SphereGeometry(250, 48, 32), new T.MeshToonMaterial({ color: colorL(0xa8a8b2), gradientMap: toonGrad })); moonBall.position.set(MOON.x, -260, MOON.z); scene.add(moonBall);
+  // Camp de base
+  sign('CAMP DE BASE', MCAMP[0] + 8, MCAMP[1] + 10, 0.3, 2, 0.8, '#3a6a9a');
+  { const x = MCAMP[0] - 6, z = MCAMP[1] - 4, y = moonY(x, z); mesh(new T.CylinderGeometry(0.06, 0.06, 4, 6), M.metal, x, y + 2, z); const f = mesh(new T.BoxGeometry(1.8, 1.1, 0.04), new T.MeshLambertMaterial({ map: signTex('OSCAR', '#3a6a9a') }), x + 0.95, y + 3.4, z); }
+  { const x = MCAMP[0] + 10, z = MCAMP[1] - 6, y = moonY(x, z); const dome = mesh(new T.SphereGeometry(3, 16, 10, 0, 6.283, 0, Math.PI / 2), lam(0xf4f2ee), x, y, z); mesh(new T.CircleGeometry(0.9, 12, 0, Math.PI), M.dark, x, y, z + 3.0); addCircle(x, z, 3); }
+  // Vaisseau écrasé des Zoublis, dans le grand cratère
+  ufo = makeUFO(); ufo.position.set(SHIP[0], moonY(SHIP[0], SHIP[1]) - 0.4, SHIP[1]); ufo.rotation.set(0.12, 0.6, 0.32); scene.add(ufo); addCircle(SHIP[0], SHIP[1], 4);
+  // Cristaux d'énergie, glace, télescopes
+  const cm = new T.MeshBasicMaterial({ color: 0xc080ff });
+  MCRYSTALS.forEach(([x, z], i) => { const g = new T.Group(); g.position.set(x, moonY(x, z) + 0.8, z); scene.add(g); for (let k = 0; k < 3; k++) { const o = new T.Mesh(new T.OctahedronGeometry(0.5 - k * 0.1, 0), cm); o.scale.y = 1.8; o.position.set((k - 1) * 0.4, k * 0.15, 0); g.add(o); } g.visible = false; mCrystalM.push(g);
+    addInter({ x, z, r: 2.6, icon: '💎', label: () => 'Ramasser le cristal d\'énergie', can: () => g.visible, act: () => { S.mcr = S.mcr || []; S.mcr.push(i); g.visible = false; sparkle(x, g.position.y, z); sfx.cone(); moonEvent('mcrystal'); } }); });
+  const im = lam(0xbfe8ff);
+  MICE.forEach(([x, z], i) => { const m = mesh(new T.BoxGeometry(1.1, 0.9, 1.1), im, x, moonY(x, z) + 0.45, z); m.rotation.y = i; m.visible = false; mIceM.push(m);
+    addInter({ x, z, r: 2.4, icon: '🧊', label: () => 'Prendre le bloc de glace', can: () => m.visible, act: () => { S.mice = S.mice || []; S.mice.push(i); m.visible = false; sparkle(x, m.position.y + 0.5, z); sfx.pickup(); moonEvent('mice'); } }); });
+  MSCOPES.forEach(([x, z, nm], i) => { const y = moonY(x, z), g = new T.Group(); g.position.set(x, y, z); g.rotation.y = i * 2; scene.add(g);
+    for (let k = 0; k < 3; k++) { const a = k / 3 * 6.283, l = mesh(new T.CylinderGeometry(0.04, 0.04, 1.6, 5), M.dark, Math.cos(a) * 0.35, 0.75, Math.sin(a) * 0.35, g); l.rotation.z = Math.cos(a) * 0.25; l.rotation.x = -Math.sin(a) * 0.25; }
+    const tube = mesh(new T.CylinderGeometry(0.16, 0.24, 1.6, 10), M.white, 0, 1.75, 0.2, g); tube.rotation.x = -0.9;
+    addInter({ x, z, r: 2.6, icon: '🔭', label: () => 'Regarder dans le télescope', can: () => true, act: () => lookScope(i) }); });
+  // Oscar a un casque sur la Lune
+  const u = P.model.userData; P.helmets = addHelmet(u.quad, u.quad.userData.rig.head).concat(addHelmet(u.up, u.up.userData.rig.head));
+  // Tous les amis sont venus, avec leur casque
+  MOON_FRIENDS.forEach(([id, name, colr, mk], i) => {
+    const m = mk(), a = -0.4 + i / MOON_FRIENDS.length * 3.6, x = MCAMP[0] + Math.cos(a) * 11, z = MCAMP[1] + Math.sin(a) * 9;
+    addNPC('lm_' + id, { name, col: colr, model: m, x, z, rot: Math.atan2(MCAMP[0] - x, MCAMP[1] - z), head: 2.2 });
+    addHelmet(m, m.userData.rig.head); moonFriends.push(NPCS['lm_' + id]);
+    const n = NPCS['lm_' + id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3, icon: '💬', label: () => 'Parler à ' + name.split(' (')[0], can: () => !n.hidden, act: () => talkMoonFriend(id) });
+  });
+  // Les Zoublis (cachés jusqu'à la découverte)
+  addNPC('zib', { name: 'Zib, chef des Zoublis', col: '#3aa86a', model: makeZoubli(0x5fd08a, true), x: SHIP[0] - 7, z: SHIP[1] + 6, rot: 0.6, head: 2.2 });
+  [['zoubli1', 0x8a6ad8, -4, 9], ['zoubli2', 0xf08ab8, -9, 2], ['zoubli3', 0x5ac0e0, 2, 9]].forEach(([id, cl, dx, dz]) => addNPC(id, { name: 'Un Zoubli', col: '#8a6ad8', model: makeZoubli(cl), x: SHIP[0] + dx, z: SHIP[1] + dz, rot: 0.4, head: 1.8 }));
+  for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3.2, icon: '👽', label: () => 'Parler à ' + n.name.split(',')[0], can: () => !n.hidden, act: () => talkZoubli(id) }); }
+  // Voyages en camping-car : départ de la base sur Terre, retour depuis la Lune
+  addInter({ x: POI.base[0], z: POI.base[1] + 8, r: 6, icon: '🚀', label: () => S.flags.moon ? 'Aller sur la Lune' : 'Le grand jour : partir pour la Lune !', can: () => (S.rocket || 0) >= ROCKET_GOAL && P.x < 1500, act: () => { if (S.flags.moon) quickTravel(true); else startLaunch(); } });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 6, icon: '🌍', label: () => 'Rentrer sur Terre', can: () => onMoon() && S.flags.moon, act: () => quickTravel(false) });
+}
+// ---------- Le grand jour : décollage lent, voyage, alunissage ----------
+const CAPTIONS = [[0.5, 'Max : Tout le monde est là ? On part tous ensemble !'], [3, 'Lulu, Raflex, Donovan, Noisette, Papi Blaireau, Madame Plume, Maurice, Praline, Roquette et Filou montent à bord !'], [7, '3…'], [8, '2…'], [9, '1…'], [10, '🚀 DÉCOLLAGE !'], [14, 'Au revoir, le parc des Pins !'], [20, 'Regarde : le grand lac, la forêt et la station de ski…'], [27, 'On traverse les nuages !'], [34, 'Le parc devient tout petit…'], [42, 'Le ciel devient noir : nous voilà dans l\'espace ! ✨'], [51, 'Voilà la Lune ! 🌙'], [58, 'On se pose près d\'un grand cratère…']];
+function startLaunch() {
+  fadeTo(() => {
+    G.cine = { t: 0, cap: 0, skip: false };
+    P.mode = 'cine'; P.model.visible = false; if (P.disguise) setDisguise(false);
+    S.flags.camper = 1; showCamperParts();
+    C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; C.y = groundY(C.x, C.z) + 0.8; C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, 0, 0);
+    G.wanted = 0;
+    // Les amis se rassemblent autour du camping-car
+    launchCrowd = MOON_FRIENDS.map(([id, , , mk], i) => { const m = mk(), a = i / MOON_FRIENDS.length * 6.283; m.position.set(C.x + Math.cos(a) * 7, groundY(C.x + Math.cos(a) * 7, C.z + Math.sin(a) * 7), C.z + Math.sin(a) * 7); m.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); scene.add(m); return m; });
+    camera.far = 6000; camera.updateProjectionMatrix();
+    sfx.fanfare();
+  });
+}
+function updateLaunch(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  while (L.cap < CAPTIONS.length && t >= CAPTIONS[L.cap][0]) { status(CAPTIONS[L.cap][1], 'info', 4.5); if (CAPTIONS[L.cap][0] === 10) sfx.takeoff(); L.cap++; }
+  const u = C.model.userData;
+  if (t < 10) {
+    // Les amis sautent de joie, puis montent dans le camping-car
+    launchCrowd.forEach((m, i) => { m.position.y = groundY(m.position.x, m.position.z) + Math.abs(Math.sin(t * 5 + i)) * 0.6; if (t > 3 + i * 0.3 && m.visible) { m.visible = false; puff(m.position.x, m.position.y + 1, m.position.z, 8, [1, 1, 1], 2); } });
+    const a = 0.6 + t * 0.12; camera.position.set(C.x + Math.sin(a) * 18, C.y + 7, C.z + Math.cos(a) * 18); camera.lookAt(C.x, C.y + 2, C.z);
+    if (t > 7) emit(C.x + rand(-1, 1), C.y, C.z + rand(-1, 1), rand(-2, 2), rand(0.5, 2), rand(-2, 2), 1, 0.8, 0.9, 0.9, 0.9, 0);
+  } else if (t < 48) {
+    // Montée lente au-dessus du parc pour admirer le paysage
+    const k = (t - 10) / 38, e = k * k * (3 - 2 * k), alt = 650 * Math.pow(e, 1.5);
+    const bx = POI.base[0], bz = POI.base[1];
+    C.x = lerp(bx, 40, e); C.z = lerp(bz, 40, e); C.y = groundY(bx, bz) + 1 + alt;
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(-0.15, -2.3 + k * 1.2, 0);
+    if (u.prop) u.prop.rotation.z += dt * 30;
+    const a = 0.6 + k * 2.0, dist = lerp(18, 300, Math.pow(k, 0.9)), h = lerp(7, 260, k);
+    camera.position.set(C.x + Math.sin(a) * dist, C.y + h, C.z + Math.cos(a) * dist);
+    // En montant, la caméra regarde de plus en plus le parc qui rapetisse en bas
+    const lk = sstep(0.35, 0.9, k); camera.lookAt(lerp(C.x, 0, lk), lerp(C.y, 0, lk), lerp(C.z, 0, lk));
+    const sk = sstep(220, 560, alt); G.spaceK = sk;
+    if (Math.random() < dt * 30) emit(C.x + rand(-1.5, 1.5), C.y - 1, C.z + rand(-1.5, 1.5), rand(-1, 1), -6, rand(-1, 1), 1.2, 1.4, 1, 0.7, 0.3, 0);
+    if (t > 47 && !L.faded) { L.faded = true; fadeTo(() => { L.space = true; }); }
+  } else if (!L.space) { /* attend la fin du fondu */ }
+  else {
+    // Voyage dans l'espace et alunissage près du camp de base
+    if (!L.t2) L.t2 = t;
+    const k = clamp((t - L.t2) / 16, 0, 1), e = k * k * (3 - 2 * k);
+    G.spaceK = 1;
+    C.x = lerp(MOON.x + 40, MCAMP[0] + 6, e); C.z = lerp(MOON.z + 520, MCAMP[1] + 4, e); C.y = lerp(320, moonY(MCAMP[0] + 6, MCAMP[1] + 4) + 0.8, Math.pow(e, 0.7));
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(-0.1 * (1 - k), Math.PI, 0);
+    camera.position.set(C.x + 10, C.y + 9 + (1 - e) * 20, C.z + 26); camera.lookAt(C.x, C.y, C.z - 20 * (1 - e));
+    if (Math.random() < dt * 30) emit(C.x + rand(-1.5, 1.5), C.y - 1, C.z + rand(-1.5, 1.5), rand(-1, 1), -4, rand(-1, 1), 1, 1.2, 1, 0.7, 0.3, 0);
+    if (k >= 1 && !L.done) { L.done = true; puff(C.x, C.y, C.z, 30, [0.8, 0.8, 0.85], 4); fadeTo(endLaunch); }
+  }
+}
+function skipLaunch() { if (!G.cine || G.cine.done || G.cine.t < 3) return; G.cine.done = true; fadeTo(endLaunch); }
+function endLaunch() {
+  launchCrowd.forEach(m => scene.remove(m)); launchCrowd = [];
+  G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
+  C.x = MCAMP[0] + 6; C.z = MCAMP[1] + 4; C.rot = Math.PI; C.y = moonY(C.x, C.z) + 0.8; C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
+  P.mode = 'walk'; P.model.visible = true; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; P.y = moonY(P.x, P.z);
+  const first = !S.flags.moon; S.flags.moon = 1; if (S.mq === undefined) { S.mq = 0; S.mstep = 0; S.mcnt = 0; }
+  refreshMoon(); updateQuestUI(); saveGame();
+  if (first) { banner('Chapitre 2', 'Tous les amis sur la Lune ! 🌙'); setTimeout(() => talk([['lm_max', 'On a réussi ! On est sur la Lune, tous ensemble !'], ['lm_praline', 'Ouaf ! Je saute super haut ici !'], ['oscar', 'Regardez, la Terre, là-haut… Notre parc est quelque part dessus.'], ['lm_plume', 'Hou hou… Explorons un peu. Il y a un grand cratère juste là, à l\'est.']]), 2500); }
+}
+function quickTravel(toMoon) {
+  fadeTo(() => {
+    G.spaceK = 0; G.wanted = 0; if (P.disguise) setDisguise(false);
+    if (toMoon) { C.x = MCAMP[0] + 6; C.z = MCAMP[1] + 4; C.rot = Math.PI; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; status('🚀 Le camping-car spatial file vers la Lune… Bienvenue au camp de base !', 'info', 4); }
+    else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status('🌍 Retour sur Terre, au parc des Pins !', 'info', 4); }
+    C.y = groundY(C.x, C.z) + (toMoon ? 0.8 : 0.8); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
+    P.mode = 'walk'; P.y = walkY(P.x, P.z); refreshMoon(); updateQuestUI(); saveGame();
+  });
+}
+// ---------- Mini-histoire du chapitre 2 ----------
+const MQ = [
+  { title: 'Seuls sur la Lune ?', steps: [
+    { t: 'Explore la Lune avec tes amis… Il y a quelque chose de bizarre dans le grand cratère, à l\'est !', ev: 'discover', at: () => SHIP },
+    { t: 'Parle à Zib, le chef des Zoublis', talk: 'zib', at: () => SHIP, lines: [
+      ['zib', 'Bliiip ? Bloup ! Vous… vous n\'êtes pas des monstres ?'],
+      ['oscar', 'Non ! Je suis Oscar, un ours. Et voici mes amis. On vient de la Terre !'],
+      ['zib', 'Nous sommes les Zoublis, de la planète Zoubla. Notre vaisseau s\'est écrasé ici, sur la Lune.'],
+      ['zib', 'Il n\'a plus d\'énergie, plus de carburant… et nous avons perdu la route de notre planète.'],
+      ['oscar', 'On va vous aider à rentrer chez vous ! Promis !'],
+      ['zib', 'Merci, ami Oscar ! D\'abord, il faut 5 cristaux d\'énergie violets. Ils sont éparpillés sur la Lune.'],
+    ], done: () => refreshMoon() }] },
+  { title: 'L\'énergie du vaisseau', steps: [
+    { t: 'Trouve les 5 cristaux d\'énergie violets sur la Lune (regarde la carte)', ev: 'mcrystal', n: 5, at: () => nearestOf(MCRYSTALS, S.mcr || []) },
+    { t: 'Rapporte les cristaux à Zib', talk: 'zib', at: () => SHIP, lines: [
+      ['zib', 'Les cristaux ! Regardez, le vaisseau se rallume !'],
+      ['lm_max', 'Laisse-moi bricoler un peu… Voilà, les lumières marchent !'],
+      ['zib', 'Mais il nous faut du carburant. Notre vaisseau boit de l\'eau très, très froide…'],
+      ['lm_lulu', 'De l\'eau ? Il y a de la glace dans le cratère glacé, au sud-ouest ! J\'adore l\'eau, je l\'ai sentie tout de suite.'],
+    ], done: () => { S.flags.ufoLights = 1; refreshMoon(); } }] },
+  { title: 'La glace des cratères', steps: [
+    { t: 'Ramasse 3 blocs de glace dans le cratère glacé, au sud-ouest', ev: 'mice', n: 3, at: () => nearestOf(MICE, S.mice || []) },
+    { t: 'Rapporte la glace à Zib', talk: 'zib', at: () => SHIP, lines: [
+      ['zib', 'De la glace lunaire ! Le réservoir est plein. Le vaisseau peut voler !'],
+      ['zib', 'Mais où aller ? Notre carte des étoiles est cassée…'],
+      ['lm_plume', 'Hou hou ! J\'ai vu trois télescopes sur la Lune. Regarde dedans, Oscar, et note ce que tu vois.'],
+    ], done: () => { S.flags.ufoFuel = 1; refreshMoon(); } }] },
+  { title: 'La carte des étoiles', steps: [
+    { t: 'Regarde dans les 3 télescopes de la Lune (Mont Lunaire, bord du grand cratère, colline de l\'est)', ev: 'mscope', n: 3, at: () => { const k = MSCOPES.findIndex((s, i) => !(S.msc || []).includes(i)); return k >= 0 ? MSCOPES[k] : SHIP; } },
+    { t: 'Raconte à Zib ce que tu as vu', talk: 'zib', at: () => SHIP, lines: [
+      ['oscar', 'J\'ai vu une étoile rouge, une étoile bleue en forme de cœur, et trois étoiles alignées…'],
+      ['zib', 'Bloup bloup ! C\'est la route de Zoubla ! Après l\'étoile en cœur, à gauche des trois étoiles !'],
+      ['zib', 'Grâce à toi, nous pouvons rentrer à la maison. Viens nous dire au revoir devant le vaisseau.'],
+    ] }] },
+  { title: 'Le grand départ des Zoublis', steps: [
+    { t: 'Dis au revoir aux Zoublis devant leur vaisseau', talk: 'zib', at: () => SHIP, lines: [
+      ['zib', 'Ami Oscar, et vous tous, merci. Vous avez un grand cœur.'],
+      ['lm_raflex', 'Yo, vous allez nous manquer, les Zoublis !'],
+      ['zib', 'Voici un cadeau : une pierre de Zoubla. Si tu la serres fort, nous saurons que tu penses à nous.'],
+      ['zib', 'Au revoir, amis de la Terre ! Bliiip bloup !'],
+    ], done: () => { give('pierreZ'); startUfoDeparture(); } }] },
+];
+const mStep = () => { const q = MQ[S.mq]; return q ? q.steps[S.mstep] : null; };
+function moonEvent(ev) {
+  const st = mStep(); if (!st || st.ev !== ev) return;
+  S.mcnt = (S.mcnt || 0) + 1;
+  if (st.n && S.mcnt < st.n) { toast(MQ[S.mq].title + ' : ' + S.mcnt + ' / ' + st.n); updateQuestUI(); saveGame(); return; }
+  moonAdvance();
+}
+function moonAdvance() {
+  S.mstep++; S.mcnt = 0;
+  if (S.mstep >= MQ[S.mq].steps.length) { S.mq++; S.mstep = 0; if (MQ[S.mq]) { banner('Mission lunaire', MQ[S.mq].title); sfx.quest(); } }
+  else sfx.step();
+  refreshMoon(); updateQuestUI(); saveGame();
+}
+function talkZoubli(id) {
+  const st = mStep();
+  if (id === 'zib' && st && st.talk === 'zib') return talk(st.lines, () => { if (st.done) st.done(); moonAdvance(); });
+  const lines = { zib: S.flags.ch2done ? 'Bliiip !' : 'Bloup ! Merci de nous aider, ami Oscar.', zoubli1: pick(['Bliip ? Ton pelage est tout doux !', 'Sur Zoubla, il y a des arbres violets !']), zoubli2: pick(['Bloup bloup ! J\'aime ta tête d\'ours !', 'On mange des nuages à la confiture, chez nous.']), zoubli3: pick(['Bip ! Tu sautes haut, ici, hein ?', 'Notre planète a trois lunes. Une rose, une bleue, une verte !']) };
+  talk([[id, lines[id]]]);
+}
+function talkMoonFriend(id) {
+  const L = { max: 'Un castor sur la Lune ! Personne ne va me croire.', lulu: 'Il n\'y a pas d\'eau ici… sauf la glace des cratères !', raflex: 'Yo ! Je vais ramener un caillou lunaire pour mon musée.', donovan: 'Coin ! Je cours encore plus vite avec si peu de pesanteur !', noisette: 'Il n\'y a pas d\'arbres… mais quelle vue sur la Terre !', blaireau: 'J\'ai attendu toute ma vie de voir ça, petit.', plume: 'Hou hou ! Les étoiles sont si brillantes, ici.', maurice: 'Wouf ! Praline a déjà creusé trois trous dans la poussière.', praline: 'Ouaf ! Je fais des bonds de géant !', roquette: 'Le camping-car spatial, ça décoiffe ! On refait le voyage ?', filou: 'Devinette : je suis ronde, grise et pleine de trous… La Lune, bien sûr !' };
+  talk([['lm_' + id, L[id]]]);
+}
+function lookScope(i) {
+  S.msc = S.msc || [];
+  const seen = ['Tu vois une grosse étoile rouge qui clignote…', 'Tu vois une étoile bleue… en forme de cœur !', 'Tu vois trois étoiles bien alignées, comme un chemin.'][i];
+  const st = mStep();
+  if (st && st.ev === 'mscope' && !S.msc.includes(i)) { S.msc.push(i); talk([['oscar', '🔭 ' + seen + ' Je dois m\'en souvenir pour Zib !']], () => moonEvent('mscope')); }
+  else talk([['oscar', '🔭 ' + (S.msc.includes(i) ? seen : 'Que d\'étoiles… et là-bas, notre belle Terre !')]]);
+}
+// Le vaisseau des Zoublis s'envole
+function startUfoDeparture() {
+  G.ufoT = 0; for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; puff(n.x, n.y + 1, n.z, 10, [0.6, 1, 0.8], 2); n.hidden = true; n.model.visible = false; }
+  status('👽 Les Zoublis montent dans leur vaisseau…', 'info', 4);
+}
+function refreshMoon() {
+  if (!S) return;
+  const on = onMoon();
+  const disc = S.mq > 0 || (S.mq === 0 && S.mstep > 0), gone = !!S.flags.ch2done;
+  for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; n.hidden = !disc || gone; n.model.visible = disc && !gone; }
+  for (const n of moonFriends) { n.hidden = !S.flags.moon; n.model.visible = !!S.flags.moon; }
+  mCrystalM.forEach((g, i) => { g.visible = S.mq === 1 && S.mstep === 0 && !(S.mcr || []).includes(i); });
+  mIceM.forEach((m, i) => { m.visible = S.mq === 2 && S.mstep === 0 && !(S.mice || []).includes(i); });
+  if (ufo) { ufo.visible = !gone; ufo.userData.lights.forEach((l, i) => l.material.color.set(S.flags.ufoLights ? [0xff5a5a, 0xffd84d, 0x5aff9a, 0x5ab0ff][i % 4] : 0x555555)); if (S.flags.ufoFuel && !gone) { ufo.rotation.set(0, 0.6, 0); } }
+}
+function updateMoon(dt) {
+  const on = onMoon() || (G.cine && G.cine.space);
+  if (P.helmets) for (const h of P.helmets) h.visible = onMoon();
+  // Étoiles et Terre visibles dans l'espace et sur la Lune
+  const sk = on ? 1 : (G.spaceK || 0);
+  starPts.material.opacity = sk; starPts.visible = sk > 0.01;
+  if (starPts.visible) starPts.position.copy(camera.position);
+  earthM.visible = on;
+  const hk = on ? 0 : sstep(0.1, 0.6, G.spaceK || 0); homeBall.visible = hk > 0.01; homeBall.material.opacity = hk;
+  // Le vaisseau : fumée quand il est cassé, lumières qui clignotent, puis départ
+  if (ufo && ufo.visible && on) {
+    if (!S.flags.ufoLights && Math.random() < dt * 4) puff(SHIP[0] + rand(-1, 1), ufo.position.y + 2, SHIP[1] + rand(-1, 1), 2, [0.5, 0.5, 0.55], 1);
+    if (S.flags.ufoLights) ufo.userData.lights.forEach((l, i) => { l.scale.setScalar(1 + 0.3 * Math.sin(G.t * 6 + i)); });
+    if (S.flags.ufoFuel && G.ufoT === undefined) ufo.position.y = moonY(SHIP[0], SHIP[1]) + 1 + Math.sin(G.t * 2) * 0.3;
+  }
+  if (G.ufoT !== undefined && ufo) {
+    G.ufoT += dt; const k = G.ufoT;
+    ufo.position.y = moonY(SHIP[0], SHIP[1]) + 1 + k * k * 3; ufo.rotation.y += dt * (2 + k); ufo.position.x = SHIP[0] + Math.max(0, k - 3) ** 2 * 6;
+    if (Math.random() < dt * 20) emit(ufo.position.x, ufo.position.y, ufo.position.z, rand(-2, 2), -3, rand(-2, 2), 1, 1, 0.6, 1, 0.8, 0);
+    if (k > 7) { G.ufoT = undefined; S.flags.ch2done = 1; refreshMoon(); banner('Chapitre 2 terminé !', 'Les Zoublis sont rentrés chez eux 👽💚'); sfx.fanfare(); confetti(P.x, P.y + 2, P.z); S.coins += 300; updateHUD(); saveGame(); setTimeout(() => talk([['lm_max', 'Ils sont partis… J\'espère qu\'on les reverra un jour !'], ['oscar', 'Moi aussi. En attendant, on a toute la Lune à explorer !']]), 3500); }
+  }
+  // Découverte par hasard des Zoublis
+  if (onMoon() && S.mq === 0 && S.mstep === 0 && Math.hypot(P.x - SHIP[0], P.z - SHIP[1]) < 32 && !G.talking) {
+    moonAdvance();
+    for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; puff(n.x, n.y + 1, n.z, 10, [0.6, 1, 0.8], 2); }
+    sfx.alert();
+    talk([['oscar', 'Un vaisseau tout cassé ?! Et… qu\'est-ce qui bouge derrière ?'], ['zoubli2', 'Bliiip ! Des géants poilus !'], ['zoubli1', 'Cachez-vous, cachez-vous !'], ['lm_praline', 'Ouaf ! Ce sont des petits bonshommes verts !'], ['oscar', 'N\'ayez pas peur ! On est gentils !']]);
+  }
+  // Les Zoublis flottent un peu
+  for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; if (n.model.visible) n.model.position.y = moonY(n.x, n.z) + 0.3 + Math.sin(G.t * 2 + n.x) * 0.15; }
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -4327,7 +4668,7 @@ const _cp = new V3(), _cs = new V3();
 function updateClouds(dt) {
   const camP = camera.position, tgt = _cs.set(P.x, P.y + 1, P.z);
   for (const c of clouds) {
-    const m = c.m;
+    const m = c.m; m.visible = P.x < 1500;
     m.position.x += c.spd * dt;
     if (m.position.x > HALF + 20) m.position.x = -HALF - 20;
     // Le nuage devient transparent s'il passe entre la caméra et Oscar
@@ -4359,6 +4700,7 @@ function buildWeather() {
 function startRain() { WX.rain = 1; WX.until = S.time + rand(1.2, 2.6); if (WX.until >= 24) WX.until -= 24; if (G.state === 'play' && !P.inHome) toast(P.z < -214 ? '❄️ Il commence à neiger…' : '🌧️ Il commence à pleuvoir…'); }
 function updateWeather(dt) {
   if (G.state !== 'play') { WX.k = 0; return; }
+  if (P.x > 1500 || G.cine) { WX.k = 0; WX.bow.visible = false; WX.flies.material.opacity = 0; return; }
   const h = Math.floor(S.time);
   if (h !== WX.lastH) {
     WX.lastH = h;
@@ -4398,6 +4740,82 @@ function updateWeather(dt) {
     });
     a.needsUpdate = true;
     WX.flies.material.size = 2.2 + Math.sin(G.t * 3) * 0.4;
+  }
+}
+
+// ================= Graphismes en plus : vent, ciel, eau qui brille, feuilles qui volent =================
+const WIND = { time: { value: 0 } };
+// Le vent fait bouger le haut des plantes (le bas reste planté dans le sol)
+function addWind(mat, s) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = WIND.time; sh.uniforms.uWind = { value: s };
+    sh.vertexShader = 'uniform float uTime;\nuniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      float wh = max(transformed.y, 0.0);
+      #ifdef USE_INSTANCING
+        vec4 wp = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+      #else
+        vec4 wp = vec4(0.0);
+      #endif
+      float wph = wp.x * 0.15 + wp.z * 0.12;
+      float gust = 0.7 + 0.3 * sin(uTime * 0.4 + wp.x * 0.02);
+      transformed.x += sin(uTime * 1.6 + wph) * wh * wh * uWind * gust;
+      transformed.z += cos(uTime * 1.25 + wph * 1.3) * wh * wh * uWind * 0.6 * gust;`);
+  };
+  mat.customProgramCacheKey = () => 'wind' + s;
+  return mat;
+}
+const windLam = (s, o) => addWind(lam(0xffffff, o), s);
+// ---------- Ciel en dégradé, soleil, étoiles la nuit ----------
+let skyDome = null;
+function buildSky() {
+  skyDome = new T.Mesh(new T.SphereGeometry(340, 32, 16), new T.ShaderMaterial({
+    uniforms: { top: { value: new T.Color() }, hor: { value: new T.Color() }, sunDir: { value: new V3(0, 1, 0) }, sunCol: { value: new T.Color(1, 0.9, 0.7) }, night: { value: 0 } },
+    vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sunDir; uniform vec3 sunCol; uniform float night; varying vec3 vDir;
+      float hash(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); }
+      void main(){
+        float h = clamp(vDir.y, 0.0, 1.0);
+        vec3 c = mix(hor, top, pow(h, 0.55));
+        float sd = max(dot(normalize(vDir), sunDir), 0.0);
+        c += sunCol * (pow(sd, 900.0) * 1.6 + pow(sd, 14.0) * 0.28 + pow(sd, 3.0) * 0.06) * (1.0 - night);
+        vec3 q = floor(vDir * 220.0);
+        float st = step(0.9965, hash(q)) * night * smoothstep(0.02, 0.25, h) * (0.6 + 0.4 * hash(q + 3.0));
+        c += vec3(st);
+        if (vDir.y < 0.0) c = hor;
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+    side: T.BackSide, depthWrite: false, fog: false,
+  }));
+  skyDome.renderOrder = -1; skyDome.frustumCulled = false; scene.add(skyDome);
+}
+const _sd = new V3();
+// ---------- Feuilles qui tombent, graines qui volent ----------
+function updateGfx(dt) {
+  WIND.time.value += dt;
+  // Le ciel suit la caméra et prend les couleurs de l'heure
+  if (skyDome) {
+    const space = P.x > 1500 || (G.cine && G.cine.space) || (G.state === 'play' && P.x > 700);
+    skyDome.visible = !space && (G.spaceK || 0) < 0.5;
+    if (skyDome.visible) {
+      skyDome.position.copy(camera.position);
+      const u = skyDome.material.uniforms;
+      u.top.value.copy(scene.background);
+      u.hor.value.copy(scene.fog.color).lerp(scene.background, 0.35).lerp(_c2.set(0xfff4e0), 0.12 * (1 - nightK));
+      u.top.value.multiplyScalar(0.92);
+      _sd.subVectors(sun.position, sun.target.position).normalize(); u.sunDir.value.copy(_sd);
+      u.sunCol.value.setRGB(sun.color.r, sun.color.g * 0.95, sun.color.b * 0.85);
+      u.night.value = nightK;
+    }
+  }
+  if (G.state !== 'play' || P.inHome || P.x > 1500 || G.cine) return;
+  const fk = forestK(P.x, P.z), pr = REG.prairie(P.x, P.z), snowy = P.z < -214, rain = (typeof WX !== 'undefined' && WX.k > 0.3);
+  if (!snowy && !rain && fk > 0.45 && Math.random() < dt * 4 * fk) {
+    const x = P.x + rand(-22, 22), z = P.z + rand(-18, 14), c = pick([[0.95, 0.6, 0.2], [0.9, 0.75, 0.25], [0.45, 0.75, 0.3], [0.8, 0.4, 0.2]]);
+    emit(x, walkY(x, z) + rand(6, 10), z, rand(0.4, 1.2), -0.9, rand(-0.4, 0.4), 7, 0.35, c[0], c[1], c[2], 0);
+  }
+  if (!snowy && !rain && (pr > 0.4 || fk < 0.2) && nightK < 0.5 && Math.random() < dt * 3) {
+    const x = P.x + rand(-22, 22), z = P.z + rand(-18, 14);
+    emit(x, walkY(x, z) + rand(0.5, 2.5), z, rand(0.6, 1.4), rand(0.05, 0.3), rand(-0.3, 0.3), 6, 0.18, 1, 1, 0.92, 0);
   }
 }
 
@@ -4447,8 +4865,8 @@ const sfx = (() => {
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
   function music() {
     if (!ac || !OPT.music || G.state !== 'play' && G.state !== 'title') return;
-    const snow = G.state === 'play' && P.z < -214, night = nightK > 0.5;
-    const bpm = chase ? 150 : snow ? 84 : night ? 78 : 96, st = 60 / bpm / 2;
+    const moon = G.state === 'play' && (P.x > 1500 || !!G.cine), snow = G.state === 'play' && (P.z < -214 || moon), night = nightK > 0.5 || moon;
+    const bpm = chase ? 150 : moon ? 70 : snow ? 84 : night ? 78 : 96, st = 60 / bpm / 2;
     while (nextNote < ac.currentTime + 0.2) {
       const bar = Math.floor(step / 8) % 4, prog = (chase ? CHASE : PROG)[bar];
       const pat = [0, 2, 1, 3, 2, 1, 3, 2][step % 8];
@@ -4597,6 +5015,7 @@ function updateHUD() {
   $('starN').textContent = (S.stars || 0) + ' / ' + STARS_MAX;
 }
 function updateQuestUI() {
+  if (S.flags.moon && !S.flags.ch2done && (P.x > 1500 || !QUESTS[S.q])) { const mq = MQ[S.mq], ms = mStep(); if (mq && ms) { $('qTitle').textContent = 'Chapitre 2 · ' + mq.title; $('qText').textContent = ms.t + (ms.n ? ' (' + (S.mcnt || 0) + ' / ' + ms.n + ')' : ''); return; } }
   const q = QUESTS[S.q], st = curStep();
   const sq = !q && SIDEQ.find(x => x.id === S.sqActive), ss = sq && sqState(sq.id);
   if (sq && ss !== undefined && ss !== 'done') { $('qTitle').textContent = sq.title; $('qText').textContent = sq.steps[ss].t; return; }
@@ -4620,6 +5039,7 @@ function updateAction() {
   else if (P.mode === 'ski') { if (P.skiSpd < 6 && P.crashT <= 0) { label = 'Se relever'; icon = '🐻'; } else on = false; }
   else if (P.mode === 'lift') { label = 'Télésiège…'; icon = '🚡'; on = false; }
   else if (P.mode === 'plane') { label = 'En vol'; icon = '✈️'; on = false; }
+  else if (P.mode === 'cine') { label = 'Passer'; icon = '⏭'; on = !!(G.cine && G.cine.t > 3); }
   else if (P.mode === 'boat') { label = 'Descendre du bateau'; icon = '⚓'; }
   else if (P.mode === 'walk') { actNow = findInteraction(); if (actNow) { label = actNow.label(); icon = actNow.icon; } else on = false; }
   else on = false;
@@ -4635,6 +5055,7 @@ function doAction() {
   if (P.mode === 'fly') { G.landing = true; return; }
   if (P.mode === 'tree') { leaveTree(); return; }
   if (P.mode === 'ski') { if (P.skiSpd < 6 && P.crashT <= 0) stopSki(''); return; }
+  if (P.mode === 'cine') { skipLaunch(); return; }
   if (P.mode === 'lift' || P.mode === 'plane') return;
   if (P.mode === 'boat') { exitBoat(); return; }
   if (P.mode === 'walk' && actNow) actNow.act();
@@ -4746,6 +5167,7 @@ function openJournal() {
     [S.flags.slalom, '⛷️ Réussir le slalom de Cabriole', S.slalomBest ? 'Record : ' + S.slalomBest.toFixed(1).replace('.', ',') + ' s (il faut moins de ' + SLALOM_LIMIT + ' s)' : 'Passe les 8 portes en moins de ' + SLALOM_LIMIT + ' secondes.'],
     [S.flags.carnetDone, '📖 Carnet sauvage d\'Elliot : ' + nw + ' / ' + WILD.length, S.flags.carnet ? 'Approche-toi des animaux sauvages pour les noter.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.'],
   ];
+  if (S.flags.moon) { const hm = document.createElement('div'); hm.innerHTML = '<b>🌙 Chapitre 2 : les Zoublis</b><p></p>'; hm.querySelector('p').textContent = S.flags.ch2done ? 'Terminé ! Les Zoublis sont rentrés chez eux.' : (MQ[S.mq] ? MQ[S.mq].title + ' — ' + mStep().t : ''); L.appendChild(hm); }
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
   for (const q of SIDEQ) { if (q.friend && !L.querySelector('.amis')) { const h3 = document.createElement('div'); h3.className = 'amis'; h3.innerHTML = '<b>🐾 Jeux avec les amis</b><p>Maurice, Praline, Roquette et Filou t\'attendent !</p>'; L.appendChild(h3); } const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
   const hj = document.createElement('div'); hj.innerHTML = '<b>🚀 Le rêve d\'Oscar : aller dans l\'espace</b><p></p>'; hj.querySelector('p').textContent = 'Tirelire du camping-car spatial : ' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ' pièces (chez Max, à l\'atelier). Max transforme ton camping-car volant pour aller sur la Lune ! ' + (S.job ? 'Ton métier : ' + JOBS[S.job].e + ' ' + JOBS[S.job].name + ' — va à ' + JOBS[S.job].where + '.' : 'Choisis un métier au panneau « Offres d\'emploi » du village !'); L.appendChild(hj);
@@ -4753,8 +5175,24 @@ function openJournal() {
   for (const [ok, t, sub] of defis) { const d = document.createElement('div'); if (ok) d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (ok ? '✔ ' : '⭐ ') + t; d.querySelector('p').textContent = ok ? 'Réussi !' : sub; L.appendChild(d); }
   openPanel('pJournal');
 }
+function drawMoonMap() {
+  const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, R = MOON.r + 10, k = Wm / (R * 2);
+  const X = x => (x - MOON.x + R) * k, Z = z => (z - MOON.z + R) * k;
+  g.fillStyle = '#0a0c18'; g.fillRect(0, 0, Wm, Wm);
+  g.fillStyle = '#b8b8c2'; g.beginPath(); g.arc(Wm / 2, Wm / 2, MOON.r * k, 0, 6.283); g.fill();
+  g.fillStyle = 'rgba(90,90,110,.45)'; for (const c of MCRATERS) { g.beginPath(); g.arc(X(MOON.x + c[0]), Z(MOON.z + c[1]), c[2] * k, 0, 6.283); g.fill(); }
+  g.fillStyle = 'rgba(230,230,240,.7)'; g.beginPath(); g.arc(X(MOON.x + MOUNTL[0]), Z(MOON.z + MOUNTL[1]), MOUNTL[2] * k * 0.6, 0, 6.283); g.fill();
+  g.font = '700 18px Nunito, sans-serif'; g.textAlign = 'center';
+  for (const [t, p] of [['Camp de base', MCAMP], ['Grand cratère', [SHIP[0], SHIP[1] + 34]], ['Cratère glacé', [MOON.x - 90, MOON.z - 54]], ['Mont Lunaire', [MOON.x - 100, MOON.z + 110]], ['Colline de l\'est', [MOON.x + 130, MOON.z + 112]]]) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#2a2a3a'; g.fillText(t, X(p[0]), Z(p[1])); }
+  const st = S.flags.ch2done ? null : mStep(), tgt = st && st.at && st.at();
+  if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
+  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
+  g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+  g.restore();
+}
 function openMap() { drawMap(); openPanel('pMap'); }
 function drawMap() {
+  if (P.x > 1500) { drawMoonMap(); return; }
   const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, k = Wm / (HALF * 2);
   const X = x => (x + HALF) * k, Z = z => (z + HALF) * k;
   g.fillStyle = '#62b96b'; g.fillRect(0, 0, Wm, Wm);
@@ -4806,7 +5244,7 @@ function saveGame() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
 }
 function applyState() {
-  P.x = S.pos[0]; P.z = S.pos[1]; P.vx = P.vz = 0; P.mode = 'walk'; P.board = null; P.lift = null; G.slalom = null; showGear(); slalomGates.forEach(g => { g.g.visible = false; }); P.model.visible = true; P.inHome = P.x > 700;
+  P.x = S.pos[0]; P.z = S.pos[1]; P.vx = P.vz = 0; P.mode = 'walk'; P.board = null; P.lift = null; G.slalom = null; showGear(); slalomGates.forEach(g => { g.g.visible = false; }); P.model.visible = true; P.inHome = P.x > 700 && P.x < 1500; G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
   C.x = S.camper[0]; C.z = S.camper[1]; C.rot = S.camper[2]; C.spd = 0;
   if (!S.flags.camper) { C.x = POI.workshop[0] - 2; C.z = POI.workshop[1] + 14; C.rot = 0.4; }
   if (S.baskets) baskets.forEach((b, i) => { b.takenDay = S.baskets[i]; });
@@ -4827,7 +5265,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); showCamperParts(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500) { C.x = MCAMP[0] + 6; C.z = MCAMP[1] + 4; C.rot = Math.PI; } refreshMoon(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -4858,11 +5296,11 @@ $('bNew').addEventListener('click', () => { try { localStorage.removeItem(SAVE_K
 // ================= Caméra =================
 const camPos = new V3(0, 30, 30), camLook = new V3();
 function updateCamera(dt) {
-  if (G.camOverride) return;
+  if (G.camOverride || G.cine) return;
   if (G.state === 'title') {
     const a = G.t * 0.05;
-    camPos.set(-30 + Math.cos(a) * 70, 38, 60 + Math.sin(a) * 70);
-    camera.position.copy(camPos); camera.lookAt(-30, 0, 60);
+    camPos.set(-30 + Math.cos(a) * 80, 30, 60 + Math.sin(a) * 80);
+    camera.position.copy(camPos); camera.lookAt(-30 - Math.cos(a) * 60, 6, 60 - Math.sin(a) * 60);
     return;
   }
   let off = [0, 33, 17], target = new V3(P.x, P.y + 1.2, P.z);
@@ -4889,7 +5327,7 @@ function toScreen(x, y, z) { _p.set(x, y, z).project(camera); return { x: (_p.x 
 function drawOverlay() {
   const r = ov.width / innerWidth;
   oc.setTransform(r, 0, 0, r, 0, 0); oc.clearRect(0, 0, innerWidth, innerHeight);
-  if (G.state !== 'play') return;
+  if (G.state !== 'play' || G.cine) return;
   oc.textAlign = 'center'; oc.textBaseline = 'middle';
   // Repère au-dessus d'Oscar quand il est caché sous les arbres
   G.coverT = (G.coverT || 0) - 1;
@@ -4989,9 +5427,10 @@ function step(dt) {
     else if (P.mode === 'lift') updateLift(dt);
     else if (P.mode === 'plane') updatePlane(dt);
     else if (P.mode === 'boat') updateBoat(dt);
+    else if (P.mode === 'cine') updateLaunch(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateMoon(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -5016,12 +5455,19 @@ function step(dt) {
   for (const k in partMeshes) if (partMeshes[k].visible) partMeshes[k].rotation.y += dt;
   if (Math.random() < dt * 3) for (const k in partMeshes) { const m = partMeshes[k]; if (m.visible && m.position.distanceTo(camera.position) < 80) emit(m.position.x + rand(-1, 1), m.position.y + 1, m.position.z + rand(-1, 1), 0, 1, 0, 0.8, 0.3, 1, 0.9, 0.4, 0); }
   updateParticles(dt);
-  setTimeOfDay(G.state === 'title' ? 17.6 : S.time, G.state === 'title' ? new V3(-30, 0, 60) : new V3(P.x, 0, P.z));
+  setTimeOfDay(G.state === 'title' ? 18.7 : S.time, G.state === 'title' ? new V3(-30, 0, 60) : new V3(P.x, 0, P.z));
   updateWeather(dt);
-  if (G.state === 'play' && P.x > 700) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
+  // Ciel de l'espace et de la Lune
+  const space = G.state === 'play' && (P.x > 1500 || (G.cine && G.cine.space));
+  if (space) { scene.background.set(0x05060c); scene.fog.color.set(0x05060c); hemi.intensity = 0.42; hemi.color.set(0xcfd8ff); hemi.groundColor.set(0x404050); sun.intensity = 0.95; sun.color.setRGB(1, 1, 1); winMat.emissiveIntensity = 0.6; }
+  else if (G.spaceK > 0) { _c1.set(0x05060c); scene.background.lerp(_c1, G.spaceK); scene.fog.color.lerp(_c1, G.spaceK); }
+  const fogN = space ? 260 : G.cine ? 2500 : 140, fogF = space ? 900 : G.cine ? 6000 : 340, far = space || G.cine ? 6000 : 380;
+  scene.fog.near = fogN; scene.fog.far = fogF; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
+  if (G.state === 'play' && P.x > 700 && P.x < 1500) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
   updateCamera(dt);
   cullTiles();
   updateClouds(dt);
+  updateGfx(dt);
   sfx.tick(dt);
   if (toastT > 0) { toastT -= dt; if (toastT < 0.3) $('toast').style.opacity = toastT / 0.3; if (toastT <= 0) $('toast').hidden = true; }
   if (bannerT > 0) { bannerT -= dt; if (bannerT < 0.5) $('banner').style.opacity = bannerT / 0.5; if (bannerT <= 0) $('banner').hidden = true; }
@@ -5042,6 +5488,7 @@ function frame(now) {
 buildGround();
 buildPlants();
 buildClouds();
+buildSky();
 buildWeather();
 buildPlaces();
 buildSki();
@@ -5059,6 +5506,7 @@ buildSideQuests();
 buildFriends();
 buildJobs();
 buildCamperParts();
+buildMoon();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -5068,7 +5516,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>
