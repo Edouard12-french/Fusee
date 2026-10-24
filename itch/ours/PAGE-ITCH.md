@@ -16,7 +16,7 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `fishing`, `skiing`, `open-world`, `family-friendly`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
@@ -42,7 +42,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Déguise-toi** avec un chapeau et un manteau pour aller au village comme un humain.
 - **Pêche** 8 espèces de poissons avec Lulu la loutre.
 - **Cherche des trésors** avec la carte de Madame Plume la chouette.
-- **Répare un vieux camping-car**… et fais-le **voler** pour montrer le parc à la maire !
+- **Construis un camping-car pièce par pièce** avec Max (châssis, roues, carrosserie, volant, moteur, phares)… et fais-le **voler** pour montrer le parc à la maire !
 - **Va skier au Pic Grizzly** : monte en télésiège, descends en luge ou à skis et bats le slalom de Cabriole la chèvre !
 - **Explore un monde immense** : la grande forêt et ses séquoias, la grande prairie des bisons, le canyon rouge et le marais.
 - **Le rêve d'Oscar : aller dans l'espace !** Choisis un métier (facteur, pilote d'avion ou capitaine de bateau), gagne des pièces et transforme ton camping-car volant en camping-car spatial !
@@ -73,7 +73,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Put on a disguise** (hat and coat) to visit the village like a human.
 - **Go fishing** for 8 kinds of fish with Lulu the otter.
 - **Dig for treasure** with Madame Plume the owl's map.
-- **Fix an old camper van**… and make it **fly** to show the park to the mayor!
+- **Build a camper van piece by piece** with Max (chassis, wheels, body, steering wheel, engine, headlights)… and make it **fly** to show the park to the mayor!
 - **Go skiing on Grizzly Peak**: ride the chairlift, slide down on a sled or skis and beat Cabriole the goat's slalom!
 - **Explore a huge world**: the great forest with giant sequoias, the bison prairie, the red canyon and the marsh.
 - **Oscar's dream: going to space!** Pick a job (mail carrier, airplane pilot or boat captain), earn coins and turn your flying camper van into a space camper!
