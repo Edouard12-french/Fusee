@@ -16,14 +16,14 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 33, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `fishing`, `skiing`, `open-world`, `family-friendly`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
 
 ## Important
 
-Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
+Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
 
 Pour les dons : un parent doit t'aider pour le compte de paiement. Après la publication, tu peux mettre l'adresse de ta page dans `ours/index.html` (ligne `const SUPPORT_URL = '';`).
 
@@ -37,7 +37,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 
 - **Ramasse les déchets**, **sauve les bébés animaux perdus** et **répare le village des cabanes dans les arbres**.
 - **Remplis le musée de Raflex**, **bats le record de la course de Donovan** et **retrouve les noisettes de Noisette**.
-- 14 missions à la suite, avec une ligne guide pour ne jamais se perdre.
+- 14 missions à la suite : une ligne guide au début, puis la carte pour trouver son chemin.
 - **Chipe des pique-niques** en restant hors du regard des campeurs.
 - **Déguise-toi** avec un chapeau et un manteau pour aller au village comme un humain.
 - **Pêche** 8 espèces de poissons avec Lulu la loutre.
@@ -45,6 +45,8 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Répare un vieux camping-car**… et fais-le **voler** pour montrer le parc à la maire !
 - **Va skier au Pic Grizzly** : monte en télésiège, descends en luge ou à skis et bats le slalom de Cabriole la chèvre !
 - **Explore un monde immense** : la grande forêt et ses séquoias, la grande prairie des bisons, le canyon rouge et le marais.
+- **Le rêve d'Oscar : aller dans l'espace !** Choisis un métier (facteur, pilote d'avion ou capitaine de bateau), gagne des pièces et construis ta fusée.
+- **Chaque ami a sa maison** : en facteur, dépose les lettres dans leurs boîtes aux lettres.
 - **De nouveaux amis** : joue à cache-cache avec Praline la carline, fais la course de luge contre Roquette le raton laveur et réponds aux devinettes de Filou le renard !
 - **6 aventures du Grand Nord** : ramène le louveteau perdu, attrape les poules de Josette, nettoie le marais de Gaspard le héron, trouve les cristaux de glace…
 - **La météo change** : pluie, arc-en-ciel, neige en montagne et lucioles la nuit. Patine sur le lac gelé !
@@ -52,7 +54,6 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Visite la maison d'Oscar** dans sa grotte : dors dans le lit de feuilles près du feu et regarde tes trophées.
 - **9 cabanes dans les arbres** reliées par des ponts de corde, **5 lacs** et **des grottes à explorer** (cristaux bleus et fossile de dinosaure).
 - Des cerfs, des lapins, des renards, des canards, des oiseaux et des papillons partout dans la forêt.
-- Les personnages parlent avec leur propre voix.
 - Le jour et la nuit passent, avec des campeurs qui dorment et un garde qui fait sa ronde à la lampe.
 - 12 pommes de pin dorées cachées, des chapeaux rigolos à acheter.
 - Marche sur ordinateur et sur téléphone.
@@ -67,7 +68,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 
 - **Pick up litter**, **rescue lost baby animals** and **repair the treehouse village**.
 - **Fill Raflex's museum**, **beat Donovan's race record** and **find Noisette's hazelnuts**.
-- 14 missions in a row, with a guide line so you never get lost.
+- 14 missions in a row: a guide line at the start, then the map to find your way.
 - **Snatch picnics** while staying out of the campers' sight.
 - **Put on a disguise** (hat and coat) to visit the village like a human.
 - **Go fishing** for 8 kinds of fish with Lulu the otter.
@@ -75,6 +76,8 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Fix an old camper van**… and make it **fly** to show the park to the mayor!
 - **Go skiing on Grizzly Peak**: ride the chairlift, slide down on a sled or skis and beat Cabriole the goat's slalom!
 - **Explore a huge world**: the great forest with giant sequoias, the bison prairie, the red canyon and the marsh.
+- **Oscar's dream: going to space!** Pick a job (mail carrier, airplane pilot or boat captain), earn coins and build your rocket.
+- **Every friend has a house**: as the mail carrier, drop letters in their mailboxes.
 - **New friends**: play hide-and-seek with Praline the pug, race Roquette the raccoon on a sled and solve Filou the fox's riddles!
 - **6 Great North adventures**: bring back the lost wolf cub, catch Josette's runaway hens, clean Gaspard the heron's marsh, find the ice crystals…
 - **Changing weather**: rain showers, rainbows, snow in the mountains and fireflies at night. Go ice skating on the frozen lake!
@@ -82,7 +85,6 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Visit Oscar's home** in his cave: sleep in the leaf bed by the fire and look at your trophies.
 - **9 treehouses** linked by rope bridges, **5 lakes** and **caves to explore** (glowing blue crystals and a dinosaur fossil).
 - Deer, rabbits, foxes, ducks, birds and butterflies all around the forest.
-- Characters speak with their own voices (in French).
 - A day and night cycle: campers sleep at night while the ranger patrols with his flashlight.
 - 12 hidden golden pinecones and funny hats to buy.
 - Plays on desktop and mobile (game text in French).

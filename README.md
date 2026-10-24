@@ -50,8 +50,8 @@ Pour y jouer en local, ouvre `escadron/index.html`.
 Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis fait voler un camping-car pour montrer le parc à la maire.
 
 - 14 missions qui se suivent, avec Max le castor, Lulu la loutre, Raflex le raton laveur (son musée), Donovan le canard (course contre la montre), Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau.
-- Une ligne blanche au sol guide vers l'objectif.
-- Animaux de la forêt (cerfs, lapins, renards, canards, oiseaux, papillons, poissons qui sautent) et personnages qui parlent avec leur voix.
+- Une ligne blanche au sol guide vers l'objectif pendant les deux premières missions.
+- Animaux de la forêt (cerfs, lapins, renards, canards, oiseaux, papillons, poissons qui sautent) et personnages qui parlent dans des bulles.
 - Une rivière, un ruisseau avec des ponts, 5 lacs (dont le lac d'Oscar), une montagne et beaucoup d'arbres.
 - 9 cabanes dans les arbres reliées par des ponts de corde (le village des arbres et les cabanes du lac).
 - La maison d'Oscar dans sa grotte : lit de feuilles pour dormir, cheminée et étagère à trophées. Deux grottes à explorer (cristaux et fossile).
@@ -63,11 +63,18 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
 - 10 animaux sauvages à noter dans le carnet d'Elliot : élan, loup, sanglier, bison, bouquetin, marmotte, aigle royal, héron, grenouille et lynx.
 - Des nuages qui passent dans le ciel (leur ombre glisse sur le sol), de la neige qui tombe en montagne et une mer de nuages au bord du monde.
 - Des défis en plus des 14 missions : monter au sommet, le slalom, le carnet sauvage. Ils sont listés dans le journal.
-- 6 aventures du Grand Nord en plus de l'histoire : le louveteau perdu (Elliot), le chocolat chaud d'Yvette, les cristaux de glace et la luge dorée (Cabriole), le marais tout propre (Gaspard le héron), les poules de Josette et le petit bison de Bernard. La flèche orange guide vers l'aventure en cours une fois l'histoire finie.
+- 6 aventures du Grand Nord en plus de l'histoire : le louveteau perdu (Elliot), le chocolat chaud d'Yvette, les cristaux de glace et la luge dorée (Cabriole), le marais tout propre (Gaspard le héron), les poules de Josette et le petit bison de Bernard. Chaque aventure est notée sur la carte.
 - La météo change : averses de pluie (ou de neige en montagne) avec arc-en-ciel après, lucioles la nuit et loups qui hurlent.
 - Une patinoire sur le lac gelé du Glacier, où Oscar glisse sur la glace.
 - De nouveaux amis, de vrais animaux : Maurice et Praline les carlins (cache-cache), Roquette le raton laveur (course de luge) et Filou le renard (devinettes).
 - Oscar et tous ses amis ressemblent à de vrais animaux, avec des détails (moustaches, touffes de poils, plumes, coussinets) : Max le castor, Lulu la loutre, Raflex le raton laveur, Donovan le colvert, Noisette l'écureuil roux, Papi Blaireau et Madame Plume le hibou grand-duc.
+- Le rêve d'Oscar : aller dans l'espace. Il choisit un métier au panneau « Offres d'emploi » du village pour payer sa fusée :
+  - facteur : distribuer les lettres dans les boîtes aux lettres des maisons des amis (chacun a sa maison avec son nom) ;
+  - pilote d'avion : décoller de l'aéroport de la grande prairie et passer dans les anneaux au-dessus du parc ;
+  - capitaine de bateau : emmener des passagers d'un ponton à l'autre sur le grand lac.
+  Les pièces vont dans la tirelire de la base spatiale du canyon rouge (4000 pièces), et la fusée se construit en 4 étapes.
+- Des avions dans le ciel, des voiliers sur le lac, une musique plus riche avec une mélodie à la flûte, plus d'arbres, des souches, des troncs couchés et des rochers moussus.
+- Les personnages ne parlent plus à voix haute (on lit les bulles), et la flèche orange n'apparaît que pour les deux premières missions : ensuite, on utilise la carte.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.

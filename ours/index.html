@@ -209,7 +209,7 @@ body { background: #2f6a3c; color: var(--ink); font-family: var(--ui); overflow:
   <h2>Options</h2>
   <div class="row"><span style="flex:1;font-weight:800">Musique</span><button class="btn small" id="oMus"></button></div>
   <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Bruitages</span><button class="btn small" id="oSfx"></button></div>
-  <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Voix des personnages</span><button class="btn small" id="oVoice"></button></div>
+  <button class="btn small" id="oVoice" hidden></button>
   <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Qualité graphique</span><button class="btn small" id="oQual"></button></div>
   <button class="btn" data-close style="margin-top:14px">Fermer</button>
 </div></div>
@@ -356,7 +356,7 @@ const POI = {
   lakePart: [58, 86],
   arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
   chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
-  cabanesLac: [104, 86], niche: [84, -2], roquette: [-44, -216], filou: [-168, 134], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
+  cabanesLac: [104, 86], poste: [188, 48], metiers: [140, 40], base: [232, 236], aeroport: [270, 100], mLulu: [-16, 38], mDonovan: [2, 2], mNoisette: [-48, -128], mBlaireau: [-136, 72], mFilou: [-176, 142], mRoquette: [-54, -208], mElliot: [-246, 88], niche: [84, -2], roquette: [-44, -216], filou: [-168, 134], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
   moulin: [282, 40], ferme: [284, -16], gaspard: [-12, 246.6], bernard: [256, -76], josette: [280, -13], loups: [-284, -84], canyon: [262, 236], marais: [-30, 266], grotteCristal: [-146, -112], grotteFossile: [90, -114],
   faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
   musee: [-14, 128], donovan: [4, 24], noisette: [-40, -120],
@@ -460,6 +460,8 @@ function groundY(x, z) {
   for (const p of PLATEAUS) { const d = Math.hypot(x - p[0], z - p[1]); if (d < p[2] + 3) y += p[3] * sstep(p[2] + 2.6, p[2], d); }
   if (z < -220) { const sh = skiH(x, z); if (sh > y) y = sh + (y - sh) * 0.1; }
   if (x > 200 && z > 140) for (const p of MESAS) { const d = Math.hypot(x - p[0], z - p[1]); if (d < p[2] + 3) y += p[3] * sstep(p[2] + 2.2, p[2], d); }
+  // Terrain bien plat sous la piste de l'aéroport
+  if (x > 220 && z > 78 && z < 140) { const k = Math.min(sstep(222, 230, x), sstep(80, 88, z), 1 - sstep(130, 138, z)); if (k > 0) y = lerp(y, 0.3, k); }
   if (z > 200) { const mk = REG.marsh(x, z); if (mk > 0) y = lerp(y, (fbm(x * 0.045 + 2, z * 0.045, 3) - 0.5) * 3 - 0.12, mk); }
   const e = lakeE(x, z);
   if (e < 1.15) y = lerp(y, -2.6, sstep(1.15, 0.8, e));
@@ -471,6 +473,7 @@ function groundY(x, z) {
 const FROZEN = PONDS.filter(L => L.frozen);
 const onIce = (x, z) => FROZEN.some(L => ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2 < 1.1);
 function deckY(x, z) {
+  if (PONTOON_DECKS.length && lakeE(x, z) < 1.4) { const pd = pontoonDeck(x, z); if (pd !== null) return pd; }
   if (z < -200 && onIce(x, z)) return WATER_Y + 0.06;
   if (z > 205) for (const b of BOARDWALKS) if (polyDist(x, z, b) < 1.5) return 0.3;
   if (Math.abs(x - POI.dock[0]) < 1.7 && z > POI.dock[1] - 2 && z < POI.dock[1] + 13.2) return 0.42;
@@ -693,7 +696,7 @@ function isFree(x, z, m) {
   if (lakeE(x, z) < 1.35 || riverDist(x, z) < RIVER_W + 1.5) return false;
   if (pathDist(x, z) < m) return false;
   if (inZone(x, z)) return false;
-  if (z < -215 && (pisteDist(x, z) < 2 || LIFTS.some(L => Math.abs(x - L.a[0]) < 5 && z < L.a[1] + 8 && z > L.b[1] - 8))) return false;
+  if (z < -215 && (pisteDist(x, z) < 4.5 || LIFTS.some(L => Math.abs(x - L.a[0]) < 5 && z < L.a[1] + 8 && z > L.b[1] - 8))) return false;
   if (z > 200 && groundY(x, z) < WATER_Y + 0.15) return false;
   for (const k in POI) { const p = POI[k]; if (Math.hypot(x - p[0], z - p[1]) < 18) return false; }
   if (Math.abs(x - POI.air[0]) < 50 && Math.abs(z - POI.air[1]) < 14) return false;
@@ -769,7 +772,7 @@ function buildPlants() {
   // Bouleau : tronc blanc et feuillage clair
   const birchGeo = mergeCol([[new T.CylinderGeometry(0.16, 0.24, 5, 6).translate(0, 2.5, 0), 0xf2eee6], [new T.CylinderGeometry(0.245, 0.245, 0.18, 6).translate(0, 1.6, 0), 0x2c2630], [new T.CylinderGeometry(0.2, 0.2, 0.15, 6).translate(0, 3.1, 0), 0x2c2630], [new T.IcosahedronGeometry(1.7, 1).translate(0.3, 5.6, 0), 0x9ccf5a], [new T.IcosahedronGeometry(1.3, 1).translate(-0.7, 6.5, 0.4), 0xb2d866]]);
   const pines = [], rounds = [], snowP = [], seqs = [], birches = [];
-  for (let t = 0; t < 320000 && pines.length + rounds.length + seqs.length + birches.length < 17000; t++) {
+  for (let t = 0; t < 420000 && pines.length + rounds.length + seqs.length + birches.length < 21000; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
     const k = forestK(x, z);
     if (srand() > (0.2 + k * 0.9) * (1 - REG.forest(x, z) * 0.5) * (1 - REG.prairie(x, z) * 0.75) * (1 - REG.marsh(x, z) * 0.6) * (1 - REG.canyon(x, z) * 0.8)) continue;
@@ -893,6 +896,20 @@ function buildPlants() {
   const suns = [];
   for (let x = 236; x < 300; x += 2.2) for (let z = -58; z < -32; z += 2.4) { const jx = x + srange(-0.5, 0.5), jz = z + srange(-0.5, 0.5); if (pathDist(jx, jz) > 1.5) { suns.push([jx, groundY(jx, jz), jz, srange(0.85, 1.15), -0.3 + srange(-0.2, 0.2)]); } }
   tiledInst(sunGeo, vcMat, suns, { h: 2 });
+  // Détails de la forêt : souches, troncs couchés, rochers moussus
+  const stumpGeo = mergeCol([[new T.CylinderGeometry(0.45, 0.6, 0.6, 9).translate(0, 0.3, 0), 0x7a4a34], [new T.CylinderGeometry(0.44, 0.44, 0.04, 9).translate(0, 0.61, 0), 0xd8b080], [new T.CylinderGeometry(0.2, 0.2, 0.05, 8).translate(0, 0.63, 0), 0xb08a60]]);
+  const logGeo = mergeCol([[new T.CylinderGeometry(0.35, 0.4, 3.6, 9).rotateZ(Math.PI / 2).translate(0, 0.36, 0), 0x6a4030], [new T.CylinderGeometry(0.34, 0.34, 0.04, 9).rotateZ(Math.PI / 2).translate(1.81, 0.36, 0), 0xd8b080], [new T.SphereGeometry(0.25, 6, 4).scale(1.4, 0.5, 1).translate(-0.6, 0.66, 0.1), 0x5aa04a], [new T.SphereGeometry(0.2, 6, 4).scale(1.4, 0.5, 1).translate(0.8, 0.64, -0.1), 0x4a9040]]);
+  const mossGeo = mergeCol([[new T.DodecahedronGeometry(1, 0).translate(0, 0.2, 0), 0x8a8496], [new T.SphereGeometry(0.8, 8, 5, 0, 6.283, 0, 1.1).scale(1.05, 0.5, 1.05).translate(0, 0.75, 0), 0x5a9a4a]]);
+  const stumps = [], logs = [], moss = [];
+  for (let t = 0; t < 30000 && stumps.length + logs.length + moss.length < 1100; t++) {
+    const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
+    if (forestK(x, z) < 0.45 || isSnowy(x, z, groundY(x, z)) || !isFree(x, z, 2.5)) continue;
+    const r = srand(), e = [x, groundY(x, z), z, srange(0.8, 1.3), srand() * 6];
+    if (r < 0.4) { stumps.push(e); addCircle(x, z, 0.5 * e[3]); } else if (r < 0.7) { logs.push(e); addCircle(x, z, 0.8 * e[3]); } else { e[3] = srange(0.6, 1.2); moss.push(e); addCircle(x, z, 0.8 * e[3]); }
+  }
+  tiledInst(stumpGeo, vcMat, stumps, { h: 1, sy: e => e[3] });
+  tiledInst(logGeo, vcMat, logs, { h: 1, sy: e => e[3] });
+  tiledInst(mossGeo, vcMat, moss, { h: 1, sy: e => e[3] * 0.9 });
   // Champignons à ramasser (ils repoussent chaque jour)
   for (let t = 0; t < 20000 && MUSHROOMS.length < 30; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
@@ -2493,6 +2510,7 @@ function advance() {
   if (S.step >= q.steps.length) {
     S.q++; S.step = 0;
     if (QUESTS[S.q]) { banner('Nouvelle mission', QUESTS[S.q].title); sfx.quest(); }
+    if (S.q === GUIDE_UNTIL) setTimeout(() => toast('🗺️ Plus de flèche maintenant : ouvre la carte pour trouver ton chemin !'), 2500);
   } else sfx.step();
   const st = curStep();
   if (st && st.start) st.start();
@@ -3466,7 +3484,7 @@ function updateRegions(dt) { if (millBlades) millBlades.rotation.z += dt * 0.6; 
 // Chaque quête a un état dans S.sq[id] : absent = pas commencée, un nombre = étape, 'done' = finie.
 const ICE_CRYSTALS = [[-62, -282], [42, -272], [-146, -262], [100, -292], [-78, -306]];
 const MARSH_TRASH = [[20, 227], [-30, 252], [-50, 247], [-87, 252], [21, 258], [51, 279]];
-const CHICKEN_SPOTS = [[240, 10], [300, 60], [232, -90], [296, -120], [250, 110]];
+const CHICKEN_SPOTS = [[240, 10], [300, 60], [232, -90], [296, -120], [226, -150]];
 const sqState = id => (S.sq || {})[id];
 function sqSet(id, v) { S.sq = S.sq || {}; S.sq[id] = v; if (v !== 'done') S.sqActive = id; saveGame(); refreshSide(); }
 const SIDEQ = [
@@ -3501,11 +3519,15 @@ function nearestFree(list, done) { let b = null, bd = 1e9; list.forEach((p, i) =
 const sideFollowers = {};
 function sideFollower(id) { const a = sideFollowers[id]; return a ? [a.x, a.z] : null; }
 // Cible de la flèche orange : l'histoire d'abord, sinon la dernière aventure commencée
+// Elles ne s'affichent qu'au début du jeu (les deux premières missions)
+const GUIDE_UNTIL = 2;
 function guideTarget() {
+  if (!S || S.q >= GUIDE_UNTIL) return null;
   const st = curStep(), t = st && st.at && st.at();
-  if (t) return t;
-  return sideTarget();
+  return t || null;
 }
+// Pour la carte : la mission en cours reste marquée
+function mapTarget() { const st = curStep(), t = st && st.at && st.at(); return t || null; }
 function sideTarget() {
   const id = S && S.sqActive, q = SIDEQ.find(x => x.id === id), s = sqState(id);
   if (!q || s === undefined || s === 'done') return null;
@@ -3826,6 +3848,336 @@ function talkFriend(id) {
 
 function endRocketQuiet() { const n = NPCS.roquette; if (!n) return; n.x = POI.roquette[0]; n.z = POI.roquette[1]; n.model.position.set(n.x, groundY(n.x, n.z), n.z); }
 
+// ================= Les métiers d'Oscar : il travaille pour payer sa fusée =================
+// Le rêve d'Oscar : aller dans l'espace. Il choisit un métier au panneau du village,
+// gagne des pièces et les met dans la tirelire de la fusée, à la base de lancement du canyon.
+const ROCKET_GOAL = 4000;
+const JOBS = {
+  facteur: { name: 'Facteur', e: '✉️', boss: 'fernand', hat: 'facteur', where: 'la Poste, au bout du village', pay: 'environ 80 pièces par tournée' },
+  pilote: { name: 'Pilote d\'avion', e: '✈️', boss: 'helene', hat: 'pilote', where: 'l\'aéroport de la grande prairie', pay: 'environ 100 pièces par vol' },
+  capitaine: { name: 'Capitaine de bateau', e: '⛵', boss: 'loic', hat: 'marin', where: 'le ponton du grand lac', pay: 'environ 90 pièces par traversée' },
+};
+// Les maisons des amis (avec leur nom sur la porte) : le facteur y dépose les lettres
+const HOUSES = [
+  { who: 'Lulu', x: -16, z: 38, rot: 0.6, kind: 'cabin', wall: 0x8fc8d8, roof: 0x3a6a9a },
+  { who: 'Donovan', x: 2, z: 2, rot: 0.3, kind: 'cabin', wall: 0xf2e6a0, roof: 0x3e8a5a },
+  { who: 'Noisette', x: -48, z: -128, rot: 0.4, kind: 'tree' },
+  { who: 'Papi Blaireau', x: -136, z: 72, rot: 1.2, kind: 'burrow' },
+  { who: 'Filou', x: -176, z: 142, rot: 0.5, kind: 'burrow' },
+  { who: 'Roquette', x: -54, z: -208, rot: 0.8, kind: 'cabin', wall: 0xf07a3a, roof: 0xf4f8ff },
+  { who: 'Elliot', x: -246, z: 88, rot: 1.0, kind: 'cabin', wall: 0x9a6440, roof: 0x3e6b4f },
+  { who: 'Max', x: POI.workshop[0], z: POI.workshop[1], rot: -0.25, kind: 'none', dz: 5.2 },
+  { who: 'Raflex', x: POI.musee[0], z: POI.musee[1] - 6, rot: 0, kind: 'none', dz: 5.6 },
+  { who: 'Madame Plume', x: POI.owl[0], z: POI.owl[1], rot: 0.2, kind: 'none', dz: 3.2 },
+  { who: 'Maurice et Praline', x: POI.niche[0], z: POI.niche[1] - 1.2, rot: 0, kind: 'none', dz: 2.4 },
+  { who: 'Gisèle', x: 128, z: 48, rot: Math.PI, kind: 'none', dz: 5.2 },
+];
+const PONTOONS = [{ name: 'Ponton du camping', x: 20, z: 40, a: 0 }, { name: 'Ponton des cabanes', x: 86, z: 76, a: -Math.PI / 2 }, { name: 'Ponton du banc', x: 44, z: 108, a: Math.PI }, { name: 'Ponton de l\'ouest', x: -5, z: 78, a: Math.PI / 2 }];
+const FLIGHT_SPOTS = [['la station de ski', 0, -262, 72], ['le grand lac', 40, 72, 34], ['le canyon rouge', 262, 236, 44], ['la grande forêt', -262, 0, 38], ['le marais', -30, 262, 30], ['le village', 140, 30, 36], ['le village des arbres', -158, 84, 40], ['la montagne d\'Oscar', -160, -160, 64]];
+const AIRPORT = { x: 270, z: 100 };
+// ---------- Modèles ----------
+function makePlane(col, big) {
+  const g = new T.Group(), c = lam(col), w = lam(0xf4f2ee), d = M.dark;
+  const fus = mesh(new T.CylinderGeometry(0.55, 0.4, 6, 12), w, 0, 1.4, 0, g); fus.rotation.x = Math.PI / 2;
+  const nose = mesh(new T.SphereGeometry(0.55, 12, 8), c, 0, 1.4, 3, g); nose.scale.z = 0.8;
+  const tailc = mesh(new T.ConeGeometry(0.4, 1.6, 12), w, 0, 1.45, -3.7, g); tailc.rotation.x = -Math.PI / 2;
+  mesh(new T.BoxGeometry(big ? 12 : 8.4, 0.14, 1.4), c, 0, 1.5, 0.4, g);
+  mesh(new T.BoxGeometry(3, 0.1, 0.8), c, 0, 1.55, -3.8, g);
+  mesh(new T.BoxGeometry(0.1, 1.2, 0.9), c, 0, 2.1, -3.9, g);
+  mesh(new T.BoxGeometry(0.9, 0.1, 6.2), c, 0, 1.4, 0, g).position.y = 1.0;
+  for (let k = 0; k < 4; k++) for (const s of [-1, 1]) { const wn = mesh(new T.BoxGeometry(0.05, 0.22, 0.32), winMat, s * 0.52, 1.6, 1.6 - k * 0.75, g); wn.castShadow = false; }
+  mesh(new T.BoxGeometry(0.8, 0.35, 0.6), winMat, 0, 1.85, 2.2, g);
+  const prop = new T.Group(); prop.position.set(0, 1.4, 3.5); g.add(prop);
+  mesh(new T.BoxGeometry(2.2, 0.16, 0.06), d, 0, 0, 0, prop); mesh(new T.BoxGeometry(0.16, 2.2, 0.06), d, 0, 0, 0, prop);
+  for (const s of [-1, 1]) { mesh(new T.CylinderGeometry(0.05, 0.05, 0.9, 5), d, s * 0.9, 0.55, 0.8, g); const wh = mesh(new T.CylinderGeometry(0.28, 0.28, 0.18, 10), d, s * 0.9, 0.2, 0.8, g); wh.rotation.z = Math.PI / 2; }
+  mesh(new T.CylinderGeometry(0.15, 0.15, 0.12, 8), d, 0, 0.2, -3.4, g).rotation.z = Math.PI / 2;
+  g.userData = { prop };
+  if (big) g.scale.setScalar(1.6);
+  return g;
+}
+function makeBoat(col) {
+  const g = new T.Group(), c = lam(col), w = M.white;
+  const hull = new T.Shape([new T.Vector2(-1.2, -2.4), new T.Vector2(1.2, -2.4), new T.Vector2(1.3, 1.2), new T.Vector2(0, 3), new T.Vector2(-1.3, 1.2)]);
+  const hg = new T.ExtrudeGeometry(hull, { depth: 0.9, bevelEnabled: false }); hg.rotateX(Math.PI / 2); hg.translate(0, 0.6, 0);
+  mesh(hg, c, 0, 0, 0, g);
+  mesh(new T.BoxGeometry(2.2, 0.08, 3.6), M.woodL, 0, 0.62, -0.1, g);
+  mesh(new T.BoxGeometry(1.6, 1.0, 1.4), w, 0, 1.1, -0.8, g);
+  mesh(new T.BoxGeometry(1.64, 0.4, 1.0), winMat, 0, 1.3, -0.6, g);
+  mesh(new T.BoxGeometry(1.8, 0.12, 1.6), c, 0, 1.66, -0.8, g);
+  const flag = mesh(new T.BoxGeometry(0.04, 0.4, 0.6), M.yellow, 0, 2.4, -1.6, g); mesh(new T.CylinderGeometry(0.03, 0.03, 1, 5), M.dark, 0, 2.15, -1.3, g);
+  for (const s of [-1, 1]) mesh(new T.TorusGeometry(0.22, 0.06, 5, 10), M.red, s * 1.28, 0.55, 0.3, g).rotation.y = Math.PI / 2;
+  g.userData = { flag };
+  return g;
+}
+function makeSailboat(col) {
+  const g = new T.Group();
+  const hull = mesh(new T.SphereGeometry(1, 12, 6, 0, 6.283, Math.PI / 2, Math.PI / 2), lam(col), 0, 0.3, 0, g); hull.scale.set(0.9, 0.5, 2.4);
+  mesh(new T.BoxGeometry(1.5, 0.06, 3.8), M.woodL, 0, 0.3, 0, g);
+  mesh(new T.CylinderGeometry(0.05, 0.05, 4.2, 5), M.woodD, 0, 2.4, 0.2, g);
+  const sail = new T.Shape([new T.Vector2(0, 0), new T.Vector2(0, 3.6), new T.Vector2(1.8, 0)]);
+  const sg = new T.ShapeGeometry(sail); const s1 = mesh(sg, new T.MeshLambertMaterial({ color: 0xfaf6ee, side: T.DoubleSide }), 0.02, 0.6, 0.2, g); s1.rotation.y = -Math.PI / 2;
+  return g;
+}
+// Chapeaux de métier
+function jobHats() {
+  const u = P.model.userData;
+  const add = (head, set, k, y, s, build) => { const gg = new T.Group(); gg.position.y = y; gg.scale.setScalar(s); gg.visible = false; head.add(gg); build(gg); set[k] = gg; };
+  const pil = gg => { const c = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 0.22, 14), lam(0x2a3a5a)); c.position.y = 0.1; gg.add(c); const v = new T.Mesh(new T.BoxGeometry(0.6, 0.04, 0.35), M.dark); v.position.set(0, 0.0, 0.42); gg.add(v); const b = new T.Mesh(new T.BoxGeometry(0.2, 0.1, 0.02), lam(0xffc53d)); b.position.set(0, 0.12, 0.43); gg.add(b); };
+  const mar = gg => { const c = new T.Mesh(new T.CylinderGeometry(0.4, 0.44, 0.2, 14), M.white); c.position.y = 0.1; gg.add(c); const r = new T.Mesh(new T.CylinderGeometry(0.45, 0.45, 0.06, 14), M.blue); r.position.y = 0.02; gg.add(r); const p = new T.Mesh(new T.SphereGeometry(0.09, 8, 6), M.red); p.position.y = 0.24; gg.add(p); };
+  const fac = gg => { const c = new T.Mesh(new T.CylinderGeometry(0.4, 0.42, 0.24, 14), lam(0x2a5aa0)); c.position.y = 0.1; gg.add(c); const v = new T.Mesh(new T.BoxGeometry(0.55, 0.04, 0.3), M.dark); v.position.set(0, 0.0, 0.4); gg.add(v); const b = new T.Mesh(new T.BoxGeometry(0.16, 0.12, 0.02), M.yellow); b.position.set(0, 0.12, 0.41); gg.add(b); };
+  const upHead = u.up.userData.rig.head, qHead = u.quad.userData.rig.head;
+  for (const [k, fn] of [['pilote', pil], ['marin', mar], ['facteur', fac]]) { add(upHead, u.extra, k, 0.34, 0.85, fn); add(qHead, u.extraQ, k, 0.34, 0.75, fn); }
+}
+// ---------- Construction ----------
+const houseDoors = [], pontoonBoards = [], planeRings = [], ambientPlanes = [], ambientBoats = [];
+let planeM = null, boatM = null, rocketG = null, rocketParts = [];
+function houseDoor(h) { const dz = h.dz || (h.kind === 'cabin' ? 3.6 : 2.6); return [h.x + Math.sin(h.rot) * dz, h.z + Math.cos(h.rot) * dz]; }
+function buildHouse(h) {
+  const y = groundY(h.x, h.z);
+  if (h.kind === 'cabin') cabin({ x: h.x, z: h.z, rot: h.rot, w: 6.5, d: 5, h: 3.2, wall: lam(h.wall), roof: lam(h.roof), sign: 'CHEZ ' + h.who.toUpperCase(), signBg: '#6e4430' });
+  else if (h.kind === 'tree') {
+    const g = new T.Group(); g.position.set(h.x, y, h.z); g.rotation.y = h.rot; scene.add(g);
+    mesh(new T.CylinderGeometry(1.6, 2.2, 7, 10), M.trunk, 0, 3.5, 0, g);
+    for (const p of [[0, 8.4, 0, 3.6], [-2, 7.2, 1, 2.6], [2.2, 7.6, -0.5, 2.8]]) mesh(new T.IcosahedronGeometry(p[3], 1), M.leaf, p[0], p[1], p[2], g);
+    mesh(new T.BoxGeometry(1, 1.6, 0.2), lam(0xd84a3a), 0, 0.8, 1.95, g);
+    mesh(new T.CircleGeometry(0.35, 12), winMat, 0.6, 3.4, 1.72, g);
+    mesh(new T.BoxGeometry(1.8, 0.15, 0.8), M.woodL, 0, 3, 1.9, g);
+    const b = mesh(new T.BoxGeometry(2, 0.5, 0.1), new T.MeshLambertMaterial({ map: signTex('CHEZ ' + h.who.toUpperCase(), '#6e4430') }), 0, 2.2, 2.05, g); b.material.map.anisotropy = 4;
+    addCircle(h.x, h.z, 2.1);
+  } else if (h.kind === 'burrow') {
+    const g = new T.Group(); g.position.set(h.x, y, h.z); g.rotation.y = h.rot; scene.add(g);
+    const hill = mesh(new T.SphereGeometry(3.2, 14, 9, 0, 6.283, 0, Math.PI / 2), lam(0x6a9a52), 0, -0.4, -1, g); hill.scale.y = 0.6;
+    mesh(new T.CircleGeometry(0.85, 14, 0, Math.PI), M.dark, 0, 0, 1.75, g).rotation.x = -0.4;
+    const door = mesh(new T.CircleGeometry(0.75, 14, 0, Math.PI), M.wood, 0, 0.02, 1.8, g); door.rotation.x = -0.4;
+    for (let i = 0; i < 7; i++) { const a = Math.PI * i / 6; mesh(new T.DodecahedronGeometry(0.22, 0), M.stone, Math.cos(a) * 0.95, Math.sin(a) * 0.9, 1.75, g); }
+    const b = mesh(new T.BoxGeometry(1.9, 0.45, 0.1), new T.MeshLambertMaterial({ map: signTex('CHEZ ' + h.who.toUpperCase(), '#6e4430') }), 1.9, 0.9, 1.6, g);
+    mesh(new T.CylinderGeometry(0.06, 0.06, 1, 5), M.woodD, 1.9, 0.45, 1.55, g);
+    for (const p of [[-1.6, 1.2, 0.4], [1.2, 1.5, -0.5], [-0.4, 1.8, -1.2]]) mesh(new T.IcosahedronGeometry(0.18, 0), M.flower, p[0], p[1], p[2], g);
+    addCircle(h.x - Math.sin(h.rot) * 1, h.z - Math.cos(h.rot) * 1, 2.6);
+  }
+  // Boîte aux lettres devant la porte
+  const [dx, dz] = houseDoor(h), mx = dx + Math.cos(h.rot) * 1.6, mz = dz - Math.sin(h.rot) * 1.6, my = groundY(mx, mz);
+  mesh(new T.CylinderGeometry(0.06, 0.06, 1.1, 5), M.woodD, mx, my + 0.55, mz);
+  const box = mesh(new T.BoxGeometry(0.4, 0.35, 0.6), M.red, mx, my + 1.2, mz); box.rotation.y = h.rot;
+  h.flag = mesh(new T.BoxGeometry(0.04, 0.3, 0.08), M.yellow, mx + 0.22, my + 1.35, mz); h.flag.visible = false;
+  h.mail = [mx, mz];
+}
+function buildJobs() {
+  HOUSES.forEach(buildHouse);
+  // La Poste du village
+  cabin({ x: POI.poste[0], z: POI.poste[1], rot: Math.PI, w: 9, d: 7, h: 4.2, wall: lam(0xf2c14e), roof: lam(0x2a5aa0), sign: 'LA POSTE', signBg: '#2a5aa0' });
+  // Panneau des métiers au village
+  sign('OFFRES D\'EMPLOI', POI.metiers[0], POI.metiers[1], 0.3, 2.2, 0.85, '#3e6b4f');
+  // Aéroport de la grande prairie : piste, tour de contrôle, hangar, avions
+  const ax = AIRPORT.x, az = AIRPORT.z;
+  const strip = mesh(new T.PlaneGeometry(78, 12), lam(0x5a5a62, { polygonOffset: true, polygonOffsetFactor: -1 }), ax, groundY(ax, az) + 0.06, az); strip.rotation.x = -Math.PI / 2; strip.castShadow = false;
+  for (let k = -34; k <= 34; k += 8) { const m = mesh(new T.PlaneGeometry(4, 0.6), M.white, ax + k, groundY(ax + k, az) + 0.09, az); m.rotation.x = -Math.PI / 2; m.castShadow = false; }
+  for (let k = -38; k <= 38; k += 6) for (const s of [-1, 1]) { const l = mesh(new T.SphereGeometry(0.15, 6, 4), new T.MeshBasicMaterial({ color: s > 0 ? 0xffc53d : 0x5aa0ff }), ax + k, groundY(ax + k, az + s * 6.4) + 0.15, az + s * 6.4); l.castShadow = false; }
+  cabin({ x: ax, z: az + 24, rot: Math.PI, w: 14, d: 8, h: 4.6, wall: lam(0xe8eef4), roof: lam(0x3a6a9a), sign: 'AÉROPORT DU PARC', signBg: '#3a6a9a', side: true });
+  { const tx = ax + 18, tz = az + 22, ty = groundY(tx, tz); mesh(new T.CylinderGeometry(1, 1.3, 9, 8), M.white, tx, ty + 4.5, tz); mesh(new T.CylinderGeometry(1.8, 1.4, 1.8, 8), winMat, tx, ty + 9.8, tz); mesh(new T.ConeGeometry(2, 0.8, 8), M.red, tx, ty + 11.1, tz); addCircle(tx, tz, 1.4); }
+  { const hx = ax - 22, hz = az + 20, hy = groundY(hx, hz); const hg = new T.Group(); hg.position.set(hx, hy, hz); scene.add(hg); const r = mesh(new T.CylinderGeometry(6, 6, 12, 16, 1, false, 0, Math.PI), lam(0x9aa4ae), 0, 0, 0, hg); r.rotation.z = Math.PI / 2; r.rotation.y = Math.PI / 2; mesh(new T.BoxGeometry(12, 6, 0.2), M.dark, 0, 2.4, -6, hg); addBox(hx, hz, 6, 6.2, 0); }
+  const parked = [[ax - 14, az + 10, 0xd84a3a], [ax - 4, az + 11, 0x5fae5c], [ax - 30, az + 9, 0xf2c14e]];
+  parked.forEach(([x, z, c]) => { const p = makePlane(c); p.position.set(x, groundY(x, z), z); p.rotation.y = Math.PI; scene.add(p); addBox(x, z, 4.2, 3.5, 0); });
+  { const x = ax + 36, z = az - 9, y = groundY(x, z); mesh(new T.CylinderGeometry(0.08, 0.08, 5, 6), M.metal, x, y + 2.5, z); const sock = mesh(new T.ConeGeometry(0.5, 2.2, 8, 1, true), lam(0xf07a3a), x + 1, y + 4.8, z); sock.rotation.z = Math.PI / 2; }
+  planeM = makePlane(0x3a6a9a); planeM.visible = false; scene.add(planeM);
+  for (let i = 0; i < 4; i++) { const r = mesh(new T.TorusGeometry(6, 0.5, 8, 28), new T.MeshBasicMaterial({ color: 0xffc53d }), 0, 0, 0); r.visible = false; r.castShadow = false; planeRings.push(r); }
+  // Avions qui traversent le ciel et petits avions autour de l'aéroport
+  for (let i = 0; i < 3; i++) { const m = makePlane([0xf4f2ee, 0xd84a3a, 0x5a8fd0][i], i < 2); scene.add(m); ambientPlanes.push({ m, t: rand(0, 1), i, spd: i < 2 ? 0.012 : 0.05, y: i < 2 ? 110 + i * 14 : 34 }); }
+  // Pontons du grand lac et bateau du capitaine
+  PONTOONS.forEach((p, i) => {
+    if (i === 0) return;
+    const g = new T.Group(); g.position.set(p.x, 0, p.z); g.rotation.y = p.a; scene.add(g);
+    mesh(new T.BoxGeometry(2.6, 0.3, 9), M.woodL, 0, 0.25, 3.5, g);
+    for (let k = 0; k < 3; k++) for (const s of [-1, 1]) mesh(new T.CylinderGeometry(0.14, 0.14, 2.4, 6), M.woodD, s * 1.2, -0.5, k * 3.5, g);
+    const b = mesh(new T.BoxGeometry(2.4, 0.6, 0.1), new T.MeshLambertMaterial({ map: signTex(p.name.toUpperCase(), '#3a6a9a') }), 0, 1.4, -0.6, g); mesh(new T.CylinderGeometry(0.06, 0.06, 1.3, 5), M.woodD, 0, 0.7, -0.6, g);
+    PONTOON_DECKS.push({ x: p.x, z: p.z, a: p.a });
+  });
+  boatM = makeBoat(0x3a6a9a); scene.add(boatM); BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.rot = 0.4;
+  [[0xd84a3a, 0.55], [0x5fae5c, 0.78], [0xf2c14e, 0.35]].forEach(([c, r], i) => { const m = makeSailboat(c); scene.add(m); ambientBoats.push({ m, r, a: i * 2.1, s: (i % 2 ? 1 : -1) * 0.03 }); });
+  // Base de lancement d'Oscar dans le canyon rouge
+  const [rx, rz] = POI.base, ry = groundY(rx, rz);
+  rocketG = new T.Group(); rocketG.position.set(rx, ry, rz); scene.add(rocketG);
+  mesh(new T.CylinderGeometry(7, 7.4, 0.8, 20), lam(0xb8b4ac), 0, 0.4, 0, rocketG);
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; mesh(new T.BoxGeometry(0.3, 0.1, 1.6), M.yellow, Math.cos(a) * 6, 0.82, Math.sin(a) * 6, rocketG).rotation.y = -a; }
+  const tower = new T.Group(); tower.position.set(-4.2, 0.8, 0); rocketG.add(tower);
+  for (let k = 0; k < 4; k++) { const x = k % 2 ? 0.8 : -0.8, z = k < 2 ? 0.8 : -0.8; mesh(new T.BoxGeometry(0.2, 16, 0.2), M.red, x, 8, z, tower); }
+  for (let y = 1; y < 16; y += 2) mesh(new T.BoxGeometry(1.8, 0.14, 1.8), M.red, 0, y, 0, tower);
+  // Les morceaux de la fusée apparaissent quand la tirelire se remplit
+  const rk = new T.Group(); rk.position.y = 0.8; rocketG.add(rk);
+  const p1 = new T.Group(); rk.add(p1); mesh(new T.CylinderGeometry(1.4, 1.5, 5.5, 16), M.white, 0, 3.1, 0, p1); for (let k = 0; k < 4; k++) { const f = mesh(new T.BoxGeometry(0.15, 2.2, 1.4), M.red, Math.cos(k * Math.PI / 2) * 1.6, 1.3, Math.sin(k * Math.PI / 2) * 1.6, p1); f.rotation.y = -k * Math.PI / 2; } mesh(new T.CylinderGeometry(1.0, 1.3, 0.8, 12), M.dark, 0, 0.2, 0, p1);
+  const p2 = new T.Group(); rk.add(p2); mesh(new T.CylinderGeometry(1.25, 1.4, 4.2, 16), M.white, 0, 8, 0, p2); mesh(new T.CylinderGeometry(1.42, 1.42, 0.4, 16), M.red, 0, 6.1, 0, p2); for (const s of [-1, 1]) mesh(new T.CircleGeometry(0.4, 12), winMat, 0, 8.4, s * 1.3, p2).rotation.y = s > 0 ? 0 : Math.PI;
+  const p3 = new T.Group(); rk.add(p3); mesh(new T.ConeGeometry(1.25, 3.2, 16), M.red, 0, 11.7, 0, p3);
+  const p4 = new T.Group(); rk.add(p4); const fl = mesh(new T.BoxGeometry(0.04, 0.8, 1.2), lam(0x5a8fd0), 0, 14.2, 0.6, p4); mesh(new T.CylinderGeometry(0.04, 0.04, 1.6, 5), M.dark, 0, 13.9, 0, p4); const bd = mesh(new T.BoxGeometry(1.6, 0.6, 0.05), new T.MeshLambertMaterial({ map: signTex('OSCAR 1', '#3a6a9a') }), 0, 4, 1.5, p4);
+  rocketParts = [p1, p2, p3, p4];
+  addCircle(rx, rz, 3); addCircle(rx - 4.2, rz, 1.4);
+  sign('BASE SPATIALE D\'OSCAR', rx + 9, rz + 8, -0.4, 2.4, 0.9, '#3a6a9a');
+  // Patrons des métiers (des humains : il faut être déguisé pour leur parler)
+  addNPC('fernand', { name: 'Fernand (la Poste)', col: '#2a5aa0', model: makeHuman(0x2a5aa0, 0x2a2a3a, 0xdddddd, { cap: 0x2a5aa0 }), x: POI.poste[0] + 2, z: POI.poste[1] - 5, rot: 0, head: 2.5 });
+  addNPC('helene', { name: 'Hélène (pilote)', col: '#3a6a9a', model: makeHuman(0x2a3a5a, 0x2a2a3a, 0x3a2010, { cap: 0x2a3a5a }), x: ax + 4, z: az + 18, rot: Math.PI, head: 2.5 });
+  addNPC('loic', { name: 'Loïc (capitaine)', col: '#3a6a9a', model: makeHuman(0xf4f2ee, 0x2a3a6a, 0xe8c060, { cap: 0xffffff }), x: PONTOONS[0].x - 3, z: PONTOONS[0].z - 3, rot: 0.5, head: 2.5 });
+  Object.assign(PITCH, { fernand: 0.8, helene: 1.2, loic: 0.9 });
+  for (const id of ['fernand', 'helene', 'loic']) { const n = NPCS[id]; addInter({ x: n.x, z: n.z, r: 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => true, act: () => talkBoss(id) }); }
+  addInter({ x: POI.metiers[0], z: POI.metiers[1] + 1.5, r: 3, icon: '📋', label: () => 'Choisir un métier', can: () => true, act: openJobBoard });
+  addInter({ x: POI.base[0] + 6, z: POI.base[1] + 5, r: 4, icon: '🚀', label: () => 'Tirelire de la fusée (' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ')', can: () => true, act: depositRocket });
+  HOUSES.forEach((h, i) => addInter({ get x() { return h.mail[0]; }, get z() { return h.mail[1]; }, r: 2.8, icon: '✉️', label: () => 'Déposer la lettre de ' + h.who, can: () => S.mail && S.mail.left.includes(i), act: () => deliverLetter(i) }));
+  addInter({ x: BT.x, z: BT.z, r: 0, dyn: true, icon: '⛵', label: () => 'Monter dans le bateau', can: () => P.mode === 'walk' && S.boatJob && Math.hypot(P.x - BT.x, P.z - BT.z) < 5, act: enterBoat });
+  jobHats();
+}
+const PONTOON_DECKS = [];
+// ---------- Choisir un métier ----------
+function openJobBoard() {
+  $('shopName').textContent = 'Offres d\'emploi'; $('shopTxt').textContent = 'Le rêve d\'Oscar : aller dans l\'espace ! Choisis un métier pour payer ta fusée.';
+  const L = $('shopList'); L.innerHTML = '';
+  for (const k in JOBS) {
+    const j = JOBS[k], d = document.createElement('div');
+    d.innerHTML = '<i></i><span><small></small></span>'; d.querySelector('i').textContent = j.e;
+    d.querySelector('span').prepend(document.createTextNode(j.name)); d.querySelector('small').textContent = 'Va à ' + j.where + ' · ' + j.pay;
+    const b = document.createElement('button'); const mine = S.job === k; b.className = 'btn small' + (mine ? '' : ' go'); b.textContent = mine ? 'Ton métier' : 'Choisir'; b.disabled = mine;
+    b.addEventListener('click', () => { S.job = k; S.hats[j.hat] = 1; S.wear = j.hat; updateHats(); sfx.coin(); toast(j.e + ' Tu es maintenant ' + j.name.toLowerCase() + ' ! Va voir ton patron : ' + j.where + '.'); saveGame(); openJobBoard(); });
+    d.appendChild(b); L.appendChild(d);
+  }
+  openPanel('pShop');
+}
+function talkBoss(id) {
+  const job = Object.keys(JOBS).find(k => JOBS[k].boss === id), j = JOBS[job];
+  if (!P.disguise) return talk([[id, 'Un ours ?! Euh… revenez habillé, s\'il vous plaît !']], () => toast(S.flags.disguise ? 'Astuce : mets ton déguisement (T) pour travailler avec les humains.' : 'Les humains ont peur des ours… il te faudrait un déguisement !'));
+  if (S.job !== job) return talk([[id, 'Bonjour ! On cherche quelqu\'un pour être ' + j.name.toLowerCase() + '.'], [id, 'Va choisir ce métier au panneau « Offres d\'emploi » du village, devant la mairie.']]);
+  if (job === 'facteur') {
+    if (S.mail && S.mail.left.length) return talk([['fernand', 'Il te reste ' + S.mail.left.length + ' lettres à distribuer. Les boîtes aux lettres sont devant les maisons !']]);
+    const pickH = []; const pool = HOUSES.map((h, i) => i); while (pickH.length < 4) { const i = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; pickH.push(i); }
+    return talk([['fernand', 'Voici ta tournée : 4 lettres pour ' + pickH.map(i => HOUSES[i].who).join(', ') + '.'], ['fernand', 'Dépose-les dans les boîtes aux lettres, devant leurs maisons. Regarde la carte si tu ne sais pas où ils habitent !']], () => { S.mail = { left: pickH.slice(), n: 4 }; refreshMail(); saveGame(); });
+  }
+  if (job === 'pilote') {
+    if (P.mode !== 'walk') return;
+    const pool = FLIGHT_SPOTS.slice(), route = [];
+    while (route.length < 3) route.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    return talk([['helene', 'Le vol du jour : survole ' + route.map(r => r[0]).join(', ') + ', puis reviens te poser ici.'], ['helene', 'Passe dans les anneaux jaunes. Espace pour monter, C pour descendre. Bon vol, commandant !']], () => startFlight(route));
+  }
+  if (job === 'capitaine') {
+    if (S.boatJob) return talk([['loic', 'Ton bateau t\'attend au bout du ponton. Les passagers patientent !']]);
+    return talk([['loic', 'Ahoy, capitaine ! Trois passagers attendent sur les pontons du lac.'], ['loic', 'Va les chercher en bateau et dépose chacun où il veut aller. Ton bateau est au bout du ponton !']], () => { S.boatJob = { trip: 0, carry: false, from: 1 + Math.floor(Math.random() * 3) }; S.boatJob.to = nextPontoon(S.boatJob.from); saveGame(); toast('⛵ Monte dans le bateau au bout du ponton !'); });
+  }
+}
+// ---------- Facteur ----------
+function refreshMail() { HOUSES.forEach((h, i) => { h.flag.visible = !!(S.mail && S.mail.left.includes(i)); }); }
+function deliverLetter(i) {
+  const k = S.mail.left.indexOf(i); if (k < 0) return;
+  S.mail.left.splice(k, 1); HOUSES[i].flag.visible = false; S.coins += 15; sfx.coin(); sparkle(HOUSES[i].mail[0], groundY(HOUSES[i].mail[0], HOUSES[i].mail[1]) + 1.5, HOUSES[i].mail[1]);
+  toast('✉️ Lettre déposée chez ' + HOUSES[i].who + ' ! +15 pièces');
+  if (!S.mail.left.length) { S.coins += 20; S.mail = null; banner('Tournée terminée !', '+20 pièces de bonus · Fernand a d\'autres lettres'); sfx.fanfare(); S.jobsDone = (S.jobsDone || 0) + 1; }
+  updateHUD(); saveGame();
+}
+// ---------- Pilote d'avion ----------
+const PL = { x: 0, z: 0, y: 0, rot: 0, spd: 0, alt: 0, vy: 0, bank: 0, route: null, i: 0 };
+function startFlight(route) {
+  fadeTo(() => {
+    PL.route = route.map(r => ({ name: r[0], x: r[1], z: r[2], h: r[3] })).concat([{ name: 'l\'aéroport', x: AIRPORT.x - 20, z: AIRPORT.z, h: 14, land: true }]);
+    PL.i = 0; PL.x = AIRPORT.x + 30; PL.z = AIRPORT.z; PL.rot = -Math.PI / 2; PL.spd = 14; PL.alt = 0; PL.vy = 8;
+    PL.y = groundY(PL.x, PL.z); P.mode = 'plane'; P.model.visible = false; planeM.visible = true;
+    showRings(); status('✈️ Décollage ! Direction ' + PL.route[0].name, 'info', 4); sfx.takeoff();
+  });
+}
+function showRings() { planeRings.forEach((r, k) => { const t = PL.route && PL.route[PL.i + k]; r.visible = !!t && k < 2; if (t) { r.position.set(t.x, Math.max(groundY(t.x, t.z), 0) + t.h, t.z); r.material.color.set(k ? 0xfff0a0 : 0xffc53d); r.scale.setScalar(k ? 0.8 : 1); } }); }
+function updatePlane(dt) {
+  const l = Math.min(1, Math.hypot(IN.x, IN.z)), want = l > 0.15 ? Math.atan2(IN.x, IN.z) : PL.rot, diff = angDiff(PL.rot, want);
+  PL.rot += clamp(diff, -1, 1) * 1.6 * dt * (l > 0.15 ? 1 : 0);
+  PL.bank = lerp(PL.bank, -clamp(diff, -1, 1) * 0.6 * (l > 0.15 ? 1 : 0), 1 - Math.exp(-dt * 3));
+  PL.spd += ((IN.run ? 32 : 24) - PL.spd) * (1 - Math.exp(-dt * 1.2));
+  const climb = (IN.up ? 10 : 0) - (IN.down ? 10 : 0);
+  PL.vy += (climb - PL.vy) * (1 - Math.exp(-dt * 2.5));
+  PL.alt = clamp(PL.alt + PL.vy * dt, 0, 110);
+  PL.x = clamp(PL.x + Math.sin(PL.rot) * PL.spd * dt, -HALF + 6, HALF - 6); PL.z = clamp(PL.z + Math.cos(PL.rot) * PL.spd * dt, -HALF + 6, HALF - 6);
+  const gy = Math.max(groundY(PL.x, PL.z), WATER_Y); PL.y = Math.max(gy + 3, gy + PL.alt);
+  if (PL.y < gy + 4 && PL.alt > 2) PL.alt = PL.y - gy;
+  planeM.position.set(PL.x, PL.y, PL.z); planeM.rotation.set(-PL.vy * 0.02, PL.rot, PL.bank, 'YXZ');
+  planeM.userData.prop.rotation.z += dt * 40;
+  if (Math.random() < dt * 14) emit(PL.x - Math.sin(PL.rot) * 6, PL.y + 1.5, PL.z - Math.cos(PL.rot) * 6, 0, 0, 0, 1.2, 0.5, 1, 1, 1, 0);
+  P.x = PL.x; P.z = PL.z; P.y = PL.y;
+  const t = PL.route[PL.i], r = planeRings[0];
+  if (t && Math.hypot(PL.x - r.position.x, PL.z - r.position.z) < 8 && Math.abs(PL.y + 1.4 - r.position.y) < 8) {
+    PL.i++; sfx.ring(); sparkle(r.position.x, r.position.y, r.position.z);
+    if (t.land) { endFlight(true); return; }
+    toast('✈️ ' + t.name.charAt(0).toUpperCase() + t.name.slice(1) + ' ! Prochain : ' + PL.route[PL.i].name); showRings();
+  }
+  for (const rr of planeRings) if (rr.visible) rr.rotation.y = Math.atan2(PL.x - rr.position.x, PL.z - rr.position.z);
+  status('✈️ Vers ' + (PL.route[PL.i] || {}).name + ' · altitude ' + Math.round(PL.y) + ' m', 'info', 0.3);
+}
+function endFlight(ok) {
+  fadeTo(() => {
+    P.mode = 'walk'; P.model.visible = true; planeM.visible = false; planeRings.forEach(r => { r.visible = false; });
+    P.x = AIRPORT.x + 4; P.z = AIRPORT.z + 15; P.y = walkY(P.x, P.z); PL.route = null;
+    if (ok) { S.coins += 100; S.jobsDone = (S.jobsDone || 0) + 1; banner('Atterrissage parfait !', '+100 pièces · Hélène est fière de toi'); sfx.fanfare(); }
+    updateHUD(); saveGame();
+  });
+}
+// ---------- Capitaine de bateau ----------
+const BT = { x: 0, z: 0, rot: 0, spd: 0 };
+const pontoonEnd = i => { const p = PONTOONS[i]; return [p.x + Math.sin(p.a) * 9, p.z + Math.cos(p.a) * 9]; };
+const nextPontoon = i => { let j; do j = Math.floor(Math.random() * PONTOONS.length); while (j === i); return j; };
+let passenger = null;
+function enterBoat() { P.mode = 'boat'; P.model.visible = true; P.rot = BT.rot; sfx.step(); status('⛵ Va chercher le passager au ' + PONTOONS[S.boatJob.from].name, 'info', 4); if (!passenger) { passenger = makeHuman(0xe0607a, 0x3a3a5a, 0x3a2010, { cap: 0xf2c14e }); scene.add(passenger); } }
+function updateBoat(dt) {
+  const l = Math.min(1, Math.hypot(IN.x, IN.z)), want = l > 0.15 ? Math.atan2(IN.x, IN.z) : BT.rot, diff = angDiff(BT.rot, want);
+  BT.spd += ((l > 0.15 ? 10 * l * (IN.run ? 1.4 : 1) * (Math.abs(diff) > 1.6 ? 0.4 : 1) : 0) - BT.spd) * (1 - Math.exp(-dt * 1.2));
+  if (l > 0.15) BT.rot += clamp(diff, -1, 1) * dt * 1.8;
+  const nx = BT.x + Math.sin(BT.rot) * BT.spd * dt, nz = BT.z + Math.cos(BT.rot) * BT.spd * dt;
+  if (Math.max(0, WATER_Y - groundY(nx, nz)) > 0.55) { BT.x = nx; BT.z = nz; } else BT.spd *= -0.3;
+  boatM.position.set(BT.x, WATER_Y - 0.15 + Math.sin(G.t * 2) * 0.05, BT.z); boatM.rotation.set(Math.sin(G.t * 1.5) * 0.03, BT.rot, -clamp(diff, -0.5, 0.5) * 0.08 * BT.spd / 10);
+  boatM.userData.flag.rotation.y = Math.sin(G.t * 4) * 0.3;
+  if (BT.spd > 2 && Math.random() < dt * 20) splash(BT.x - Math.sin(BT.rot) * 2.6 + rand(-0.5, 0.5), BT.z - Math.cos(BT.rot) * 2.6);
+  P.x = BT.x; P.z = BT.z; P.y = WATER_Y + 0.5; P.rot = BT.rot;
+  P.model.position.set(BT.x - Math.sin(BT.rot) * 0.6, WATER_Y + 0.5, BT.z - Math.cos(BT.rot) * 0.6); P.model.rotation.y = BT.rot;
+  animRig(P.model, 0, 0, dt); sitPose(dt, true);
+  // Passagers
+  const J = S.boatJob; if (!J) return;
+  if (!J.carry) { const [px, pz] = pontoonEnd(J.from); passenger.visible = true; passenger.position.set(px, 0.4, pz); passenger.rotation.y = PONTOONS[J.from].a + Math.PI;
+    if (Math.hypot(BT.x - px, BT.z - pz) < 6 && BT.spd < 5) { J.carry = true; sfx.pickup(); toast('🙂 Passager à bord ! Direction : ' + PONTOONS[J.to].name); } }
+  else { passenger.position.set(BT.x + Math.sin(BT.rot) * 1.1, WATER_Y + 0.55, BT.z + Math.cos(BT.rot) * 1.1); passenger.rotation.y = BT.rot;
+    const [tx, tz] = pontoonEnd(J.to);
+    if (Math.hypot(BT.x - tx, BT.z - tz) < 6 && BT.spd < 5) { J.carry = false; J.trip++; S.coins += 25; sfx.coin(); toast('⛵ Passager déposé ! +25 pièces (' + J.trip + ' / 3)'); updateHUD();
+      if (J.trip >= 3) { S.coins += 15; S.boatJob = null; passenger.visible = false; S.jobsDone = (S.jobsDone || 0) + 1; banner('Bravo capitaine !', '3 traversées · +15 pièces de bonus'); sfx.fanfare(); saveGame(); return; }
+      J.from = J.to; J.to = nextPontoon(J.from); J.carry = true; toast('Un nouveau passager monte : direction ' + PONTOONS[J.to].name); } }
+  if (Math.random() < dt) status(J.carry ? '⛵ Direction : ' + PONTOONS[J.to].name : '⛵ Va chercher le passager au ' + PONTOONS[J.from].name, 'info', 1.2);
+}
+function exitBoat() {
+  let best = 0, bd = 1e9; PONTOONS.forEach((p, i) => { const e = pontoonEnd(i), d = Math.hypot(BT.x - e[0], BT.z - e[1]); if (d < bd) { bd = d; best = i; } });
+  if (bd > 8) { toast('Approche-toi d\'un ponton pour descendre du bateau.'); return; }
+  const p = PONTOONS[best], [ex, ez] = pontoonEnd(best);
+  P.mode = 'walk'; P.x = p.x + Math.sin(p.a) * 6; P.z = p.z + Math.cos(p.a) * 6; P.y = walkY(P.x, P.z); BT.spd = 0;
+  if (passenger && !(S.boatJob && S.boatJob.carry)) { }
+}
+// Les pontons sont des planchers : on peut marcher dessus
+function pontoonDeck(x, z) {
+  for (const p of PONTOON_DECKS) { const dx = x - p.x, dz = z - p.z, c = Math.cos(p.a), s = Math.sin(p.a), lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < 1.4 && lz > -1 && lz < 8.2) return 0.42; }
+  return null;
+}
+// ---------- Tirelire de la fusée ----------
+function depositRocket() {
+  S.rocket = S.rocket || 0;
+  if (S.rocket >= ROCKET_GOAL) return talk([['oscar', 'Ma fusée est prête ! Le grand voyage vers la Lune… ce sera pour le chapitre 2 !']]);
+  if (S.coins <= 0) return toast('Ta bourse est vide ! Travaille pour gagner des pièces (panneau « Offres d\'emploi » au village).');
+  const put = Math.min(S.coins, ROCKET_GOAL - S.rocket); S.coins -= put; S.rocket += put; sfx.coin(); sparkle(POI.base[0], groundY(POI.base[0], POI.base[1]) + 4, POI.base[1]);
+  toast('🚀 +' + put + ' pièces dans la tirelire : ' + S.rocket + ' / ' + ROCKET_GOAL);
+  const before = rocketParts.filter(p => p.visible).length; showRocket(); const after = rocketParts.filter(p => p.visible).length;
+  if (after > before) { banner('La fusée grandit !', ['Le premier étage est construit', 'Le deuxième étage est construit', 'La pointe est posée', 'La fusée est terminée !'][after - 1]); sfx.fanfare(); confetti(POI.base[0], groundY(POI.base[0], POI.base[1]) + 6, POI.base[1]); }
+  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['oscar', 'Elle est prête… MA fusée ! J\'ai travaillé si dur pour elle.'], ['oscar', 'Bientôt, je partirai vivre sur la Lune avec mes amis. Ce sera le chapitre 2 !']]), 2500);
+  updateHUD(); saveGame();
+}
+function showRocket() { const k = (S.rocket || 0) / ROCKET_GOAL; rocketParts.forEach((p, i) => { p.visible = k >= (i + 1) / 4; }); }
+// ---------- Animations du décor ----------
+function updateJobs(dt) {
+  for (const a of ambientPlanes) {
+    a.t += a.spd * dt; if (a.t > 1) a.t -= 1;
+    let x, z, rot;
+    if (a.i < 2) { const s = a.t * 2 - 1, d = a.i ? 1 : -1; x = s * (HALF + 60) * d; z = (a.i ? -120 : 140) + s * 60; rot = Math.atan2(2 * (HALF + 60) * d, 120); }
+    else { const an = a.t * 6.283; x = AIRPORT.x + Math.cos(an) * 60; z = AIRPORT.z + Math.sin(an) * 45; rot = Math.atan2(-Math.sin(an) * 60, Math.cos(an) * 45); }
+    a.m.position.set(x, a.y, z); a.m.rotation.set(0, rot, a.i < 2 ? 0 : -0.3); a.m.userData.prop.rotation.z += dt * 30;
+  }
+  for (const b of ambientBoats) { b.a += b.s * dt * 6; const x = LAKE.x + Math.cos(b.a) * LAKE.rx * b.r, z = LAKE.z + Math.sin(b.a) * LAKE.rz * b.r; b.m.position.set(x, WATER_Y + Math.sin(G.t * 1.7 + b.a) * 0.06, z); b.m.rotation.set(Math.sin(G.t + b.a) * 0.04, Math.atan2(-Math.sin(b.a) * LAKE.rx * Math.sign(b.s), Math.cos(b.a) * LAKE.rz * Math.sign(b.s)), 0.12 * Math.sign(b.s)); }
+  if (P.mode !== 'boat' && boatM) { boatM.position.set(BT.x, WATER_Y - 0.15 + Math.sin(G.t * 2) * 0.05, BT.z); boatM.rotation.y = BT.rot; }
+  for (const h of HOUSES) if (h.flag && h.flag.visible) h.flag.rotation.z = Math.sin(G.t * 3) * 0.2;
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -3953,28 +4305,42 @@ const sfx = (() => {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(dest || sfxG); o.start(t); o.stop(t + dur + 0.05);
   }
-  function noise(dur, freq, vol) {
+  function noise(dur, freq, vol, dest) {
     if (!ac) return;
     const b = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
     const s = ac.createBufferSource(); s.buffer = b;
-    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+    const f = ac.createBiquadFilter(); f.type = freq > 3000 ? 'highpass' : 'lowpass'; f.frequency.value = freq;
     const g = ac.createGain(); g.gain.value = vol;
-    s.connect(f); f.connect(g); g.connect(sfxG); s.start();
+    s.connect(f); f.connect(g); g.connect(dest || sfxG); s.start();
   }
-  // Petite musique douce : arpèges en gamme pentatonique, plus rapide pendant une poursuite
+  // Une note douce de flûte : sinus avec un petit vibrato
+  function flute(f, dur, vol, when) {
+    const t = when, o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f; lfo.frequency.value = 5.5; lg.gain.value = f * 0.006; lfo.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.05); g.gain.setValueAtTime(vol, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(musicG); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+  }
+  // Musique du parc : accords doux, arpèges, une vraie mélodie à la flûte et un petit shaker
   const PROG = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];
   const CHASE = [[57, 60, 64, 69], [55, 58, 62, 67], [53, 57, 60, 65], [52, 55, 59, 64]];
+  const MELODY = [72, -1, 76, 79, 76, -1, 74, 72, 69, -1, 72, 76, 74, 72, 69, -1, 65, 69, 72, -1, 74, 72, 69, 65, 67, -1, 71, 74, 72, -1, 71, 67,
+    79, -1, 77, 76, 74, -1, 72, 74, 76, -1, 72, 69, 72, -1, 74, 76, 77, 76, 74, 72, 69, -1, 72, 74, 71, -1, 74, 79, 77, 74, 71, -1];
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
   function music() {
     if (!ac || !OPT.music || G.state !== 'play' && G.state !== 'title') return;
-    const bpm = chase ? 150 : nightK > 0.5 ? 80 : 96, st = 60 / bpm / 2;
+    const snow = G.state === 'play' && P.z < -214, night = nightK > 0.5;
+    const bpm = chase ? 150 : snow ? 84 : night ? 78 : 96, st = 60 / bpm / 2;
     while (nextNote < ac.currentTime + 0.2) {
       const bar = Math.floor(step / 8) % 4, prog = (chase ? CHASE : PROG)[bar];
       const pat = [0, 2, 1, 3, 2, 1, 3, 2][step % 8];
       const n = prog[pat] + (step % 16 >= 8 && !chase ? 12 : 0);
-      tone(mtof(n), mtof(n), st * 1.8, chase ? 0.16 : 0.13, chase ? 'square' : 'triangle', nextNote, musicG);
-      if (step % 4 === 0) tone(mtof(prog[0] - 24), mtof(prog[0] - 24), st * 3.5, 0.18, 'sine', nextNote, musicG);
+      tone(mtof(n), mtof(n), st * 1.8, chase ? 0.14 : 0.08, chase ? 'square' : snow ? 'sine' : 'triangle', nextNote, musicG);
+      if (step % 4 === 0) tone(mtof(prog[0] - 24), mtof(prog[0] - 24), st * 3.5, 0.16, 'sine', nextNote, musicG);
+      if (!chase && step % 8 === 0) for (const k of [0, 1, 2]) tone(mtof(prog[k] - 12), mtof(prog[k] - 12), st * 7.5, 0.025, 'sine', nextNote, musicG);
+      const m = MELODY[step % MELODY.length];
+      if (!chase && m > 0 && Math.floor(step / 64) % 2 === 0) flute(mtof(m + (snow ? 12 : 0)), st * 1.7, night ? 0.045 : 0.06, nextNote);
+      if (!chase && !night && step % 2 === 1) noise(0.03, 7000, 0.025, musicG);
       if (chase && step % 2 === 0) tone(90, 50, 0.08, 0.12, 'sine', nextNote, musicG);
       nextNote += st; step++;
     }
@@ -4040,6 +4406,8 @@ let frVoices = [];
 function loadVoices() { try { frVoices = speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang)); } catch (e) {} }
 if (window.speechSynthesis) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
 function speak(who, text) {
+  // Les personnages ne parlent plus à voix haute : on lit les bulles
+  return;
   if (!OPT.voice || !window.speechSynthesis) return;
   try {
     speechSynthesis.cancel();
@@ -4133,6 +4501,8 @@ function updateAction() {
   else if (P.mode === 'tree') { label = 'Descendre l\'échelle'; icon = '🪜'; }
   else if (P.mode === 'ski') { if (P.skiSpd < 6 && P.crashT <= 0) { label = 'Se relever'; icon = '🐻'; } else on = false; }
   else if (P.mode === 'lift') { label = 'Télésiège…'; icon = '🚡'; on = false; }
+  else if (P.mode === 'plane') { label = 'En vol'; icon = '✈️'; on = false; }
+  else if (P.mode === 'boat') { label = 'Descendre du bateau'; icon = '⚓'; }
   else if (P.mode === 'walk') { actNow = findInteraction(); if (actNow) { label = actNow.label(); icon = actNow.icon; } else on = false; }
   else on = false;
   $('actLbl').textContent = label;
@@ -4147,7 +4517,8 @@ function doAction() {
   if (P.mode === 'fly') { G.landing = true; return; }
   if (P.mode === 'tree') { leaveTree(); return; }
   if (P.mode === 'ski') { if (P.skiSpd < 6 && P.crashT <= 0) stopSki(''); return; }
-  if (P.mode === 'lift') return;
+  if (P.mode === 'lift' || P.mode === 'plane') return;
+  if (P.mode === 'boat') { exitBoat(); return; }
   if (P.mode === 'walk' && actNow) actNow.act();
 }
 
@@ -4229,7 +4600,7 @@ function renderInv() {
     const b = document.createElement('button'); b.className = 'btn go'; b.textContent = 'Manger ' + ITEMS[invSel].e;
     b.addEventListener('click', () => { eat(invSel); if (!has(invSel)) invSel = null; renderInv(); updateHUD(); }); A.appendChild(b);
   }
-  const hats = [['', 'Sans chapeau', '🐻']].concat([['sun', 'Lunettes', '🕶️'], ['cowboy', 'Cowboy', '🤠'], ['crown', 'Couronne', '👑'], ['golden', 'Chapeau doré', '🌟'], ['noisette', 'Bonnet noisette', '🌰'], ['bonnet', 'Bonnet à pompon', '🧶'], ['explo', 'Chapeau d\'explorateur', '🧭']].filter(h => S.hats[h[0]]));
+  const hats = [['', 'Sans chapeau', '🐻']].concat([['sun', 'Lunettes', '🕶️'], ['cowboy', 'Cowboy', '🤠'], ['crown', 'Couronne', '👑'], ['golden', 'Chapeau doré', '🌟'], ['noisette', 'Bonnet noisette', '🌰'], ['bonnet', 'Bonnet à pompon', '🧶'], ['explo', 'Chapeau d\'explorateur', '🧭'], ['pilote', 'Casquette de pilote', '✈️'], ['marin', 'Bonnet de marin', '⛵'], ['facteur', 'Casquette de facteur', '✉️']].filter(h => S.hats[h[0]]));
   if (hats.length > 1) for (const [k, n, e] of hats) {
     const b = document.createElement('button'); b.className = 'btn small' + (S.wear === k ? ' go' : ''); b.textContent = e + ' ' + n;
     b.addEventListener('click', () => { S.wear = k; updateHats(); renderInv(); saveGame(); }); A.appendChild(b);
@@ -4259,6 +4630,7 @@ function openJournal() {
   ];
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
   for (const q of SIDEQ) { if (q.friend && !L.querySelector('.amis')) { const h3 = document.createElement('div'); h3.className = 'amis'; h3.innerHTML = '<b>🐾 Jeux avec les amis</b><p>Maurice, Praline, Roquette et Filou t\'attendent !</p>'; L.appendChild(h3); } const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
+  const hj = document.createElement('div'); hj.innerHTML = '<b>🚀 Le rêve d\'Oscar : aller dans l\'espace</b><p></p>'; hj.querySelector('p').textContent = 'Tirelire de la fusée : ' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ' pièces (base spatiale du canyon rouge). ' + (S.job ? 'Ton métier : ' + JOBS[S.job].e + ' ' + JOBS[S.job].name + ' — va à ' + JOBS[S.job].where + '.' : 'Choisis un métier au panneau « Offres d\'emploi » du village !'); L.appendChild(hj);
   const h = document.createElement('div'); h.innerHTML = '<b>🏔️ Défis de l\'aventure</b><p>Pour jouer encore plus longtemps !</p>'; L.appendChild(h);
   for (const [ok, t, sub] of defis) { const d = document.createElement('div'); if (ok) d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (ok ? '✔ ' : '⭐ ') + t; d.querySelector('p').textContent = ok ? 'Réussi !' : sub; L.appendChild(d); }
   openPanel('pJournal');
@@ -4286,11 +4658,11 @@ function drawMap() {
   for (const rv of RIVERS) { const r = rv.pts; g.lineWidth = rv.w * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
   g.fillStyle = '#41b3e6'; for (const L of LAKES) { g.beginPath(); g.ellipse(X(L.x), Z(L.z), L.rx * k, L.rz * k, 0, 0, 6.283); g.fill(); }
   for (const p of ALL_PATHS) { g.strokeStyle = p === ROADS[0] ? '#9a7f78' : '#e2cc98'; g.lineWidth = p.w * k * 1.1; g.beginPath(); p.pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
-  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile], ['Station de ski', [0, -192]], ['Pic Grizzly', [10, -296]], ['Grande forêt', [-262, -20]], ['Grande prairie', [262, -80]], ['Ferme', POI.ferme], ['Moulin', POI.moulin], ['Canyon rouge', POI.canyon], ['Marais', POI.marais], ['Elliot', POI.elliot], ['Maurice et Praline', POI.niche], ['Roquette', POI.roquette], ['Filou', POI.filou]].concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
+  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile], ['Station de ski', [0, -192]], ['Pic Grizzly', [10, -296]], ['Grande forêt', [-262, -20]], ['Grande prairie', [262, -80]], ['Ferme', POI.ferme], ['Moulin', POI.moulin], ['Canyon rouge', POI.canyon], ['Marais', POI.marais], ['Elliot', POI.elliot], ['Maurice et Praline', POI.niche], ['Roquette', POI.roquette], ['Filou', POI.filou], ['Aéroport', POI.aeroport], ['La Poste', POI.poste], ['Offres d\'emploi', [POI.metiers[0], POI.metiers[1] + 8]], ['Base spatiale', POI.base]].concat(HOUSES.filter(h => h.kind !== 'none').map(h => ['Chez ' + h.who, [h.x, h.z - 5]])).concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
-  const st = curStep(), tgt = guideTarget();
+  const st = curStep(), tgt = mapTarget();
   const stg = sideTarget(); if (stg && stg !== tgt) { g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(stg[0]), Z(stg[1]), 9, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
@@ -4311,7 +4683,7 @@ $('bQuit').addEventListener('click', () => { saveGame(); closePanels(); toTitle(
 // ================= Partie : sauvegarde, chargement =================
 function saveGame() {
   if (!S || G.state !== 'play') return;
-  S.pos = [P.x, P.z]; if (P.mode !== 'fly') S.camper = [C.x, C.z, C.rot];
+  S.pos = P.mode === 'boat' ? [PONTOONS[0].x, PONTOONS[0].z + 6] : P.mode === 'plane' ? [AIRPORT.x + 4, AIRPORT.z + 15] : [P.x, P.z]; if (P.mode !== 'fly') S.camper = [C.x, C.z, C.rot];
   S.baskets = baskets.map(b => b.takenDay);
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
 }
@@ -4336,7 +4708,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); G.rocket = null; G.praFound = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -4376,7 +4748,8 @@ function updateCamera(dt) {
   }
   let off = [0, 33, 17], target = new V3(P.x, P.y + 1.2, P.z);
   if (P.mode === 'drive') off = [0, 40, 21];
-  if (P.mode === 'fly') off = [0, 46, 26];
+  if (P.mode === 'fly' || P.mode === 'plane') off = [0, 46, 26];
+  if (P.mode === 'boat') off = [0, 36, 20];
   if (P.mode === 'ski') { off = [0, 30, 19]; target.x += Math.sin(P.rot) * P.skiSpd * 0.35; target.z += Math.cos(P.rot) * P.skiSpd * 0.35; }
   if (P.mode === 'lift') off = [0, 26, 22];
   if (G.talking && G.talkWho && G.talkWho !== 'oscar' && NPCS[G.talkWho]) {
@@ -4495,9 +4868,11 @@ function step(dt) {
     else if (P.mode === 'tree') updateTree(dt);
     else if (P.mode === 'ski') updateSki(dt);
     else if (P.mode === 'lift') updateLift(dt);
+    else if (P.mode === 'plane') updatePlane(dt);
+    else if (P.mode === 'boat') updateBoat(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -4508,7 +4883,7 @@ function step(dt) {
     G.saveT += dt; if (G.saveT > 20) { G.saveT = 0; saveGame(); }
     if (G.state === 'play') { const t = G.t; G.hudT = (G.hudT || 0) + dt; if (G.hudT > 0.5) { G.hudT = 0; updateHUD(); } }
     sfx.setChase(NPCS.gerard.state === 'chase');
-    $('flyBtns').hidden = !(isTouch && P.mode === 'fly');
+    $('flyBtns').hidden = !(isTouch && (P.mode === 'fly' || P.mode === 'plane'));
     if (P.hidden && P.mode === 'walk' && statusT <= 0) status('🌿 Caché dans un buisson', 'hide', 0.6);
   }
   // Décor animé
@@ -4563,6 +4938,7 @@ buildWild();
 buildWildNPCs();
 buildSideQuests();
 buildFriends();
+buildJobs();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -4572,7 +4948,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>
