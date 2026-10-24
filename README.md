@@ -63,6 +63,9 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
 - 10 animaux sauvages à noter dans le carnet d'Elliot : élan, loup, sanglier, bison, bouquetin, marmotte, aigle royal, héron, grenouille et lynx.
 - Des nuages qui passent dans le ciel (leur ombre glisse sur le sol), de la neige qui tombe en montagne et une mer de nuages au bord du monde.
 - Des défis en plus des 14 missions : monter au sommet, le slalom, le carnet sauvage. Ils sont listés dans le journal.
+- 6 aventures du Grand Nord en plus de l'histoire : le louveteau perdu (Elliot), le chocolat chaud d'Yvette, les cristaux de glace et la luge dorée (Cabriole), le marais tout propre (Gaspard le héron), les poules de Josette et le petit bison de Bernard. La flèche orange guide vers l'aventure en cours une fois l'histoire finie.
+- La météo change : averses de pluie (ou de neige en montagne) avec arc-en-ciel après, lucioles la nuit et loups qui hurlent.
+- Une patinoire sur le lac gelé du Glacier, où Oscar glisse sur la glace.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.

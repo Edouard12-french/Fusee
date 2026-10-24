@@ -357,7 +357,7 @@ const POI = {
   arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
   chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
   cabanesLac: [104, 86], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
-  moulin: [282, 40], ferme: [284, -16], loups: [-284, -84], canyon: [262, 236], marais: [-30, 266], grotteCristal: [-146, -112], grotteFossile: [90, -114],
+  moulin: [282, 40], ferme: [284, -16], gaspard: [-12, 246.6], bernard: [256, -76], josette: [280, -13], loups: [-284, -84], canyon: [262, 236], marais: [-30, 266], grotteCristal: [-146, -112], grotteFossile: [90, -114],
   faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
   musee: [-14, 128], donovan: [4, 24], noisette: [-40, -120],
 };
@@ -408,7 +408,7 @@ function segDist(px, pz, ax, az, bx, bz) {
   return Math.sqrt(x * x + z * z);
 }
 function polyDist(x, z, pts) { let d = 1e9; for (let i = 0; i < pts.length - 1; i++) d = Math.min(d, segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; }
-const PONDS = [{ x: -125, z: 45, rx: 14, rz: 10, name: 'Étang des lapins' }, { x: 100, z: -28, rx: 12, rz: 9, name: 'Mare aux grenouilles' }, { x: 172, z: 108, rx: 12, rz: 8, name: 'Lac bleu' }, { x: -78, z: -106, rx: 9, rz: 7, name: 'Lac d\'Oscar' }, { x: 62, z: -221, rx: 11, rz: 7, name: 'Lac du Glacier' }, { x: -270, z: 110, rx: 13, rz: 9, name: 'Lac de la forêt' }, { x: 262, z: -110, rx: 11, rz: 8, name: 'Mare des bisons' }];
+const PONDS = [{ x: -125, z: 45, rx: 14, rz: 10, name: 'Étang des lapins' }, { x: 100, z: -28, rx: 12, rz: 9, name: 'Mare aux grenouilles' }, { x: 172, z: 108, rx: 12, rz: 8, name: 'Lac bleu' }, { x: -78, z: -106, rx: 9, rz: 7, name: 'Lac d\'Oscar' }, { x: 62, z: -221, rx: 11, rz: 7, name: 'Patinoire du Glacier', frozen: true }, { x: -270, z: 110, rx: 13, rz: 9, name: 'Lac de la forêt' }, { x: 262, z: -110, rx: 11, rz: 8, name: 'Mare des bisons' }];
 const LAKES = [LAKE].concat(PONDS);
 const lakeE = (x, z) => { let e = 1e9; for (const L of LAKES) e = Math.min(e, ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2); return e; };
 const riverDist = (x, z) => { let d = 1e9; for (const r of RIVERS) d = Math.min(d, polyDist(x, z, r.pts) * RIVER_W / r.w); return d; };
@@ -468,7 +468,10 @@ function groundY(x, z) {
   return y;
 }
 // Ponton et pont : on peut marcher dessus au-dessus de l'eau
+const FROZEN = PONDS.filter(L => L.frozen);
+const onIce = (x, z) => FROZEN.some(L => ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2 < 1.1);
 function deckY(x, z) {
+  if (z < -200 && onIce(x, z)) return WATER_Y + 0.06;
   if (z > 205) for (const b of BOARDWALKS) if (polyDist(x, z, b) < 1.5) return 0.3;
   if (Math.abs(x - POI.dock[0]) < 1.7 && z > POI.dock[1] - 2 && z < POI.dock[1] + 13.2) return 0.42;
   for (const b of BRIDGES) {
@@ -632,6 +635,11 @@ function buildGround() {
   lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx * 1.06, LAKE.rz * 1.06, 1); lake.position.set(LAKE.x, WATER_Y, LAKE.z);
   lake.receiveShadow = true; scene.add(lake);
   for (const L of PONDS) {
+    if (L.frozen) {
+      const ice = new T.Mesh(new T.CircleGeometry(1, 40), new T.MeshPhongMaterial({ color: colorL(0xd8f0fa), specular: 0xffffff, shininess: 80 })); ice.rotation.x = -Math.PI / 2; ice.scale.set(L.rx * 1.08, L.rz * 1.08, 1); ice.position.set(L.x, WATER_Y + 0.04, L.z); ice.receiveShadow = true; scene.add(ice);
+      for (let k = 0; k < 7; k++) { const sc = mesh(new T.PlaneGeometry(rand(2, 5), 0.08), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }), L.x + rand(-L.rx * 0.6, L.rx * 0.6), WATER_Y + 0.06, L.z + rand(-L.rz * 0.6, L.rz * 0.6)); sc.rotation.x = -Math.PI / 2; sc.rotation.z = rand(0, 3); sc.castShadow = false; }
+      continue;
+    }
     const pm = new T.Mesh(new T.CircleGeometry(1, 40), wm); pm.rotation.x = -Math.PI / 2; pm.scale.set(L.rx * 1.08, L.rz * 1.08, 1); pm.position.set(L.x, WATER_Y, L.z); pm.receiveShadow = true; scene.add(pm);
     const pf = new T.Mesh(new T.RingGeometry(1, 1.05, 40), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false })); pf.rotation.x = -Math.PI / 2; pf.scale.set(L.rx, L.rz, 1); pf.position.set(L.x, WATER_Y + 0.02, L.z); scene.add(pf);
   }
@@ -1644,7 +1652,7 @@ const ITEMS = {
   perche: { n: 'Perche', e: '🐟', sell: 6, fish: 1 }, truite: { n: 'Truite', e: '🐟', sell: 8, fish: 1 }, carpe: { n: 'Carpe', e: '🐟', sell: 10, fish: 1 },
   brochet: { n: 'Brochet', e: '🐟', sell: 16, fish: 1 }, anguille: { n: 'Anguille', e: '🐍', sell: 18, fish: 1 }, saumon: { n: 'Saumon', e: '🐠', sell: 22, fish: 1 },
   silure: { n: 'Poisson-chat', e: '🐡', sell: 26, fish: 1 }, dore: { n: 'Poisson doré', e: '🐠', sell: 60, fish: 1 },
-  luge: { n: 'Luge', e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: 'Champignon', e: '🍄', en: 15, sell: 5 },
+  lait: { n: 'Lait', e: '🥛', en: 20, sell: 4 }, luge: { n: 'Luge', e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: 'Champignon', e: '🍄', en: 15, sell: 5 },
   coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, cristal: { n: 'Cristal bleu', e: '💎', sell: 80 }, fossile: { n: 'Fossile', e: '🦴', sell: 60 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
   chapeau: { n: 'Chapeau', e: '🎩', key: 1 }, manteau: { n: 'Manteau', e: '🧥', key: 1 }, canne: { n: 'Canne à pêche', e: '🎣', key: 1 }, pelle: { n: 'Pelle', e: '⛏️', key: 1 },
   carte: { n: 'Carte au trésor', e: '🗺️', key: 1 }, cle: { n: 'Clé du camping-car', e: '🔑', key: 1 },
@@ -1663,7 +1671,7 @@ const RINGS = [[-60, -60, 22], [0, -132, 30], [62, -150, 26], [150, -62, 22], [1
 
 let S = null;
 function freshState() {
-  return { day: 1, time: 8, coins: 0, energy: 75, inv: [], q: 0, step: 0, cnt: 0, flags: {}, cones: [], fish: {}, dug: [], parts: {}, hats: {}, wear: '', stars: 0, trash: [], planks: [], babies: [], nuts: [], raceBest: 0, wild: {}, mush: {},
+  return { day: 1, time: 8, coins: 0, energy: 75, inv: [], q: 0, step: 0, cnt: 0, flags: {}, cones: [], fish: {}, dug: [], parts: {}, hats: {}, wear: '', stars: 0, trash: [], planks: [], babies: [], nuts: [], raceBest: 0, wild: {}, mush: {}, sq: {},
     pos: [POI.bed[0] + 3, POI.bed[1] + 4], camper: [152, -114, 0.4], rings: [], done: false };
 }
 const has = id => S.inv.includes(id);
@@ -1779,8 +1787,11 @@ function updatePlayer(dt) {
   if (tired) max *= 0.6;
   if (P.swim) max = 2.8;
   const tx = ix * max, tz = iz * max;
-  const k = 1 - Math.exp(-dt * 10);
-  P.vx += (tx - P.vx) * k; P.vz += (tz - P.vz) * k;
+  const ice = P.z < -200 && onIce(P.x, P.z);
+  if (ice) { max *= 1.3; }
+  const k = 1 - Math.exp(-dt * (ice ? 1.3 : 10));
+  P.vx += (ice ? tx * 1.3 : tx - P.vx) * k; P.vz += (ice ? tz * 1.3 : tz - P.vz) * k;
+  if (ice) { const sp = Math.hypot(P.vx, P.vz); if (sp > max) { P.vx *= max / sp; P.vz *= max / sp; } P.vx *= 1 - dt * 0.25; P.vz *= 1 - dt * 0.25; if (sp > 2 && Math.random() < dt * 12) emit(P.x, P.y + 0.1, P.z, rand(-0.5, 0.5), 0.6, rand(-0.5, 0.5), 0.4, 0.2, 1, 1, 1, 3); }
   P.x += P.vx * dt; P.z += P.vz * dt;
   collide(P, 0.7);
   P.spd = Math.hypot(P.vx, P.vz);
@@ -1795,7 +1806,7 @@ function updatePlayer(dt) {
   for (const b of bushes) { if (Math.abs(b.x - P.x) < 3 && Math.abs(b.z - P.z) < 3 && Math.hypot(b.x - P.x, b.z - P.z) < b.r * 0.95) { P.bush = b; break; } }
   P.hidden = !!P.bush && P.spd < 1.6;
   // Animation
-  P.phase += dt * P.spd * (running ? 1.6 : 2.2);
+  P.phase += dt * P.spd * (ice ? 0.5 : running ? 1.6 : 2.2);
   const m = P.model;
   m.position.set(P.x, P.y, P.z); m.rotation.y = P.rot;
   animRig(m, P.phase, clamp(P.spd / 5, 0, 1) * (P.swim ? 0.4 : 1), dt);
@@ -2510,7 +2521,8 @@ function renderShop() {
     for (const i in seen) row(ITEMS[i].e, ITEMS[i].n + (seen[i] > 1 ? ' ×' + seen[i] : ''), 'Prix : ' + ITEMS[i].sell + ' pièces', '+' + ITEMS[i].sell + ' 🪙', () => { take(i); S.coins += ITEMS[i].sell; sfx.coin(); if (ITEMS[i].fish) questEvent('sell'); renderShop(); updateHUD(); saveGame(); });
     return;
   }
-  for (const [id, price, ic, nm] of sh.sell) {
+  for (const [id, price0, ic, nm] of sh.sell) {
+    const price = id === 'drink' && S.flags.chocoFree ? 0 : price0;
     const isHat = id.startsWith('hat:'), hk = id.slice(4);
     const owned = isHat ? S.hats[hk] : (ITEMS[id] && ITEMS[id].key && has(id));
     const name = nm || ITEMS[id].n;
@@ -2556,6 +2568,7 @@ function updateAnimals(dt) {
   for (const a of ANIMALS) {
     const dP = Math.hypot(a.x - P.x, a.z - P.z);
     if (dP > 140 && a.kind !== 'bird') { a.model.visible = false; continue; }
+    if (a.hidden) { a.model.visible = false; continue; }
     if (a.hideT > 0) { a.hideT -= dt; a.model.visible = false; continue; }
     a.model.visible = true;
     a.t -= dt; a.phase += dt;
@@ -2624,6 +2637,7 @@ function updateAnimals(dt) {
   }
 }
 function deliverBaby(a) {
+  if (a.sideId) { if (a.follow) sideHome(a); return; }
   a.follow = false; a.home = a.family.slice(); a.r = 14; a.t = 0;
   if (!S.babies.includes(a.id)) S.babies.push(a.id);
   hearts(a.x, a.y + 1.5, a.z); sfx.catchFish();
@@ -2754,7 +2768,7 @@ glGeo.setAttribute('position', new T.BufferAttribute(glPos, 3).setUsage(T.Dynami
 const guide = new T.Mesh(glGeo, new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
 guide.frustumCulled = false; guide.renderOrder = 2; scene.add(guide);
 function updateGuide() {
-  const st = curStep(), tgt = st && st.at && st.at();
+  const st = curStep(), tgt = guideTarget();
   const on = tgt && (P.mode === 'walk' || P.mode === 'drive') && !G.talking && !P.inHome;
   const d = on ? Math.hypot(tgt[0] - P.x, tgt[1] - P.z) : 0;
   guide.visible = on && d > 7;
@@ -2956,7 +2970,8 @@ function setupSkiGear() {
   for (const s of [-1, 1]) { const pole = mesh(new T.CylinderGeometry(0.03, 0.03, 1.9, 5), M.dark, s * 0.95, 1.1, 0.3, skis); pole.rotation.x = -0.35; }
   u.sled = sled; u.skis = skis;
 }
-function showGear() { const u = P.model.userData; u.sled.visible = P.mode === 'ski' && P.board === 'luge'; u.skis.visible = P.mode === 'ski' && P.board === 'skis'; }
+const goldMat = lam(0xffc53d);
+function showGear() { const u = P.model.userData; if (u.sled) u.sled.traverse(o => { if (o.isMesh && (o.material === M.red || o.material === goldMat)) o.material = S && S.flags.lugeOr ? goldMat : M.red; }); u.sled.visible = P.mode === 'ski' && P.board === 'luge'; u.skis.visible = P.mode === 'ski' && P.board === 'skis'; }
 const onSnow = () => P.z < -224 || groundY(P.x, P.z) > 31;
 function canSlide() { return P.mode === 'walk' && !P.swim && onSnow() && (has('luge') || has('skis')) && slopeAt(P.x, P.z) > 0.06; }
 function startSki(board) {
@@ -2981,7 +2996,7 @@ function updateSki(dt) {
   else { const fall = Math.atan2(-gx, -gz); if (Math.hypot(gx, gz) > 0.08) P.rot += clamp(angDiff(P.rot, fall), -1, 1) * dt * 0.5; }
   const dx = Math.sin(P.rot), dz = Math.cos(P.rot);
   const acc = -(gx * dx + gz * dz) * 11 - (skis ? 0.7 : 1.1) - 0.014 * P.skiSpd * P.skiSpd;
-  P.skiSpd = clamp(P.skiSpd + acc * dt, 0, skis ? 19 : 15);
+  P.skiSpd = clamp(P.skiSpd + acc * dt, 0, skis || S.flags.lugeOr ? 19 : 15);
   const nx = P.x + dx * P.skiSpd * dt, nz = P.z + dz * P.skiSpd * dt;
   P.x = nx; P.z = nz; collide(P, 0.8);
   const hit = Math.hypot(P.x - nx, P.z - nz);
@@ -3061,6 +3076,7 @@ function buildSkiers() {
 }
 function updateSkiers(dt) {
   const near = P.z < -150;
+  for (const k of skaters) { k.m.visible = near; if (!near) continue; k.a += k.sp * dt; const x = k.L.x + Math.cos(k.a) * k.L.rx * k.r, z = k.L.z + Math.sin(k.a) * k.L.rz * k.r; k.m.position.set(x, WATER_Y + 0.06, z); k.m.rotation.y = Math.atan2(-Math.sin(k.a) * k.L.rx * Math.sign(k.sp), Math.cos(k.a) * k.L.rz * Math.sign(k.sp)); const rg = k.m.userData.rig; if (rg) { rg.body.rotation.z = Math.sin(G.t * 2 + k.a) * 0.15; rg.armL.rotation.z = -0.8; rg.armR.rotation.z = 0.8; } }
   for (const k of skiers) {
     k.m.visible = near; if (!near) continue;
     k.u += k.spd * dt / k.len; if (k.u >= 1) { k.u = 0; k.spd = rand(7, 10); }
@@ -3104,7 +3120,12 @@ function buildSki() {
   snowman(POI.chalet[0] - 14, POI.chalet[1] + 6, 0.4); snowman(-40, -228, -0.3); snowman(POI.cabriole[0] + 9, POI.cabriole[1] + 2, 0.8);
   [[30, -200, 0.1, 0x5a8fd0], [36, -201, 0.2, 0xd84a3a], [42, -199, -0.1, 0xf2c14e]].forEach(c => car(c[0], c[1], c[2], c[3]));
   buildSkiers();
+  // Patinoire du Glacier : un panneau et deux enfants qui patinent
+  const L = PONDS.find(q => q.frozen);
+  sign('PATINOIRE', L.x - L.rx - 4, L.z + 6, 0.5, 2, 0.7, '#3a6a9a');
+  for (let i = 0; i < 2; i++) { const m = makeHuman([0xf07a3a, 0x8a5ad0][i], 0x2a2a3a, [0xe8c060, 0x3a2010][i], { cap: [0xd84a3a, 0x5fae5c][i] }); m.scale.setScalar(0.72); scene.add(m); skaters.push({ m, L, a: i * Math.PI, sp: [0.45, -0.38][i], r: [0.6, 0.35][i] }); }
 }
+const skaters = [];
 function buildSkiNPCs() {
   addNPC('marcel', { name: 'Marcel (télésiège)', col: '#c0504a', model: makeHuman(0xd84a3a, 0x2a2a3a, 0x5a3a20, { cap: 0x3a6a9a }), x: POI.marcel[0], z: POI.marcel[1], rot: 0.6, head: 2.5 });
   addNPC('yvette', { name: 'Yvette (chalet)', col: '#a0583a', model: makeHuman(0x5fae5c, 0x3a3a5a, 0xe8c060, { cap: 0xd84a3a }), x: POI.chalet[0] + 2.4, z: POI.chalet[1] - 1.2, rot: 0, head: 2.5 });
@@ -3118,11 +3139,13 @@ function talkSki(id) {
     talk([['marcel', P.disguise ? pick(['Bonjour ! Le télésiège du Pic vous attend, il est gratuit aujourd\'hui !', 'Bonne glisse, monsieur !']) : pick(['Hé ! Pas d\'ours sur mon télésiège, ça fait peur aux skieurs !', 'Un ours ?! Le télésiège, c\'est pour les skieurs !'])]]);
     return true;
   }
+  if (id === 'yvette' && P.disguise && sideYvette()) return true;
   if (id === 'cabriole') {
     if (!S.flags.luge) {
       talk([['cabriole', 'Bêêê ! Un ours tout en haut de la montagne ? Ça alors !'], ['cabriole', 'Je m\'appelle Cabriole. Ici, on glisse ! Tiens, je te donne ma vieille luge.'], ['oscar', 'Merci Cabriole ! Comment on fait ?'], ['cabriole', 'Sur une pente enneigée, appuie sur Action pour t\'asseoir dessus. Gauche et droite pour tourner !'], ['cabriole', 'Quand tu seras prêt, reviens me voir pour mon slalom. Les meilleurs gagnent un cadeau !']], () => { S.flags.luge = 1; give('luge'); saveGame(); });
       return true;
     }
+    if (sideCabriole()) return true;
     talk([['cabriole', S.slalomBest ? 'Ton record au slalom : ' + S.slalomBest.toFixed(1).replace('.', ',') + ' s. On recommence ?' : 'Le slalom : passe dans les 8 portes de la Piste du Grizzly en moins de ' + SLALOM_LIMIT + ' secondes. Prêt ?'], ['cabriole', 'Attention aux sapins ! 3… 2… 1… Glisse !']], startSlalom);
     return true;
   }
@@ -3319,6 +3342,7 @@ function talkElliot() {
     talk([['elliot', 'Ooooh… Bonjour, petit ours. Je suis Elliot, le gardien de la grande forêt.'], ['elliot', 'Autour du parc vivent des animaux sauvages : loups, bisons, aigles, marmottes… dix espèces en tout.'], ['oscar', 'Je ne les ai jamais vus !'], ['elliot', 'Prends ce carnet. Approche-toi doucement de chaque animal pour le noter dedans.'], ['elliot', 'Reviens me voir quand tu en auras trouvé. Je te réserve une belle surprise.']], () => { S.flags.carnet = 1; toast('📖 Carnet sauvage : approche-toi des animaux pour les noter !'); saveGame(); });
     return;
   }
+  if (sideElliot()) return;
   if (n >= WILD.length && !S.flags.carnetDone) {
     talk([['elliot', 'Les dix espèces ! Tu es un vrai explorateur, Oscar.'], ['elliot', 'Voici mon vieux chapeau d\'explorateur, et 150 pièces pour ton courage.']], () => { S.flags.carnetDone = 1; S.hats.explo = 1; S.wear = 'explo'; updateHats(); S.coins += 150; sfx.fanfare(); confetti(P.x, P.y + 2, P.z); updateHUD(); saveGame(); });
     return;
@@ -3389,6 +3413,199 @@ function buildRegions() {
 }
 function updateRegions(dt) { if (millBlades) millBlades.rotation.z += dt * 0.6; }
 
+// ================= Les aventures du Grand Nord (quêtes en plus de l'histoire) =================
+// Chaque quête a un état dans S.sq[id] : absent = pas commencée, un nombre = étape, 'done' = finie.
+const ICE_CRYSTALS = [[-62, -282], [42, -272], [-146, -262], [100, -292], [-78, -306]];
+const MARSH_TRASH = [[20, 227], [-30, 252], [-50, 247], [-87, 252], [21, 258], [51, 279]];
+const CHICKEN_SPOTS = [[240, 10], [300, 60], [232, -90], [296, -120], [250, 110]];
+const sqState = id => (S.sq || {})[id];
+function sqSet(id, v) { S.sq = S.sq || {}; S.sq[id] = v; if (v !== 'done') S.sqActive = id; saveGame(); refreshSide(); }
+const SIDEQ = [
+  { id: 'louveteau', title: '🐺 Le louveteau perdu', who: 'Elliot l\'élan', steps: [
+    { t: 'Trouve le louveteau perdu dans le marais, au sud.', at: () => sideFollower('louveteau') },
+    { t: 'Ramène le louveteau à sa meute, tout à l\'ouest de la grande forêt.', at: () => POI.loups },
+    { t: 'Retourne voir Elliot au lac de la forêt.', at: () => POI.elliot }] },
+  { id: 'chocolat', title: '☕ Le chocolat chaud d\'Yvette', who: 'Yvette (chalet)', steps: [
+    { t: 'Rapporte du lait de la ferme et un chocolat (café de Nina) à Yvette.', at: () => !has('lait') ? POI.ferme : !has('choco') ? POI.cafe : POI.chalet }] },
+  { id: 'glace', title: '❄️ Les cristaux de glace', who: 'Cabriole la chèvre', steps: [
+    { t: 'Trouve les 5 cristaux de glace cachés sur les pentes enneigées.', at: () => nearestFree(ICE_CRYSTALS, S.ice || []) },
+    { t: 'Rapporte les cristaux à Cabriole, au sommet du Pic Grizzly.', at: () => POI.cabriole }] },
+  { id: 'marais', title: '🪶 Le marais tout propre', who: 'Gaspard le héron', steps: [
+    { t: 'Ramasse les 6 déchets jetés dans le marais.', at: () => nearestFree(MARSH_TRASH, S.mtrash || []) },
+    { t: 'Retourne voir Gaspard le héron.', at: () => POI.gaspard }] },
+  { id: 'poules', title: '🐔 Les poules de Josette', who: 'Josette (ferme)', steps: [
+    { t: 'Attrape les 5 poules échappées dans la grande prairie (touche-les).', at: () => { const c = CHICKENS.find(h => !h.caught); return c ? [c.x, c.z] : null; } },
+    { t: 'Retourne voir Josette à la ferme.', at: () => POI.ferme }] },
+  { id: 'bisonneau', title: '🦬 Le petit bison', who: 'Bernard le bison', steps: [
+    { t: 'Le petit bison s\'est perdu dans le canyon rouge. Va le chercher !', at: () => sideFollower('bisonneau') },
+    { t: 'Ramène le petit bison au troupeau, dans la grande prairie.', at: () => POI.bernard },
+    { t: 'Parle à Bernard le bison.', at: () => POI.bernard }] },
+];
+function nearestFree(list, done) { let b = null, bd = 1e9; list.forEach((p, i) => { if (done.includes(i)) return; const d = Math.hypot(p[0] - P.x, p[1] - P.z); if (d < bd) { bd = d; b = p; } }); return b; }
+const sideFollowers = {};
+function sideFollower(id) { const a = sideFollowers[id]; return a ? [a.x, a.z] : null; }
+// Cible de la flèche orange : l'histoire d'abord, sinon la dernière aventure commencée
+function guideTarget() {
+  const st = curStep(), t = st && st.at && st.at();
+  if (t) return t;
+  return sideTarget();
+}
+function sideTarget() {
+  const id = S && S.sqActive, q = SIDEQ.find(x => x.id === id), s = sqState(id);
+  if (!q || s === undefined || s === 'done') return null;
+  return q.steps[s].at();
+}
+function sideDone(id, coins, msg) {
+  S.sq[id] = 'done'; S.coins += coins; sfx.fanfare(); confetti(P.x, P.y + 2, P.z);
+  banner('Aventure réussie !', msg || ('+' + coins + ' pièces'));
+  const n = SIDEQ.filter(q => sqState(q.id) === 'done').length;
+  if (n === SIDEQ.length && !S.flags.nordDone) { S.flags.nordDone = 1; S.coins += 200; setTimeout(() => banner('🏅 Héros du Grand Nord !', 'Toutes les aventures · +200 pièces'), 3500); }
+  S.sqActive = (SIDEQ.find(q => sqState(q.id) !== undefined && sqState(q.id) !== 'done') || {}).id;
+  updateHUD(); updateQuestUI(); saveGame(); refreshSide();
+}
+// ---------- Modèles ----------
+function makeChicken() {
+  const g = new T.Group(), w = lam(0xf8f4ec, { flatShading: false }), r = lam(0xd84a3a), y = lam(0xf2a23a);
+  const body = new T.Group(); g.add(body);
+  ball(body, w, 0.28, 0, 0.42, 0, 0.9, 0.9, 1.2);
+  const tail = ball(body, w, 0.14, 0, 0.6, -0.28, 0.6, 1, 0.8);
+  const head = new T.Group(); head.position.set(0, 0.75, 0.22); body.add(head);
+  ball(head, w, 0.14, 0, 0, 0); ball(head, r, 0.06, 0, 0.15, 0, 0.6, 1, 1.4);
+  const bk = new T.Mesh(new T.ConeGeometry(0.04, 0.12, 4), y); bk.rotation.x = Math.PI / 2; bk.position.set(0, -0.01, 0.17); head.add(bk);
+  for (const s of [-1, 1]) ball(head, eyeMat, 0.025, s * 0.08, 0.03, 0.1);
+  g.userData = { rig: { body, head, tail, legL: limb(g, y, 0.025, 0.25, -0.08, 0.25, 0), legR: limb(g, y, 0.025, 0.25, 0.08, 0.25, 0), armL: new T.Group(), armR: new T.Group() } };
+  return g;
+}
+function makeCow() {
+  const g = new T.Group(), w = lam(0xf8f4ec, { flatShading: false }), b = lam(0x2c2630, { flatShading: false }), p = lam(0xf0a0b0, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, w, 0.6, 0, 1.35, 0, 0.95, 0.85, 1.6);
+  for (const s of [[0.35, 1.6, 0.3], [-0.4, 1.4, -0.4], [0.2, 1.2, -0.7]]) ball(body, b, 0.25, s[0], s[1], s[2], 1, 0.8, 1.2);
+  const head = new T.Group(); head.position.set(0, 1.65, 1.0); body.add(head);
+  ball(head, w, 0.3, 0, 0, 0, 0.9, 0.9, 1.1); ball(head, p, 0.18, 0, -0.12, 0.3, 1.2, 0.8, 0.8);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.045, s * 0.15, 0.1, 0.24); const hr = new T.Mesh(new T.ConeGeometry(0.05, 0.22, 5), lam(0xe8dcc8)); hr.position.set(s * 0.2, 0.3, -0.05); hr.rotation.z = -s * 0.5; head.add(hr); }
+  ball(body, p, 0.14, 0, 0.85, -0.3);
+  g.userData = { rig: Object.assign({ body, head }, legs4(g, b, 0.09, 0.95, 0.3, 0.6, -0.6, 0.95)) };
+  return g;
+}
+// ---------- Construction ----------
+const CHICKENS = [], iceMeshes = [], mtrashMeshes = [];
+function buildSideQuests() {
+  addNPC('gaspard', { name: 'Gaspard le héron', col: '#7a8aa0', model: makeHeron(), x: POI.gaspard[0], z: POI.gaspard[1], rot: 0.4, head: 2.4 });
+  addNPC('bernard', { name: 'Bernard le bison', col: '#5a3a26', model: makeBison(), x: POI.bernard[0], z: POI.bernard[1], rot: 2.4, head: 2.6 });
+  addNPC('josette', { name: 'Josette (ferme)', col: '#c0504a', model: makeHuman(0xe0607a, 0x4a6a9a, 0xd8a050, { cap: 0xf2c14e }), x: POI.josette[0], z: POI.josette[1], rot: 0.2, head: 2.5 });
+  NPCS.bernard.model.scale.setScalar(1.15);
+  Object.assign(PITCH, { gaspard: 1.2, bernard: 0.5, josette: 1.3 });
+  for (const id of ['gaspard', 'bernard', 'josette']) { const n = NPCS[id]; addInter({ x: n.x, z: n.z, r: id === 'bernard' ? 4.8 : 3.6, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => true, act: () => talkSide(id) }); }
+  // Vaches de la ferme (on peut les traire une fois par jour)
+  [[POI.ferme[0] + 16, POI.ferme[1] + 12], [POI.ferme[0] + 22, POI.ferme[1] + 8]].forEach((p, i) => {
+    const m = makeCow(); scene.add(m); m.position.set(p[0], groundY(p[0], p[1]), p[1]); m.rotation.y = i * 2 + 0.5; addCircle(p[0], p[1], 1.2);
+    addInter({ x: p[0], z: p[1], r: 3, icon: '🥛', label: () => 'Traire la vache', can: () => S.laitDay !== S.day, act: () => { if (!give('lait')) return; S.laitDay = S.day; sfx.pickup(); hearts(p[0], groundY(p[0], p[1]) + 2.5, p[1]); toast('Meuuuh ! 🥛 Du bon lait frais.'); } });
+  });
+  // Cristaux de glace sur les pentes
+  const iceMat = new T.MeshBasicMaterial({ color: 0x9fe8ff });
+  ICE_CRYSTALS.forEach((p, i) => {
+    const g = new T.Group(); g.position.set(p[0], groundY(p[0], p[1]) + 0.9, p[1]); scene.add(g);
+    for (let k = 0; k < 3; k++) { const c = new T.Mesh(new T.OctahedronGeometry(0.45 - k * 0.1, 0), iceMat); c.position.set((k - 1) * 0.35, k * 0.2, 0); c.scale.y = 1.8; g.add(c); }
+    g.visible = false; iceMeshes.push(g);
+    addInter({ x: p[0], z: p[1], r: 2.6, icon: '❄️', label: () => 'Ramasser le cristal de glace', can: () => g.visible, act: () => { S.ice = S.ice || []; S.ice.push(i); g.visible = false; sparkle(p[0], g.position.y, p[1]); sfx.cone(); toast('❄️ Cristal de glace : ' + S.ice.length + ' / 5'); if (S.ice.length >= 5) sqSet('glace', 1); else saveGame(); } });
+  });
+  // Déchets du marais
+  MARSH_TRASH.forEach((p, i) => {
+    const m = new T.Mesh(i % 2 ? new T.CylinderGeometry(0.22, 0.22, 0.5, 8) : new T.DodecahedronGeometry(0.45, 0), i % 2 ? M.metal : lam(0x3a3a40));
+    m.position.set(p[0], Math.max(walkY(p[0], p[1]), WATER_Y) + 0.3, p[1]); m.rotation.z = i % 2 ? Math.PI / 2 : 0; m.visible = false; scene.add(m); mtrashMeshes.push(m);
+    addInter({ x: p[0], z: p[1], r: 2.6, icon: '🗑️', label: () => 'Ramasser le déchet', can: () => m.visible, act: () => { S.mtrash = S.mtrash || []; S.mtrash.push(i); m.visible = false; sfx.pickup(); puff(p[0], m.position.y, p[1], 6, [1, 1, 1], 1.5); toast('🗑️ Déchets du marais : ' + S.mtrash.length + ' / 6'); if (S.mtrash.length >= 6) sqSet('marais', 1); else saveGame(); } });
+  });
+  // Poules échappées (elles courent un peu)
+  CHICKEN_SPOTS.forEach((p, i) => { const a = addWild(null, makeChicken(), p[0], p[1], { kind: 'wild', r: 10, walk: 1.2, flee: 5, fleeSpd: 3.6, gait: 12 }); a.chicken = i; a.model.visible = false; CHICKENS.push(a); });
+  // Le louveteau (dans le marais) et le petit bison (dans le canyon)
+  const cub = addWild(null, makeWolf(), -70, 242, { r: 2, walk: 0.6, flee: 0 }); cub.model.scale.setScalar(0.55); cub.family = POI.loups; cub.sideId = 'louveteau';
+  const calf = addWild(null, makeBison(), 250, 250, { r: 3, walk: 0.5, flee: 0 }); calf.model.scale.setScalar(0.5); calf.family = POI.bernard; calf.sideId = 'bisonneau';
+  sideFollowers.louveteau = cub; sideFollowers.bisonneau = calf;
+  for (const a of [cub, calf]) addInter({ get x() { return a.x; }, get z() { return a.z; }, r: 2.8, icon: '🐾', label: () => 'Emmener ' + (a === cub ? 'le louveteau' : 'le petit bison') + ' avec toi', can: () => sqState(a.sideId) === 0 && !a.follow, act: () => { a.follow = true; hearts(a.x, a.y + 1.2, a.z); sqSet(a.sideId, 1); toast('Il te suit ! Ne va pas trop vite.'); } });
+}
+// Le bébé suiveur arrive chez lui
+function sideHome(a) {
+  a.follow = false; a.home = [a.family[0] + rand(-4, 4), a.family[1] + rand(-4, 4)]; a.r = 10; a.t = 0;
+  hearts(a.x, a.y + 1.5, a.z); sfx.catchFish();
+  toast(a.sideId === 'louveteau' ? '🐺 Le louveteau a retrouvé sa meute ! Aouuuuh !' : '🦬 Le petit bison a retrouvé le troupeau !');
+  sqSet(a.sideId, 2);
+}
+function refreshSide() {
+  if (!S) return;
+  iceMeshes.forEach((m, i) => { m.visible = sqState('glace') === 0 && !(S.ice || []).includes(i); });
+  mtrashMeshes.forEach((m, i) => { m.visible = sqState('marais') === 0 && !(S.mtrash || []).includes(i); });
+  const ch = sqState('poules');
+  CHICKENS.forEach((c, i) => { c.caught = ch !== 0 || (S.hens || []).includes(i); c.hidden = c.caught; if (c.caught) c.model.visible = false; });
+  for (const id of ['louveteau', 'bisonneau']) {
+    const a = sideFollowers[id], s = sqState(id);
+    if (!a) continue;
+    if (s === undefined || s === 0) { if (!a.follow) { a.x = a.home0 ? a.home0[0] : a.x; a.z = a.home0 ? a.home0[1] : a.z; } }
+    else if (s === 1 && !a.follow) a.follow = true;
+    else if (s === 2 || s === 'done') { a.follow = false; a.home = [a.family[0] + 3, a.family[1] + 3]; if (Math.hypot(a.x - a.family[0], a.z - a.family[1]) > 20) { a.x = a.home[0]; a.z = a.home[1]; } }
+  }
+}
+// Attraper les poules et livrer les bébés
+function updateSide(dt) {
+  if (sqState('poules') === 0) for (const c of CHICKENS) {
+    if (c.caught) continue;
+    if (Math.hypot(c.x - P.x, c.z - P.z) < 1.8) {
+      c.caught = true; c.hidden = true; c.model.visible = false; S.hens = S.hens || []; S.hens.push(c.chicken);
+      puff(c.x, c.y + 0.5, c.z, 14, [1, 1, 1], 2.5); sfx.pickup(); toast('🐔 Cot cot ! Poule attrapée : ' + S.hens.length + ' / 5');
+      if (S.hens.length >= 5) sqSet('poules', 1); else saveGame();
+    }
+  }
+  for (const id in sideFollowers) {
+    const a = sideFollowers[id];
+    if (!a.follow) continue;
+    // S'il reste coincé loin derrière (arbres, rochers), il rejoint Oscar d'un bond
+    if (Math.hypot(a.x - P.x, a.z - P.z) > 30 && P.mode === 'walk') { a.x = P.x - Math.sin(P.rot) * 3; a.z = P.z - Math.cos(P.rot) * 3; puff(a.x, walkY(a.x, a.z) + 0.5, a.z, 8, [0.9, 0.85, 0.75], 1.5); }
+    if (Math.hypot(a.x - a.family[0], a.z - a.family[1]) < 12) sideHome(a);
+  }
+}
+// ---------- Dialogues ----------
+function talkSide(id) {
+  if (id === 'gaspard') {
+    const s = sqState('marais');
+    if (s === undefined) return talk([['gaspard', 'Kraaak… Bonjour, l\'ours. Je suis Gaspard, je pêche ici depuis des années.'], ['gaspard', 'Mais des promeneurs ont jeté des déchets dans mon marais. Les grenouilles sont tristes…'], ['oscar', 'Je vais tout ramasser !'], ['gaspard', 'Il y en a 6, près des passerelles. Merci !']], () => sqSet('marais', 0));
+    if (s === 1) return talk([['gaspard', 'Le marais brille comme un sou neuf ! Les grenouilles chantent à nouveau.'], ['gaspard', 'Voici 70 pièces. Et un secret : les poissons dorés aiment les eaux propres…']], () => sideDone('marais', 70));
+    return talk([['gaspard', s === 'done' ? 'Kraaak ! Merci encore pour le marais.' : 'Encore ' + (6 - (S.mtrash || []).length) + ' déchets à ramasser, l\'ours.']]);
+  }
+  if (id === 'josette') {
+    if (!P.disguise) return talk([['josette', 'Aaaah ! Un ours près de mes poules ! Va-t\'en !']], () => toast(S.flags.disguise ? 'Astuce : mets ton déguisement (T) pour parler aux humains.' : 'Les humains ont peur des ours… il te faudrait un déguisement !'));
+    const s = sqState('poules');
+    if (s === undefined) return talk([['josette', 'Bonjour monsieur ! Quelle catastrophe : mes 5 poules se sont échappées dans la prairie !'], ['oscar', 'Je vais vous les ramener, madame.'], ['josette', 'Oh merci ! Cours vite et touche-les pour les attraper. Elles sont rapides !']], () => { sqSet('poules', 0); CHICKENS.forEach(c => { c.caught = false; c.hidden = false; c.model.visible = true; }); });
+    if (s === 1) return talk([['josette', 'Toutes mes poules ! Vous êtes formidable, monsieur.'], ['josette', 'Tenez, 80 pièces. Et revenez traire mes vaches quand vous voulez !']], () => sideDone('poules', 80));
+    return talk([['josette', s === 'done' ? 'Mes poules vont très bien, merci !' : 'Il manque encore ' + (5 - (S.hens || []).length) + ' poules…']]);
+  }
+  if (id === 'bernard') {
+    const s = sqState('bisonneau');
+    if (s === undefined) return talk([['bernard', 'Mmmmmooooh… Je suis Bernard, le chef du troupeau.'], ['bernard', 'Notre petit s\'est éloigné dans le canyon rouge, au sud. Il ne retrouve plus son chemin.'], ['oscar', 'Je vais le chercher !'], ['bernard', 'Ramène-le doucement. Merci, petit ours.']], () => sqSet('bisonneau', 0));
+    if (s === 2) return talk([['bernard', 'Le petit est de retour ! Tout le troupeau te remercie.'], ['bernard', 'Prends ces 90 pièces. Tu seras toujours le bienvenu dans la prairie.']], () => sideDone('bisonneau', 90));
+    return talk([['bernard', s === 'done' ? 'La prairie est belle aujourd\'hui, non ?' : s === 1 ? 'Ramène-le jusqu\'ici, au troupeau !' : 'Le petit est dans le canyon rouge, au sud-est.']]);
+  }
+}
+// Elliot, Cabriole et Yvette ont aussi une aventure chacun
+function sideElliot() {
+  const s = sqState('louveteau');
+  if (!S.flags.carnet) return false;
+  if (s === undefined) { talk([['elliot', 'Oh, une mauvaise nouvelle : un louveteau a quitté sa meute. On l\'a vu dans le marais, au sud.'], ['elliot', 'Tu veux bien le ramener à ses parents, tout à l\'ouest de la forêt ?'], ['oscar', 'Bien sûr, Elliot !']], () => sqSet('louveteau', 0)); return true; }
+  if (s === 2) { talk([['elliot', 'Le louveteau est rentré ! Les loups hurlent de joie ce soir.'], ['elliot', 'Voici 60 pièces pour ta gentillesse.']], () => sideDone('louveteau', 60)); return true; }
+  return false;
+}
+function sideCabriole() {
+  const s = sqState('glace');
+  if (s === undefined) { talk([['cabriole', 'Bêêê ! J\'ai perdu mes 5 cristaux de glace sur les pentes. Ils brillent en bleu.'], ['cabriole', 'Si tu me les rapportes, je te donne ma luge dorée, la plus rapide de la montagne !']], () => sqSet('glace', 0)); return true; }
+  if (s === 1) { talk([['cabriole', 'Mes cristaux ! Ils sont magnifiques. Voici ma luge dorée : elle va beaucoup plus vite !']], () => { S.flags.lugeOr = 1; sideDone('glace', 40, 'Luge dorée · +40 pièces'); }); return true; }
+  return false;
+}
+function sideYvette() {
+  const s = sqState('chocolat');
+  if (s === undefined) { talk([['yvette', 'Oh là là, plus de lait pour mes chocolats chauds ! Et plus de chocolat non plus…'], ['yvette', 'Vous pourriez m\'apporter du lait de la ferme et un chocolat du café de Nina ?'], ['oscar', 'Avec plaisir, madame !']], () => sqSet('chocolat', 0)); return true; }
+  if (s === 0 && has('lait') && has('choco')) { talk([['yvette', 'Merveilleux ! Les skieurs vont être ravis.'], ['yvette', 'Voici 50 pièces. Et pour vous, le chocolat chaud sera toujours gratuit !']], () => { take('lait'); take('choco'); S.flags.chocoFree = 1; sideDone('chocolat', 50); }); return true; }
+  return false;
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -3430,6 +3647,67 @@ function updateClouds(dt) {
     const want = G.state === 'play' && dist < c.r * 1.1 + 4 ? 0.12 : 0.94;
     c.op += (want - c.op) * (1 - Math.exp(-dt * 4));
     m.material.opacity = c.op;
+  }
+}
+// ================= Météo : pluie, arc-en-ciel, lucioles =================
+const WX = { rain: 0, k: 0, until: 0, lastH: -1, bow: null, bowT: 0 };
+function buildWeather() {
+  // Arc-en-ciel : 6 bandes de couleur, tourné vers la caméra
+  const bow = new T.Group(); bow.visible = false; scene.add(bow);
+  [0xff5a5a, 0xffa040, 0xffe14a, 0x6ad86a, 0x5aa0ff, 0xa070e0].forEach((c, i) => {
+    const m = new T.Mesh(new T.TorusGeometry(17 - i * 0.7, 0.38, 4, 48, Math.PI), new T.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+    m.renderOrder = 4; bow.add(m);
+  });
+  bow.rotation.x = -1.1; WX.bow = bow;
+  // Lucioles la nuit
+  const n = 70, pos = new Float32Array(n * 3), geo = new T.BufferGeometry();
+  geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+  const flies = new T.Points(geo, new T.PointsMaterial({ map: glowTex, size: 2.4, color: 0xfff080, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
+  flies.frustumCulled = false; scene.add(flies);
+  WX.flies = flies; WX.fl = []; for (let i = 0; i < n; i++) WX.fl.push({ x: 0, z: 0, ph: rand(0, 6), h: rand(0.6, 2.4), set: false });
+}
+function startRain() { WX.rain = 1; WX.until = S.time + rand(1.2, 2.6); if (WX.until >= 24) WX.until -= 24; if (G.state === 'play' && !P.inHome) toast(P.z < -214 ? '❄️ Il commence à neiger…' : '🌧️ Il commence à pleuvoir…'); }
+function updateWeather(dt) {
+  if (G.state !== 'play') { WX.k = 0; return; }
+  const h = Math.floor(S.time);
+  if (h !== WX.lastH) {
+    WX.lastH = h;
+    if (WX.rain && Math.abs(S.time - WX.until) < 1) { WX.rain = 0; if (P.z > -214 && nightK < 0.5) { WX.bowT = 45; WX.bow.position.set(P.x, walkY(P.x, P.z) - 1, P.z - 6); } }
+    else if (!WX.rain && Math.random() < 0.06 && !G.talking) startRain();
+  }
+  WX.k += ((WX.rain ? 1 : 0) - WX.k) * (1 - Math.exp(-dt * 0.6));
+  const k = P.inHome ? 0 : WX.k;
+  // Ciel gris et lumière plus douce
+  if (k > 0.01) {
+    sun.intensity *= 1 - 0.55 * k; hemi.intensity *= 1 - 0.15 * k;
+    _c1.set(0x8f9aa6); scene.fog.color.lerp(_c1, 0.55 * k); scene.background.lerp(_c1, 0.6 * k);
+    const snowy = P.z < -214;
+    const rate = (snowy ? 50 : 260) * k;
+    for (let i = 0, nn = Math.floor(rate * dt + Math.random()); i < nn; i++) {
+      const x = P.x + rand(-26, 26), z = P.z + rand(-22, 18);
+      if (snowy) emit(x, P.y + rand(10, 18), z, rand(-0.8, 0.8), -3.2, rand(-0.3, 0.3), 4, 0.3, 1, 1, 1, 0);
+      else emit(x, walkY(x, z) + rand(9, 14), z, 0.6, -24, 0, 0.5, 0.4, 0.7, 0.82, 1, 0);
+    }
+    if (!snowy && Math.random() < dt * 25 * k) { const x = P.x + rand(-14, 14), z = P.z + rand(-10, 8); emit(x, Math.max(walkY(x, z), WATER_Y) + 0.1, z, rand(-0.6, 0.6), rand(1, 2), rand(-0.6, 0.6), 0.3, 0.14, 0.8, 0.9, 1, 9); }
+  }
+  // Arc-en-ciel après la pluie
+  if (WX.bowT > 0) WX.bowT -= dt;
+  const bo = WX.bowT > 0 ? Math.min(1, WX.bowT / 6, (45 - WX.bowT) / 4) * 0.5 : 0;
+  WX.bow.visible = bo > 0.005 && !P.inHome;
+  WX.bow.children.forEach(m => { m.material.opacity = bo; });
+  // Lucioles quand il fait nuit, hors de la neige
+  const fk = clamp((nightK - 0.4) * 2, 0, 1) * (1 - k) * (P.z > -214 && !P.inHome ? 1 : 0);
+  WX.flies.material.opacity = fk;
+  if (fk > 0) {
+    const a = WX.flies.geometry.attributes.position;
+    WX.fl.forEach((f, i) => {
+      if (!f.set || Math.hypot(f.x - P.x, f.z - P.z) > 28) { f.x = P.x + rand(-24, 24); f.z = P.z + rand(-20, 16); f.set = true; }
+      f.ph += dt;
+      const x = f.x + Math.sin(f.ph * 0.7 + i) * 1.5, z = f.z + Math.cos(f.ph * 0.5 + i * 2) * 1.5;
+      a.setXYZ(i, x, Math.max(walkY(x, z), WATER_Y) + f.h + Math.sin(f.ph * 1.3) * 0.4, z);
+    });
+    a.needsUpdate = true;
+    WX.flies.material.size = 2.2 + Math.sin(G.t * 3) * 0.4;
   }
 }
 
@@ -3485,6 +3763,9 @@ const sfx = (() => {
     if (!ac || !OPT.sfx || G.state !== 'play') return;
     if (nightK < 0.5 && Math.random() < dt * 0.5) { const f = rand(2200, 3600), t = ac.currentTime; for (let i = 0; i < 3; i++) tone(f, f * 1.25, 0.08, 0.03, 'sine', t + i * 0.12); }
     if (nightK > 0.5 && Math.random() < dt * 2) tone(4200, 4200, 0.04, 0.015, 'square');
+    // Pluie qui tombe, et les loups qui hurlent la nuit
+    if (WX.k > 0.15 && P.z > -214 && !P.inHome && Math.random() < dt * 18 * WX.k) noise(0.07, rand(2000, 4500), 0.05 * WX.k);
+    if (nightK > 0.5 && Math.hypot(P.x - POI.loups[0], P.z - POI.loups[1]) < 110 && Math.random() < dt * 0.06) { const t = ac.currentTime; tone(380, 720, 0.9, 0.05, 'sine', t); tone(720, 520, 1.3, 0.05, 'sine', t + 0.9); }
   }
   return {
     init,
@@ -3611,6 +3892,8 @@ function updateHUD() {
 }
 function updateQuestUI() {
   const q = QUESTS[S.q], st = curStep();
+  const sq = !q && SIDEQ.find(x => x.id === S.sqActive), ss = sq && sqState(sq.id);
+  if (sq && ss !== undefined && ss !== 'done') { $('qTitle').textContent = sq.title; $('qText').textContent = sq.steps[ss].t; return; }
   if (!q) {
     $('qTitle').textContent = 'Le parc est sauvé ! 🌟';
     $('qText').textContent = 'Pommes de pin dorées : ' + S.cones.length + ' / ' + CONES.length + ' · Poissons : ' + FISH_IDS.filter(f => S.fish[f]).length + ' / ' + FISH_IDS.length;
@@ -3754,6 +4037,8 @@ function openJournal() {
     [S.flags.slalom, '⛷️ Réussir le slalom de Cabriole', S.slalomBest ? 'Record : ' + S.slalomBest.toFixed(1).replace('.', ',') + ' s (il faut moins de ' + SLALOM_LIMIT + ' s)' : 'Passe les 8 portes en moins de ' + SLALOM_LIMIT + ' secondes.'],
     [S.flags.carnetDone, '📖 Carnet sauvage d\'Elliot : ' + nw + ' / ' + WILD.length, S.flags.carnet ? 'Approche-toi des animaux sauvages pour les noter.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.'],
   ];
+  const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
+  for (const q of SIDEQ) { const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
   const h = document.createElement('div'); h.innerHTML = '<b>🏔️ Défis de l\'aventure</b><p>Pour jouer encore plus longtemps !</p>'; L.appendChild(h);
   for (const [ok, t, sub] of defis) { const d = document.createElement('div'); if (ok) d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (ok ? '✔ ' : '⭐ ') + t; d.querySelector('p').textContent = ok ? 'Réussi !' : sub; L.appendChild(d); }
   openPanel('pJournal');
@@ -3785,7 +4070,8 @@ function drawMap() {
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
-  const st = curStep(), tgt = st && st.at && st.at();
+  const st = curStep(), tgt = guideTarget();
+  const stg = sideTarget(); if (stg && stg !== tgt) { g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(stg[0]), Z(stg[1]), 9, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
   g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
@@ -3830,7 +4116,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms();
+  showMushrooms(); refreshSide();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -3926,7 +4212,7 @@ function drawOverlay() {
     }
   }
   // Flèche vers l'objectif de la mission
-  const st = curStep(), tgt = st && st.at && st.at();
+  const st = curStep(), tgt = guideTarget();
   if (tgt && !G.talking && !P.inHome) {
     const ty = P.mode === 'fly' && qid() === 'maire' && S.step === 2 ? groundY(tgt[0], tgt[1]) + RINGS.find(r => r[0] === tgt[0])[2] : groundY(tgt[0], tgt[1]) + 4;
     const s = toScreen(tgt[0], ty, tgt[1]);
@@ -3990,7 +4276,7 @@ function step(dt) {
     else if (P.mode === 'lift') updateLift(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateWild(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateWild(dt); updateSide(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -4016,6 +4302,7 @@ function step(dt) {
   if (Math.random() < dt * 3) for (const k in partMeshes) { const m = partMeshes[k]; if (m.visible && m.position.distanceTo(camera.position) < 80) emit(m.position.x + rand(-1, 1), m.position.y + 1, m.position.z + rand(-1, 1), 0, 1, 0, 0.8, 0.3, 1, 0.9, 0.4, 0); }
   updateParticles(dt);
   setTimeOfDay(G.state === 'title' ? 17.6 : S.time, G.state === 'title' ? new V3(-30, 0, 60) : new V3(P.x, 0, P.z));
+  updateWeather(dt);
   if (G.state === 'play' && P.x > 700) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
   updateCamera(dt);
   cullTiles();
@@ -4040,6 +4327,7 @@ function frame(now) {
 buildGround();
 buildPlants();
 buildClouds();
+buildWeather();
 buildPlaces();
 buildSki();
 buildRegions();
@@ -4052,6 +4340,7 @@ buildInteractions();
 buildAnimals();
 buildWild();
 buildWildNPCs();
+buildSideQuests();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -4061,7 +4350,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, treeCover, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>
