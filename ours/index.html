@@ -1079,6 +1079,8 @@ function buildPlaces() {
   mesh(new T.CylinderGeometry(1.4, 2.2, 14, 8), M.trunk, ox, oy + 7, oz);
   for (const p of [[0, 15, 0, 6], [-4, 12, 2, 4.2], [4, 13, -1, 4.5], [1, 18, -2, 4]]) mesh(new T.IcosahedronGeometry(p[3], 1), M.leaf, ox + p[0], oy + p[1], oz + p[2]);
   const br = mesh(new T.CylinderGeometry(0.3, 0.4, 5, 6), M.trunk, ox + 2.2, oy + 9, oz + 1); br.rotation.z = -1.1;
+  // Branche où se pose Madame Plume
+  { const b2 = mesh(new T.CylinderGeometry(0.18, 0.3, 5.4, 6), M.trunk, ox + 2.6, oy + 9.75, oz + 1.6); b2.rotation.z = Math.PI / 2; b2.rotation.y = -0.55; }
   addCircle(ox, oz, 2.4);
   // Ponton du lac
   const [dx, dz] = POI.dock;
@@ -1302,6 +1304,8 @@ function makeBear() {
     for (let k = -1; k <= 1; k++) { const c = new T.Mesh(new T.ConeGeometry(0.03, 0.13, 4), claw); c.rotation.x = Math.PI / 2; c.position.set(k * 0.07, -len - r * 0.45, front ? r * 1.2 : r * 1.9); l.add(c); }
     return l;
   };
+  for (const s2 of [-1, 1]) { tuft(head, fur, s2 * 0.36, -0.06, 0.02, 0.08, 0.22, 0, s2 * 1.9); ball(head, lam(0x1a1210), 0.02, s2 * 0.032, -0.02, 0.76); }
+  for (let k = 0; k < 7; k++) tuft(body, fur, rand(-0.3, 0.3), 2.62 + rand(-0.04, 0.04), -0.1 - k * 0.06, 0.07, 0.18, -1.2);
   const rig = { body, head, armL: leg(body, -0.55, 2.15, 0.28, 0.17, 0.72, true), armR: leg(body, 0.55, 2.15, 0.28, 0.17, 0.72, true), legL: leg(g, -0.34, 0.62, 0.0, 0.24, 0.32, false), legR: leg(g, 0.34, 0.62, 0.0, 0.24, 0.32, false) };
   rig.armL.rotation.x = rig.armR.rotation.x = -0.55; rig.armL.rotation.z = -0.15; rig.armR.rotation.z = 0.15;
   // Déguisement : chapeau, manteau à carreaux et lunettes
@@ -1359,58 +1363,154 @@ function makeHuman(shirt, pants, hair, o) {
   g.userData = { rig };
   return g;
 }
+// Petits détails : moustaches, touffes de poils
+function whiskers(head, x, y, z, len, hex) {
+  const m = lam(hex || 0xf4efe6);
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { const w = new T.Mesh(new T.CylinderGeometry(0.006, 0.006, len, 3), m); w.position.set(x + s * len * 0.42, y + (k - 1) * 0.03, z); w.rotation.set(0, s * 0.35, Math.PI / 2 + s * (k - 1) * 0.18); head.add(w); }
+}
+function tuft(parent, mat, x, y, z, r, h, rx, rz) { const c = new T.Mesh(new T.ConeGeometry(r, h, 5), mat); c.position.set(x, y, z); c.rotation.set(rx || 0, 0, rz || 0); c.castShadow = true; parent.add(c); return c; }
 function makeBeaver() {
-  const g = new T.Group(), fur = lam(0xa0683e, { flatShading: false }), light = lam(0xd9a878, { flatShading: false });
+  // Castor à quatre pattes : dos rond, petites oreilles, dents orange et grande queue plate
+  const g = new T.Group(), fur = lam(0x7a4a2c, { flatShading: false }), furD = lam(0x553420, { flatShading: false }), light = lam(0xa87a58, { flatShading: false });
   const body = new T.Group(); g.add(body);
-  ball(body, fur, 0.55, 0, 0.75, 0, 1, 1.2, 0.95);
-  ball(body, light, 0.38, 0, 0.7, 0.28, 1, 1.2, 0.6);
-  const head = new T.Group(); head.position.set(0, 1.45, 0.05); body.add(head);
-  ball(head, fur, 0.38, 0, 0, 0);
-  ball(head, light, 0.2, 0, -0.08, 0.3);
-  ball(head, eyeMat, 0.06, 0, -0.02, 0.48);
-  const teeth = new T.Mesh(new T.BoxGeometry(0.16, 0.14, 0.04), M.white); teeth.position.set(0, -0.22, 0.4); head.add(teeth);
-  for (const s of [-1, 1]) { ball(head, eyeMat, 0.055, s * 0.15, 0.1, 0.32); ball(head, fur, 0.1, s * 0.27, 0.3, -0.05); }
-  const cap = new T.Mesh(new T.SphereGeometry(0.4, 10, 6, 0, 6.283, 0, 1.3), lam(0xf07a3a)); cap.position.y = 0.06; head.add(cap);
-  const visor = new T.Mesh(new T.BoxGeometry(0.42, 0.04, 0.3), lam(0xf07a3a)); visor.position.set(0, 0.13, 0.36); head.add(visor);
-  const tail = new T.Mesh(new T.BoxGeometry(0.6, 0.12, 1), lam(0x5a3a2a)); tail.position.set(0, 0.15, -0.75); tail.rotation.x = 0.25; g.add(tail);
-  const rig = { body, head, armL: limb(body, fur, 0.1, 0.4, -0.45, 1.05, 0.15), armR: limb(body, fur, 0.1, 0.4, 0.45, 1.05, 0.15), legL: limb(g, fur, 0.13, 0.3, -0.25, 0.32, 0.05), legR: limb(g, fur, 0.13, 0.3, 0.25, 0.32, 0.05), tail };
+  ball(body, fur, 0.48, 0, 0.62, -0.1, 1, 0.85, 1.35);
+  ball(body, fur, 0.36, 0, 0.58, 0.32, 0.95, 0.85, 0.9);
+  for (let k = 0; k < 7; k++) tuft(body, fur, rand(-0.25, 0.25), 1.0 + rand(-0.04, 0.04), -0.5 + k * 0.15, 0.05, 0.1, -1.15);
+  const head = new T.Group(); head.position.set(0, 0.72, 0.68); body.add(head);
+  ball(head, fur, 0.26, 0, 0, 0, 1.05, 0.92, 1.05);
+  ball(head, light, 0.16, 0, -0.07, 0.2, 1.15, 0.8, 0.9);
+  ball(head, eyeMat, 0.045, 0, -0.01, 0.34, 1.4, 0.8, 0.8);
+  for (const s of [-1, 1]) { const t = new T.Mesh(new T.BoxGeometry(0.05, 0.1, 0.03), lam(0xe8902a)); t.position.set(s * 0.028, -0.19, 0.28); head.add(t); ball(head, eyeMat, 0.035, s * 0.14, 0.09, 0.2); ball(head, fur, 0.06, s * 0.2, 0.2, -0.06, 1, 1, 0.6); ball(head, furD, 0.032, s * 0.2, 0.2, -0.03, 1, 1, 0.4); }
+  whiskers(head, 0, -0.06, 0.28, 0.32);
+  const tail = new T.Mesh(new T.SphereGeometry(0.4, 12, 8), lam(0x3e3028)); tail.scale.set(0.75, 0.13, 1.25); tail.position.set(0, 0.22, -0.95); tail.rotation.x = 0.15; g.add(tail);
+  for (let k = -2; k <= 2; k++) { const l = new T.Mesh(new T.BoxGeometry(0.5, 0.012, 0.01), lam(0x2a2018)); l.position.set(0, 0.28, -0.95 + k * 0.16); l.rotation.x = 0.15; g.add(l); }
+  const rig = Object.assign({ body, head }, legs4(g, furD, 0.08, 0.36, 0.22, 0.38, -0.32, 0.36));
+  for (const k of ['legL', 'legR']) { const f = ball(rig[k], lam(0x2c2420), 0.1, 0, -0.42, 0.08, 1.1, 0.35, 1.6); }
   g.userData = { rig };
   return g;
 }
 function makeOtter() {
-  const g = new T.Group(), fur = lam(0x7a5a48, { flatShading: false }), light = lam(0xd8c0a8, { flatShading: false });
+  // Loutre : long corps souple, gorge claire, moustaches et grosse queue
+  const g = new T.Group(), fur = lam(0x5e4232, { flatShading: false }), light = lam(0xc8ae90, { flatShading: false });
   const body = new T.Group(); g.add(body);
-  ball(body, fur, 0.42, 0, 0.55, 0, 1, 1.35, 0.9);
-  ball(body, light, 0.3, 0, 0.6, 0.22, 1, 1.3, 0.6);
-  const head = new T.Group(); head.position.set(0, 1.2, 0.02); body.add(head);
-  ball(head, fur, 0.3, 0, 0, 0);
-  ball(head, light, 0.17, 0, -0.07, 0.22, 1.2, 0.8, 1);
-  ball(head, eyeMat, 0.05, 0, -0.02, 0.37);
-  for (const s of [-1, 1]) { ball(head, eyeMat, 0.045, s * 0.12, 0.08, 0.25); ball(head, fur, 0.07, s * 0.22, 0.2, -0.05); }
-  const hat = new T.Mesh(new T.ConeGeometry(0.28, 0.35, 10), lam(0xf2c14e)); hat.position.y = 0.36; head.add(hat);
-  const tail = new T.Mesh(new T.ConeGeometry(0.16, 0.9, 7), fur); tail.position.set(0, 0.2, -0.55); tail.rotation.x = -1.3; g.add(tail);
-  const rig = { body, head, armL: limb(body, fur, 0.08, 0.32, -0.35, 0.85, 0.12), armR: limb(body, fur, 0.08, 0.32, 0.35, 0.85, 0.12), legL: limb(g, fur, 0.1, 0.22, -0.2, 0.22, 0.05), legR: limb(g, fur, 0.1, 0.22, 0.2, 0.22, 0.05) };
+  ball(body, fur, 0.3, 0, 0.42, -0.25, 0.95, 0.85, 1.7);
+  ball(body, fur, 0.25, 0, 0.46, 0.3, 0.95, 0.9, 1.1);
+  ball(body, light, 0.2, 0, 0.4, 0.45, 0.9, 0.75, 0.8);
+  const head = new T.Group(); head.position.set(0, 0.6, 0.66); body.add(head);
+  ball(head, fur, 0.2, 0, 0, 0, 1.12, 0.85, 1.1);
+  ball(head, light, 0.13, 0, -0.05, 0.14, 1.3, 0.75, 1);
+  ball(head, eyeMat, 0.04, 0, 0, 0.27, 1.4, 0.8, 0.8);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.032, s * 0.11, 0.07, 0.14); const hl = new T.Mesh(new T.SphereGeometry(0.01, 4, 3), new T.MeshBasicMaterial({ color: 0xffffff })); hl.position.set(s * 0.11 + 0.01, 0.085, 0.17); head.add(hl); ball(head, fur, 0.045, s * 0.17, 0.12, -0.05, 1, 1, 0.6); }
+  whiskers(head, 0, -0.03, 0.22, 0.34);
+  const tail = new T.Mesh(new T.ConeGeometry(0.15, 1.0, 8), fur); tail.position.set(0, 0.32, -1.0); tail.rotation.x = -1.65; g.add(tail);
+  g.userData = { rig: Object.assign({ body, head }, legs4(g, fur, 0.06, 0.26, 0.16, 0.32, -0.5, 0.26)) };
+  return g;
+}
+function makeRaccoon(hex) {
+  // Raton laveur à quatre pattes : dos rond, masque noir, petites mains noires, queue à anneaux
+  const g = new T.Group(), f = lam(hex || 0x7d7a80, { flatShading: false }), l = lam(0xdcdad8, { flatShading: false }), d = lam(0x26232a, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.36, 0, 0.6, -0.1, 0.95, 0.9, 1.3); ball(body, f, 0.28, 0, 0.55, 0.3, 0.95, 0.85, 0.9);
+  for (let k = 0; k < 6; k++) tuft(body, f, rand(-0.18, 0.18), 0.9, -0.4 + k * 0.12, 0.04, 0.1, -1.15);
+  const head = new T.Group(); head.position.set(0, 0.72, 0.6); body.add(head);
+  ball(head, f, 0.22, 0, 0, 0, 1.1, 0.9, 1);
+  for (const s of [-1, 1]) tuft(head, f, s * 0.2, -0.05, -0.02, 0.06, 0.16, 0, s * 1.2);
+  const sn = new T.Mesh(new T.ConeGeometry(0.1, 0.24, 7), l); sn.rotation.x = Math.PI / 2; sn.position.set(0, -0.06, 0.25); head.add(sn);
+  ball(head, d, 0.04, 0, -0.06, 0.37);
+  ball(head, d, 0.2, 0, 0.04, 0.1, 1.2, 0.38, 0.9);
+  for (const s of [-1, 1]) { ball(head, l, 0.06, s * 0.1, 0.12, 0.17, 1.3, 0.5, 0.6); ball(head, eyeMat, 0.035, s * 0.1, 0.04, 0.2); const hl = new T.Mesh(new T.SphereGeometry(0.01, 4, 3), new T.MeshBasicMaterial({ color: 0xffffff })); hl.position.set(s * 0.1 + 0.01, 0.055, 0.23); head.add(hl); const e = new T.Mesh(new T.ConeGeometry(0.07, 0.14, 4), f); e.position.set(s * 0.14, 0.2, -0.04); head.add(e); ball(head, l, 0.03, s * 0.14, 0.27, -0.02); }
+  whiskers(head, 0, -0.07, 0.3, 0.3);
+  const tail = new T.Group(); tail.position.set(0, 0.6, -0.5); g.add(tail);
+  for (let k = 0; k < 7; k++) ball(tail, k % 2 ? d : f, 0.14 - k * 0.008, 0, -k * 0.05, -k * 0.12);
+  tail.rotation.x = 0.4;
+  const rig = Object.assign({ body, head, tail }, legs4(g, d, 0.06, 0.4, 0.18, 0.3, -0.36, 0.4));
+  for (const k of ['armL', 'armR', 'legL', 'legR']) for (let t = -1; t <= 1; t++) ball(rig[k], d, 0.025, t * 0.04, -0.43, 0.06);
   g.userData = { rig };
+  g.scale.setScalar(1.2);
+  return g;
+}
+function makeSquirrel() {
+  // Écureuil roux assis sur ses pattes arrière, grande queue en panache et pinceaux aux oreilles
+  const g = new T.Group(), f = lam(0xc0602a, { flatShading: false }), w = lam(0xf4ead8, { flatShading: false }), d = lam(0x8a3c18, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.26, 0, 0.42, 0, 0.95, 1.2, 0.9); ball(body, w, 0.17, 0, 0.45, 0.14, 0.9, 1.1, 0.6);
+  const head = new T.Group(); head.position.set(0, 0.82, 0.08); body.add(head);
+  ball(head, f, 0.17, 0, 0, 0, 1, 0.95, 1.1); ball(head, w, 0.09, 0, -0.05, 0.12, 1.2, 0.8, 0.9);
+  ball(head, eyeMat, 0.025, 0, -0.02, 0.2);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.035, s * 0.09, 0.05, 0.11); const hl = new T.Mesh(new T.SphereGeometry(0.01, 4, 3), new T.MeshBasicMaterial({ color: 0xffffff })); hl.position.set(s * 0.09 + 0.01, 0.065, 0.14); head.add(hl); tuft(head, f, s * 0.1, 0.2, -0.02, 0.045, 0.16); tuft(head, d, s * 0.1, 0.32, -0.02, 0.02, 0.1); }
+  whiskers(head, 0, -0.04, 0.16, 0.22, 0x3a2a20);
+  // Queue en S, très touffue
+  const tail = new T.Group(); tail.position.set(0, 0.25, -0.25); g.add(tail);
+  [[0, 0, 0, 0.16], [0, 0.18, -0.12, 0.2], [0, 0.42, -0.16, 0.22], [0, 0.66, -0.1, 0.22], [0, 0.86, 0.02, 0.19], [0, 0.98, 0.14, 0.15]].forEach(p => ball(tail, f, p[3], p[0], p[1], p[2], 1, 1, 0.9));
+  for (let k = 0; k < 8; k++) tuft(tail, d, rand(-0.12, 0.12), 0.2 + k * 0.1, -0.1 - Math.sin(k * 0.5) * 0.1, 0.04, 0.14, -0.8);
+  const rig = { body, head, tail, armL: limb(body, f, 0.04, 0.2, -0.12, 0.6, 0.2), armR: limb(body, f, 0.04, 0.2, 0.12, 0.6, 0.2), legL: limb(g, f, 0.07, 0.18, -0.15, 0.2, 0.05), legR: limb(g, f, 0.07, 0.18, 0.15, 0.2, 0.05) };
+  rig.armL.rotation.x = rig.armR.rotation.x = -0.9;
+  g.userData = { rig };
+  g.scale.setScalar(1.15);
+  return g;
+}
+function makeBadger() {
+  // Blaireau : corps large et bas, tête blanche à deux bandes noires
+  const g = new T.Group(), f = lam(0x8a8890, { flatShading: false }), d = lam(0x1e1c22, { flatShading: false }), w = lam(0xf4f2ee, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.42, 0, 0.5, -0.05, 1.1, 0.75, 1.35);
+  for (let k = 0; k < 9; k++) tuft(body, lam(0x9a98a0), rand(-0.3, 0.3), 0.8, -0.5 + k * 0.12, 0.05, 0.1, -1.15);
+  const head = new T.Group(); head.position.set(0, 0.52, 0.62); body.add(head);
+  ball(head, w, 0.22, 0, 0, 0, 1, 0.85, 1.1);
+  const sn = new T.Mesh(new T.ConeGeometry(0.13, 0.32, 8), w); sn.rotation.x = Math.PI / 2; sn.position.set(0, -0.04, 0.3); head.add(sn);
+  ball(head, d, 0.045, 0, -0.04, 0.46);
+  for (const s of [-1, 1]) { const st = ball(head, d, 0.08, s * 0.1, 0.04, 0.12, 0.7, 0.55, 2.6); st.rotation.y = s * 0.15; ball(head, eyeMat, 0.03, s * 0.1, 0.05, 0.2); ball(head, d, 0.05, s * 0.18, 0.14, -0.06, 1, 1, 0.5); ball(head, w, 0.02, s * 0.19, 0.18, -0.04); }
+  whiskers(head, 0, -0.08, 0.36, 0.26, 0x3a3a3a);
+  const rig = Object.assign({ body, head }, legs4(g, d, 0.08, 0.3, 0.26, 0.4, -0.4, 0.3));
+  for (const k of ['armL', 'armR']) for (let t = -1; t <= 1; t++) { const c = new T.Mesh(new T.ConeGeometry(0.02, 0.1, 4), w); c.rotation.x = Math.PI / 2; c.position.set(t * 0.04, -0.33, 0.1); rig[k].add(c); }
+  g.userData = { rig };
+  g.scale.setScalar(1.2);
   return g;
 }
 function makeOwl() {
-  const g = new T.Group(), f = lam(0x9a7a5a, { flatShading: false }), light = lam(0xe8d8b8, { flatShading: false });
+  // Hibou grand-duc : plumes tachetées, disque facial, aigrettes et grands yeux orange
+  const g = new T.Group(), f = lam(0x8a6a48, { flatShading: false }), light = lam(0xe0caa0, { flatShading: false }), d = lam(0x4a3626);
   const body = new T.Group(); g.add(body);
-  ball(body, f, 0.55, 0, 0.6, 0, 1, 1.2, 0.9);
-  ball(body, light, 0.38, 0, 0.55, 0.25, 1, 1.2, 0.6);
+  ball(body, f, 0.5, 0, 0.6, 0, 1, 1.2, 0.9);
+  ball(body, light, 0.36, 0, 0.55, 0.22, 1, 1.15, 0.6);
+  for (let k = 0; k < 14; k++) { const s = new T.Mesh(new T.BoxGeometry(0.03, 0.12, 0.02), d); s.position.set(rand(-0.22, 0.22), 0.25 + rand(0, 0.6), 0.42); body.add(s); }
+  for (let k = 0; k < 10; k++) ball(body, light, 0.035, (k % 2 ? 1 : -1) * rand(0.35, 0.48), rand(0.3, 1.0), rand(-0.2, 0.1));
   const head = new T.Group(); head.position.set(0, 1.25, 0); body.add(head);
-  ball(head, f, 0.42, 0, 0, 0);
+  ball(head, f, 0.4, 0, 0, 0, 1.05, 0.92, 1);
+  const disc = new T.Mesh(new T.CircleGeometry(0.3, 20), light); disc.scale.set(1.2, 0.95, 1); disc.position.set(0, 0, 0.37); head.add(disc);
   for (const s of [-1, 1]) {
-    ball(head, light, 0.17, s * 0.17, 0.04, 0.32);
-    ball(head, eyeMat, 0.08, s * 0.17, 0.04, 0.46);
-    const tuft = new T.Mesh(new T.ConeGeometry(0.08, 0.3, 5), f); tuft.position.set(s * 0.25, 0.42, 0); tuft.rotation.z = -s * 0.4; head.add(tuft);
+    const ring = new T.Mesh(new T.CircleGeometry(0.12, 16), lam(0xf08a2a)); ring.position.set(s * 0.15, 0.04, 0.4); head.add(ring);
+    const pu = new T.Mesh(new T.CircleGeometry(0.07, 14), eyeMat); pu.position.set(s * 0.15, 0.04, 0.41); head.add(pu);
+    const hl = new T.Mesh(new T.CircleGeometry(0.022, 8), new T.MeshBasicMaterial({ color: 0xffffff })); hl.position.set(s * 0.15 + 0.03, 0.08, 0.42); head.add(hl);
+    for (let k = 0; k < 3; k++) tuft(head, k === 1 ? d : f, s * (0.22 + k * 0.04), 0.38 + k * 0.03, -0.02 - k * 0.04, 0.05, 0.28, 0, -s * (0.3 + k * 0.1));
   }
-  const beak = new T.Mesh(new T.ConeGeometry(0.06, 0.18, 5), lam(0xf2a23a)); beak.position.set(0, -0.1, 0.42); beak.rotation.x = Math.PI / 2 + 0.3; head.add(beak);
-  const gl = new T.Group(); gl.position.set(0, 0.04, 0.5); head.add(gl);
-  for (const s of [-1, 1]) { const r = new T.Mesh(new T.TorusGeometry(0.14, 0.025, 4, 12), lam(0xffc53d)); r.position.x = s * 0.17; gl.add(r); }
+  const beak = new T.Mesh(new T.ConeGeometry(0.05, 0.15, 5), lam(0x3a3028)); beak.position.set(0, -0.1, 0.42); beak.rotation.x = Math.PI / 2 + 0.4; head.add(beak);
   const rig = { body, head, armL: limb(body, f, 0.12, 0.5, -0.5, 0.9, 0), armR: limb(body, f, 0.12, 0.5, 0.5, 0.9, 0) };
+  for (const k of ['armL', 'armR']) for (let t = 0; t < 4; t++) ball(rig[k], light, 0.03, 0, -0.15 - t * 0.1, 0.1);
+  for (const s of [-1, 1]) for (let t = -1; t <= 1; t++) { const c = new T.Mesh(new T.ConeGeometry(0.025, 0.1, 4), lam(0x3a3028)); c.rotation.x = Math.PI / 2; c.position.set(s * 0.18 + t * 0.05, 0.02, 0.32); g.add(c); }
   rig.armL.rotation.z = 0.2; rig.armR.rotation.z = -0.2;
   g.userData = { rig };
+  return g;
+}
+function makeBigDuck() {
+  // Canard colvert : tête verte brillante, collier blanc, poitrine brune, miroir bleu sur l'aile
+  const g = new T.Group(), body = new T.Group(); g.add(body);
+  const grey = lam(0xd8d4cc, { flatShading: false }), brown = lam(0x7a4a30, { flatShading: false }), green = lam(0x1f6a3a, { flatShading: false }), yel = lam(0xe8c040), org = lam(0xf08a2a);
+  ball(body, grey, 0.4, 0, 0.55, 0, 0.9, 0.75, 1.4);
+  ball(body, brown, 0.3, 0, 0.62, 0.35, 0.95, 0.9, 0.8);
+  for (const s of [-1, 1]) { const wg = ball(body, lam(0xa8a098, { flatShading: false }), 0.3, s * 0.3, 0.62, -0.1, 0.35, 0.6, 1.2); const sp = new T.Mesh(new T.BoxGeometry(0.02, 0.1, 0.3), lam(0x4a5ad0)); sp.position.set(s * 0.41, 0.62, -0.18); body.add(sp); }
+  const tl = ball(body, lam(0x2a2a2a), 0.1, 0, 0.75, -0.55, 0.8, 0.6, 1); const curl = new T.Mesh(new T.TorusGeometry(0.05, 0.015, 4, 8, 4), lam(0x1a1a1a)); curl.position.set(0, 0.88, -0.58); body.add(curl);
+  const head = new T.Group(); head.position.set(0, 1.08, 0.42); body.add(head);
+  const neck = new T.Mesh(new T.CylinderGeometry(0.1, 0.14, 0.3, 10), green); neck.position.set(0, -0.15, -0.02); head.add(neck);
+  const collar = new T.Mesh(new T.TorusGeometry(0.13, 0.025, 5, 14), lam(0xffffff)); collar.rotation.x = Math.PI / 2; collar.position.set(0, -0.28, -0.02); head.add(collar);
+  ball(head, green, 0.18, 0, 0, 0, 0.95, 0.95, 1.15);
+  const bill = new T.Mesh(new T.BoxGeometry(0.14, 0.05, 0.26), yel); bill.position.set(0, -0.04, 0.25); head.add(bill);
+  ball(head, lam(0x2a2a2a), 0.025, 0, -0.02, 0.38);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.03, s * 0.12, 0.04, 0.08); const hl = new T.Mesh(new T.SphereGeometry(0.01, 4, 3), new T.MeshBasicMaterial({ color: 0xffffff })); hl.position.set(s * 0.13, 0.055, 0.1); head.add(hl); }
+  const rig = { body, head, armL: new T.Group(), armR: new T.Group(), legL: limb(g, org, 0.03, 0.25, -0.12, 0.27, 0.05), legR: limb(g, org, 0.03, 0.25, 0.12, 0.27, 0.05) };
+  for (const k of ['legL', 'legR']) { const ft = new T.Mesh(new T.ConeGeometry(0.1, 0.18, 3), org); ft.rotation.x = Math.PI / 2; ft.scale.y = 0.4; ft.position.set(0, -0.26, 0.08); rig[k].add(ft); }
+  g.userData = { rig };
+  g.scale.setScalar(1.35);
   return g;
 }
 // Animation de marche simple (membres qui se balancent)
@@ -1538,74 +1638,7 @@ function makeButterfly(i) {
   g.userData = { wings };
   return g;
 }
-function makeBadger() {
-  const g = new T.Group(), f = lam(0x6a6a72, { flatShading: false }), w = lam(0xf4f0e8, { flatShading: false }), d = lam(0x26262a, { flatShading: false });
-  const body = new T.Group(); g.add(body);
-  ball(body, f, 0.5, 0, 0.7, 0, 1.05, 1.1, 0.95);
-  ball(body, lam(0x8e5a3a), 0.52, 0, 0.62, 0.05, 1.08, 0.7, 1);
-  const head = new T.Group(); head.position.set(0, 1.35, 0.05); body.add(head);
-  ball(head, w, 0.34, 0, 0, 0);
-  for (const s of [-1, 1]) { const st = ball(head, d, 0.12, s * 0.15, 0.05, 0.12, 0.7, 1.4, 1.6); ball(head, eyeMat, 0.045, s * 0.13, 0.04, 0.3); ball(head, d, 0.09, s * 0.24, 0.27, -0.05); }
-  ball(head, d, 0.06, 0, -0.08, 0.36);
-  const gl = new T.Group(); gl.position.set(0, 0.06, 0.33); head.add(gl);
-  for (const s of [-1, 1]) { const r = new T.Mesh(new T.TorusGeometry(0.09, 0.015, 4, 10), lam(0xc0a040)); r.position.x = s * 0.13; gl.add(r); }
-  const cane = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 1.2, 5), M.woodD); cane.position.set(0.55, 0.6, 0.3); g.add(cane);
-  const rig = { body, head, armL: limb(body, f, 0.1, 0.4, -0.45, 1.0, 0.15), armR: limb(body, f, 0.1, 0.4, 0.45, 1.0, 0.15), legL: limb(g, d, 0.12, 0.3, -0.22, 0.32, 0), legR: limb(g, d, 0.12, 0.3, 0.22, 0.32, 0) };
-  g.userData = { rig };
-  return g;
-}
 
-function makeRaccoon() {
-  const g = new T.Group(), f = lam(0x8a8a98, { flatShading: false }), w = lam(0xe8e8f0, { flatShading: false }), d = lam(0x2a2a32, { flatShading: false });
-  const body = new T.Group(); g.add(body);
-  ball(body, f, 0.45, 0, 0.7, 0, 1, 1.2, 0.9);
-  ball(body, w, 0.3, 0, 0.65, 0.25, 1, 1.2, 0.6);
-  const head = new T.Group(); head.position.set(0, 1.4, 0.04); body.add(head);
-  ball(head, f, 0.34, 0, 0, 0);
-  ball(head, w, 0.18, 0, -0.1, 0.26, 1.2, 0.8, 1);
-  const mask = ball(head, d, 0.3, 0, 0.06, 0.12, 1.15, 0.38, 0.8);
-  ball(head, d, 0.05, 0, -0.06, 0.44);
-  for (const s of [-1, 1]) { ball(head, f, 0.11, s * 0.24, 0.3, -0.04); const l = new T.Mesh(new T.BoxGeometry(0.2, 0.12, 0.05), lam(0x111111)); l.position.set(s * 0.13, 0.08, 0.34); head.add(l); }
-  const br = new T.Mesh(new T.BoxGeometry(0.1, 0.03, 0.05), lam(0x111111)); br.position.set(0, 0.08, 0.35); head.add(br);
-  const scarf = new T.Mesh(new T.TorusGeometry(0.3, 0.08, 6, 12), lam(0xe0607a)); scarf.rotation.x = Math.PI / 2; scarf.position.y = 1.1; body.add(scarf);
-  const tail = new T.Group(); tail.position.set(0, 0.45, -0.4); g.add(tail);
-  for (let k = 0; k < 5; k++) { const r = ball(tail, k % 2 ? d : f, 0.16 - k * 0.012, 0, k * 0.08, -k * 0.16); }
-  tail.rotation.x = 0.5;
-  const rig = { body, head, tail, armL: limb(body, f, 0.09, 0.4, -0.4, 1.05, 0.12), armR: limb(body, f, 0.09, 0.4, 0.4, 1.05, 0.12), legL: limb(g, d, 0.11, 0.3, -0.2, 0.32, 0), legR: limb(g, d, 0.11, 0.3, 0.2, 0.32, 0) };
-  g.userData = { rig };
-  return g;
-}
-function makeSquirrel() {
-  const g = new T.Group(), f = lam(0xc0703a, { flatShading: false }), l = lam(0xf4dcc0, { flatShading: false });
-  const body = new T.Group(); g.add(body);
-  ball(body, f, 0.3, 0, 0.45, 0, 1, 1.25, 0.9);
-  ball(body, l, 0.2, 0, 0.45, 0.17, 1, 1.2, 0.6);
-  const head = new T.Group(); head.position.set(0, 0.92, 0.04); body.add(head);
-  ball(head, f, 0.24, 0, 0, 0);
-  ball(head, l, 0.12, 0, -0.06, 0.18);
-  for (const s of [-1, 1]) { ball(head, eyeMat, 0.04, s * 0.1, 0.05, 0.19); const e = new T.Mesh(new T.ConeGeometry(0.06, 0.18, 4), f); e.position.set(s * 0.13, 0.24, -0.02); head.add(e); }
-  const bow = new T.Mesh(new T.BoxGeometry(0.22, 0.1, 0.06), lam(0x5fae5c)); bow.position.set(0.12, 0.22, 0.05); head.add(bow);
-  const tail = new T.Group(); tail.position.set(0, 0.35, -0.3); g.add(tail);
-  ball(tail, f, 0.25, 0, 0.3, -0.1, 0.8, 1.4, 0.8); ball(tail, f, 0.2, 0, 0.7, 0.05, 0.9, 1, 0.9);
-  const rig = { body, head, tail, armL: limb(body, f, 0.06, 0.25, -0.26, 0.65, 0.15), armR: limb(body, f, 0.06, 0.25, 0.26, 0.65, 0.15), legL: limb(g, f, 0.08, 0.2, -0.15, 0.2, 0.05), legR: limb(g, f, 0.08, 0.2, 0.15, 0.2, 0.05) };
-  g.userData = { rig };
-  return g;
-}
-function makeBigDuck() {
-  const g = new T.Group(), w = lam(0xf4f0e8, { flatShading: false }), o = lam(0xf2a23a);
-  const body = new T.Group(); g.add(body);
-  ball(body, w, 0.55, 0, 0.75, 0, 1, 1.15, 1.05);
-  const head = new T.Group(); head.position.set(0, 1.55, 0.1); body.add(head);
-  ball(head, w, 0.36, 0, 0, 0);
-  const bk = new T.Mesh(new T.BoxGeometry(0.34, 0.1, 0.36), o); bk.position.set(0, -0.06, 0.38); head.add(bk);
-  for (const s of [-1, 1]) ball(head, eyeMat, 0.055, s * 0.15, 0.1, 0.3);
-  const band = new T.Mesh(new T.TorusGeometry(0.33, 0.06, 6, 14), lam(0xd84a3a)); band.rotation.x = Math.PI / 2; band.position.y = 0.16; head.add(band);
-  const shirt = new T.Mesh(new T.CylinderGeometry(0.5, 0.58, 0.6, 12), lam(0x5a8fd0)); shirt.position.y = 1.0; body.add(shirt);
-  const wh = new T.Mesh(new T.SphereGeometry(0.06, 6, 4), lam(0xffc53d)); wh.position.set(0.15, 1.25, 0.5); body.add(wh);
-  const rig = { body, head, armL: limb(body, w, 0.1, 0.45, -0.55, 1.15, 0), armR: limb(body, w, 0.1, 0.45, 0.55, 1.15, 0), legL: limb(g, o, 0.07, 0.35, -0.2, 0.35, 0), legR: limb(g, o, 0.07, 0.35, 0.2, 0.35, 0) };
-  g.userData = { rig };
-  return g;
-}
 
 // Oscar à quatre pattes : un vrai ours noir
 function bearHats(head, y) {
@@ -1638,6 +1671,10 @@ function makeBearQuad() {
     ball(head, fur, 0.14, s2 * 0.27, 0.33, -0.06, 1, 1, 0.7);
     ball(head, lam(0x40291e), 0.07, s2 * 0.27, 0.33, 0.01, 1, 1, 0.4);
   }
+  // Détails : touffes de poils aux joues et sur la bosse, narines, petite queue
+  for (const s2 of [-1, 1]) { tuft(head, fur, s2 * 0.36, -0.08, 0.05, 0.08, 0.22, 0, s2 * 1.9); tuft(head, fur, s2 * 0.32, -0.16, -0.05, 0.07, 0.2, 0, s2 * 2.2); ball(head, lam(0x1a1210), 0.022, s2 * 0.035, -0.02, 0.8); }
+  for (let k = 0; k < 9; k++) tuft(body, fur, rand(-0.35, 0.35), 1.7 + rand(-0.05, 0.05), 0.15 - k * 0.12, 0.07, 0.14, -1.1);
+  ball(body, furD, 0.12, 0, 1.25, -1.32, 1, 1, 0.8);
   const leg = (x, y, z) => {
     const l = limb(g, fur, 0.2, 0.82, x, y, z);
     for (let k = -1; k <= 1; k++) { const c = new T.Mesh(new T.ConeGeometry(0.035, 0.14, 4), claw); c.rotation.x = Math.PI / 2; c.position.set(k * 0.08, -0.84, 0.2); l.add(c); }
@@ -1854,15 +1891,15 @@ function addNPC(id, o) {
   return n;
 }
 function buildNPCs() {
-  addNPC('max', { name: 'Max le castor', col: '#a0583a', model: makeBeaver(), x: POI.max[0], z: POI.max[1], rot: 2.6, head: 1.9 });
-  addNPC('lulu', { name: 'Lulu la loutre', col: '#3a9a9a', model: makeOtter(), x: POI.lulu[0], z: POI.lulu[1], rot: 0, dy: 0, head: 1.9 });
-  addNPC('plume', { name: 'Madame Plume', col: '#7a5aa0', model: makeOwl(), x: POI.owl[0] + 3.4, z: POI.owl[1] + 1.2, rot: 0.3, dy: 10.2, head: 12.2, talkAt: [POI.owl[0], POI.owl[1] + 4] });
-  addNPC('blaireau', { name: 'Papi Blaireau', col: '#5a5a66', model: makeBadger(), x: POI.blaireau[0], z: POI.blaireau[1], rot: 1.2, head: 2 });
+  addNPC('max', { name: 'Max le castor', col: '#a0583a', model: makeBeaver(), x: POI.max[0], z: POI.max[1], rot: 2.6, head: 1.4 });
+  addNPC('lulu', { name: 'Lulu la loutre', col: '#3a9a9a', model: makeOtter(), x: POI.lulu[0], z: POI.lulu[1], rot: 0, dy: 0, head: 1.1 });
+  addNPC('plume', { name: 'Madame Plume', col: '#7a5aa0', model: makeOwl(), x: POI.owl[0] + 4.4, z: POI.owl[1] + 2.6, rot: 0.3, dy: 9.95, head: 11.9, talkAt: [POI.owl[0], POI.owl[1] + 4] });
+  addNPC('blaireau', { name: 'Papi Blaireau', col: '#5a5a66', model: makeBadger(), x: POI.blaireau[0], z: POI.blaireau[1], rot: 1.2, head: 1.1 });
   addNPC('gisele', { name: 'Gisèle (la maire)', col: '#4a6a9a', model: makeHuman(0x4a6a9a, 0x2a2a3a, 0xd8a050, {}), x: POI.mairie[0], z: POI.mairie[1], rot: 0, head: 2.5 });
   addNPC('beton', { name: 'M. Béton', col: '#55575c', model: makeHuman(0x6a6c72, 0x3a3a40, 0x222222, { cap: 0xf2b632 }), x: POI.chantier[0] - 8, z: POI.chantier[1] + 12, rot: 3, head: 2.5 });
-  addNPC('raflex', { name: 'Raflex', col: '#e0607a', model: makeRaccoon(), x: POI.musee[0] - 6, z: POI.musee[1] + 2, rot: 0.3, head: 2 });
-  addNPC('donovan', { name: 'Donovan le canard', col: '#5a8fd0', model: makeBigDuck(), x: POI.donovan[0], z: POI.donovan[1], rot: 0.5, head: 2.2 });
-  addNPC('noisette', { name: 'Noisette', col: '#c0703a', model: makeSquirrel(), x: POI.noisette[0], z: POI.noisette[1], rot: 0.2, head: 1.3 });
+  addNPC('raflex', { name: 'Raflex', col: '#e0607a', model: makeRaccoon(), x: POI.musee[0] - 6, z: POI.musee[1] + 2, rot: 0.3, head: 1.3 });
+  addNPC('donovan', { name: 'Donovan le canard', col: '#5a8fd0', model: makeBigDuck(), x: POI.donovan[0], z: POI.donovan[1], rot: 0.5, head: 1.9 });
+  addNPC('noisette', { name: 'Noisette', col: '#c0703a', model: makeSquirrel(), x: POI.noisette[0], z: POI.noisette[1], rot: 0.2, head: 1.4 });
   addNPC('rosa', { name: 'Rosa (épicière)', col: '#c0504a', model: makeHuman(0xd84a3a, 0x3a3a5a, 0x5a3020, { cap: 0xffffff }), x: POI.shop[0] + 2.4, z: POI.shop[1] - 0.8, rot: 0, head: 2.5 });
   addNPC('leon', { name: 'Léon (brocanteur)', col: '#4a6a9a', model: makeHuman(0x5a8fd0, 0x5a4a3a, 0xdddddd), x: POI.broc[0] + 2.4, z: POI.broc[1] - 0.8, rot: 0, head: 2.5 });
   addNPC('nina', { name: 'Nina (café)', col: '#a0583a', model: makeHuman(0xf2c14e, 0x3a3a5a, 0x2a1a10), x: POI.cafe[0] + 2.4, z: POI.cafe[1] - 0.8, rot: 0, head: 2.5 });
@@ -3641,32 +3678,23 @@ function makePug(girl) {
     ball(head, eyeMat, 0.05, s * 0.13, 0.07, 0.21);
     const e = ball(head, d, 0.1, s * 0.25, 0.17, -0.02, 0.55, 0.9, 0.35); e.rotation.z = s * 0.7;
   }
+  // Plis du front, coussinets, et la langue de Praline
+  for (let k = 0; k < 3; k++) { const w = new T.Mesh(new T.TorusGeometry(0.1 - k * 0.015, 0.008, 3, 10, Math.PI), d); w.position.set(0, 0.12 + k * 0.045, 0.23 - k * 0.02); w.rotation.x = -0.3; head.add(w); }
+  whiskers(head, 0, -0.08, 0.3, 0.18, 0x2a2224);
+  if (girl) { const tg = ball(head, M.pink, 0.05, 0.02, -0.16, 0.27, 0.8, 0.3, 1.2); tg.rotation.x = 0.5; }
   const tail = new T.Mesh(new T.TorusGeometry(0.09, 0.04, 6, 12, 4.8), f); tail.position.set(0, 0.85, -0.45); tail.rotation.y = Math.PI / 2; g.add(tail);
   const collar = new T.Mesh(new T.TorusGeometry(0.22, 0.035, 6, 14), girl ? M.pink : M.blue); collar.rotation.x = Math.PI / 2 - 0.5; collar.position.set(0, 0.74, 0.38); body.add(collar);
   g.userData = { rig: Object.assign({ body, head, tail }, legs4(g, f, 0.065, 0.32, 0.17, 0.28, -0.28, 0.32)) };
   return g;
 }
-function makeRoquette() {
-  // Raton laveur à quatre pattes : dos rond, masque noir, queue à anneaux
-  const g = new T.Group(), f = lam(0x7d7a80, { flatShading: false }), l = lam(0xdcdad8, { flatShading: false }), d = lam(0x26232a, { flatShading: false });
-  const body = new T.Group(); g.add(body);
-  ball(body, f, 0.36, 0, 0.6, -0.1, 0.95, 0.9, 1.3); ball(body, f, 0.28, 0, 0.55, 0.3, 0.95, 0.85, 0.9);
-  const head = new T.Group(); head.position.set(0, 0.72, 0.6); body.add(head);
-  ball(head, f, 0.22, 0, 0, 0, 1.1, 0.9, 1);
-  const sn = new T.Mesh(new T.ConeGeometry(0.1, 0.24, 7), l); sn.rotation.x = Math.PI / 2; sn.position.set(0, -0.06, 0.25); head.add(sn);
-  ball(head, d, 0.04, 0, -0.06, 0.37);
-  ball(head, d, 0.2, 0, 0.04, 0.1, 1.2, 0.38, 0.9);
-  for (const s of [-1, 1]) { ball(head, l, 0.06, s * 0.1, 0.12, 0.17, 1.3, 0.5, 0.6); ball(head, eyeMat, 0.035, s * 0.1, 0.04, 0.2); const e = new T.Mesh(new T.ConeGeometry(0.07, 0.14, 4), f); e.position.set(s * 0.14, 0.2, -0.04); head.add(e); ball(head, l, 0.03, s * 0.14, 0.27, -0.02); }
-  const tail = new T.Group(); tail.position.set(0, 0.6, -0.5); g.add(tail);
-  for (let k = 0; k < 6; k++) ball(tail, k % 2 ? d : f, 0.13 - k * 0.008, 0, -k * 0.05, -k * 0.13);
-  tail.rotation.x = 0.4;
-  g.userData = { rig: Object.assign({ body, head, tail }, legs4(g, d, 0.06, 0.4, 0.18, 0.3, -0.36, 0.4)) };
-  g.scale.setScalar(1.2);
-  return g;
-}
+function makeRoquette() { return makeRaccoon(0x8a7466); }
 function makeFilou() {
-  // Un renard roux, un peu plus grand que les renards de la forêt
+  // Un renard roux, un peu plus grand que les renards de la forêt, avec moustaches et poitrail blanc
   const g = makeFox(false); g.scale.setScalar(1.45);
+  const r = g.userData.rig, w = lam(0xfff4e8, { flatShading: false });
+  whiskers(r.head, 0, -0.08, 0.36, 0.26, 0x2a2224);
+  ball(r.body, w, 0.17, 0, 0.5, 0.42, 1, 1.1, 0.7);
+  for (let k = 0; k < 5; k++) tuft(r.body, lam(0xd06a2a), rand(-0.15, 0.15), 0.76, -0.3 + k * 0.12, 0.035, 0.09, -1.15);
   return g;
 }
 // Cachettes de Praline (avec un indice pour chacune)
