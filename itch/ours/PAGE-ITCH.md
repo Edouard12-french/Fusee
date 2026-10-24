@@ -45,7 +45,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Répare un vieux camping-car**… et fais-le **voler** pour montrer le parc à la maire !
 - **Va skier au Pic Grizzly** : monte en télésiège, descends en luge ou à skis et bats le slalom de Cabriole la chèvre !
 - **Explore un monde immense** : la grande forêt et ses séquoias, la grande prairie des bisons, le canyon rouge et le marais.
-- **Le rêve d'Oscar : aller dans l'espace !** Choisis un métier (facteur, pilote d'avion ou capitaine de bateau), gagne des pièces et construis ta fusée.
+- **Le rêve d'Oscar : aller dans l'espace !** Choisis un métier (facteur, pilote d'avion ou capitaine de bateau), gagne des pièces et transforme ton camping-car volant en camping-car spatial !
 - **Chaque ami a sa maison** : en facteur, dépose les lettres dans leurs boîtes aux lettres.
 - **De nouveaux amis** : joue à cache-cache avec Praline la carline, fais la course de luge contre Roquette le raton laveur et réponds aux devinettes de Filou le renard !
 - **6 aventures du Grand Nord** : ramène le louveteau perdu, attrape les poules de Josette, nettoie le marais de Gaspard le héron, trouve les cristaux de glace…
@@ -76,7 +76,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Fix an old camper van**… and make it **fly** to show the park to the mayor!
 - **Go skiing on Grizzly Peak**: ride the chairlift, slide down on a sled or skis and beat Cabriole the goat's slalom!
 - **Explore a huge world**: the great forest with giant sequoias, the bison prairie, the red canyon and the marsh.
-- **Oscar's dream: going to space!** Pick a job (mail carrier, airplane pilot or boat captain), earn coins and build your rocket.
+- **Oscar's dream: going to space!** Pick a job (mail carrier, airplane pilot or boat captain), earn coins and turn your flying camper van into a space camper!
 - **Every friend has a house**: as the mail carrier, drop letters in their mailboxes.
 - **New friends**: play hide-and-seek with Praline the pug, race Roquette the raccoon on a sled and solve Filou the fox's riddles!
 - **6 Great North adventures**: bring back the lost wolf cub, catch Josette's runaway hens, clean Gaspard the heron's marsh, find the ice crystals…

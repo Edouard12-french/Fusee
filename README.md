@@ -68,11 +68,11 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
 - Une patinoire sur le lac gelé du Glacier, où Oscar glisse sur la glace.
 - De nouveaux amis, de vrais animaux : Maurice et Praline les carlins (cache-cache), Roquette le raton laveur (course de luge) et Filou le renard (devinettes).
 - Oscar et tous ses amis ressemblent à de vrais animaux, avec des détails (moustaches, touffes de poils, plumes, coussinets) : Max le castor, Lulu la loutre, Raflex le raton laveur, Donovan le colvert, Noisette l'écureuil roux, Papi Blaireau et Madame Plume le hibou grand-duc.
-- Le rêve d'Oscar : aller dans l'espace. Il choisit un métier au panneau « Offres d'emploi » du village pour payer sa fusée :
+- Le rêve d'Oscar : aller dans l'espace avec son camping-car volant. Il choisit un métier au panneau « Offres d'emploi » du village pour payer la transformation :
   - facteur : distribuer les lettres dans les boîtes aux lettres des maisons des amis (chacun a sa maison avec son nom) ;
   - pilote d'avion : décoller de l'aéroport de la grande prairie et passer dans les anneaux au-dessus du parc ;
   - capitaine de bateau : emmener des passagers d'un ponton à l'autre sur le grand lac.
-  Les pièces vont dans la tirelire de la base spatiale du canyon rouge (4000 pièces), et la fusée se construit en 4 étapes.
+  Les pièces vont dans la tirelire de Max, à côté de son atelier (4000 pièces). Max transforme le camping-car volant en camping-car spatial en 4 étapes (réacteurs, coque spatiale, bulle d'oxygène, antenne). Il décollera de la base de lancement du canyon rouge pour aller sur la Lune au chapitre 2.
 - Des avions dans le ciel, des voiliers sur le lac, une musique plus riche avec une mélodie à la flûte, plus d'arbres, des souches, des troncs couchés et des rochers moussus.
 - Les personnages ne parlent plus à voix haute (on lit les bulles), et la flèche orange n'apparaît que pour les deux premières missions : ensuite, on utilise la carte.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.

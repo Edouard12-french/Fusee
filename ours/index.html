@@ -356,7 +356,7 @@ const POI = {
   lakePart: [58, 86],
   arbres: [-158, 84], blaireau: [-150, 78], meadow: [-130, -20], burrow: [70, -114], den: [-178, 126],
   chantier: [186, -14], mairie: [128, 41], spring: [-100, -66],
-  cabanesLac: [104, 86], poste: [188, 48], metiers: [140, 40], base: [232, 236], aeroport: [270, 100], mLulu: [-16, 38], mDonovan: [2, 2], mNoisette: [-48, -128], mBlaireau: [-136, 72], mFilou: [-176, 142], mRoquette: [-54, -208], mElliot: [-246, 88], niche: [84, -2], roquette: [-44, -216], filou: [-168, 134], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
+  cabanesLac: [104, 86], poste: [188, 48], metiers: [140, 40], tirelire: [60, -58], base: [232, 236], aeroport: [270, 100], mLulu: [-16, 38], mDonovan: [2, 2], mNoisette: [-48, -128], mBlaireau: [-136, 72], mFilou: [-176, 142], mRoquette: [-54, -208], mElliot: [-246, 88], niche: [84, -2], roquette: [-44, -216], filou: [-168, 134], skiBase: [6, -214], chalet: [18, -206], marcel: [-12, -219], cabriole: [8, -307], elliot: [-258, 98],
   moulin: [282, 40], ferme: [284, -16], gaspard: [-12, 246.6], bernard: [256, -76], josette: [280, -13], loups: [-284, -84], canyon: [262, 236], marais: [-30, 266], grotteCristal: [-146, -112], grotteFossile: [90, -114],
   faon: [-60, 152], lapereau: [100, -62], renardeau: [40, 186],
   musee: [-14, 128], donovan: [4, 24], noisette: [-40, -120],
@@ -3848,9 +3848,9 @@ function talkFriend(id) {
 
 function endRocketQuiet() { const n = NPCS.roquette; if (!n) return; n.x = POI.roquette[0]; n.z = POI.roquette[1]; n.model.position.set(n.x, groundY(n.x, n.z), n.z); }
 
-// ================= Les métiers d'Oscar : il travaille pour payer sa fusée =================
-// Le rêve d'Oscar : aller dans l'espace. Il choisit un métier au panneau du village,
-// gagne des pièces et les met dans la tirelire de la fusée, à la base de lancement du canyon.
+// ================= Les métiers d'Oscar : il travaille pour aller dans l'espace =================
+// Le rêve d'Oscar : aller dans l'espace avec son camping-car volant. Il choisit un métier au panneau du village,
+// gagne des pièces et les met dans la tirelire de Max, qui transforme le camping-car en camping-car spatial.
 const ROCKET_GOAL = 4000;
 const JOBS = {
   facteur: { name: 'Facteur', e: '✉️', boss: 'fernand', hat: 'facteur', where: 'la Poste, au bout du village', pay: 'environ 80 pièces par tournée' },
@@ -4002,15 +4002,34 @@ function buildJobs() {
   const tower = new T.Group(); tower.position.set(-4.2, 0.8, 0); rocketG.add(tower);
   for (let k = 0; k < 4; k++) { const x = k % 2 ? 0.8 : -0.8, z = k < 2 ? 0.8 : -0.8; mesh(new T.BoxGeometry(0.2, 16, 0.2), M.red, x, 8, z, tower); }
   for (let y = 1; y < 16; y += 2) mesh(new T.BoxGeometry(1.8, 0.14, 1.8), M.red, 0, y, 0, tower);
-  // Les morceaux de la fusée apparaissent quand la tirelire se remplit
-  const rk = new T.Group(); rk.position.y = 0.8; rocketG.add(rk);
-  const p1 = new T.Group(); rk.add(p1); mesh(new T.CylinderGeometry(1.4, 1.5, 5.5, 16), M.white, 0, 3.1, 0, p1); for (let k = 0; k < 4; k++) { const f = mesh(new T.BoxGeometry(0.15, 2.2, 1.4), M.red, Math.cos(k * Math.PI / 2) * 1.6, 1.3, Math.sin(k * Math.PI / 2) * 1.6, p1); f.rotation.y = -k * Math.PI / 2; } mesh(new T.CylinderGeometry(1.0, 1.3, 0.8, 12), M.dark, 0, 0.2, 0, p1);
-  const p2 = new T.Group(); rk.add(p2); mesh(new T.CylinderGeometry(1.25, 1.4, 4.2, 16), M.white, 0, 8, 0, p2); mesh(new T.CylinderGeometry(1.42, 1.42, 0.4, 16), M.red, 0, 6.1, 0, p2); for (const s of [-1, 1]) mesh(new T.CircleGeometry(0.4, 12), winMat, 0, 8.4, s * 1.3, p2).rotation.y = s > 0 ? 0 : Math.PI;
-  const p3 = new T.Group(); rk.add(p3); mesh(new T.ConeGeometry(1.25, 3.2, 16), M.red, 0, 11.7, 0, p3);
-  const p4 = new T.Group(); rk.add(p4); const fl = mesh(new T.BoxGeometry(0.04, 0.8, 1.2), lam(0x5a8fd0), 0, 14.2, 0.6, p4); mesh(new T.CylinderGeometry(0.04, 0.04, 1.6, 5), M.dark, 0, 13.9, 0, p4); const bd = mesh(new T.BoxGeometry(1.6, 0.6, 0.05), new T.MeshLambertMaterial({ map: signTex('OSCAR 1', '#3a6a9a') }), 0, 4, 1.5, p4);
+  // Les pièces de l'espace s'ajoutent sur le vrai camping-car volant quand la tirelire se remplit
+  const cb = C.model.userData.body, silver = lam(0xc8ccd4), glass = new T.MeshPhongMaterial({ color: 0xa8e0ff, transparent: true, opacity: 0.45, shininess: 90 });
+  const p1 = new T.Group(); cb.add(p1);
+  const flames = [];
+  for (const sx of [-1, 1]) {
+    const b = mesh(new T.CylinderGeometry(0.42, 0.42, 3.2, 12), silver, sx * 1.75, 1.6, -1.2, p1); b.rotation.x = Math.PI / 2;
+    const nc = mesh(new T.ConeGeometry(0.42, 0.9, 12), M.red, sx * 1.75, 1.6, 0.85, p1); nc.rotation.x = Math.PI / 2;
+    const nz = mesh(new T.CylinderGeometry(0.3, 0.45, 0.5, 10), M.dark, sx * 1.75, 1.6, -3.0, p1); nz.rotation.x = Math.PI / 2;
+    const fl = new T.Mesh(new T.ConeGeometry(0.32, 1.6, 10), flameMat); fl.rotation.x = -Math.PI / 2; fl.position.set(sx * 1.75, 1.6, -4.0); fl.visible = false; p1.add(fl); flames.push(fl);
+    for (const z of [-0.4, -2]) mesh(new T.BoxGeometry(0.5, 0.12, 0.25), M.metal, sx * 1.45, 1.6, z, p1);
+  }
+  p1.userData.flames = flames;
+  const p2 = new T.Group(); cb.add(p2);
+  mesh(new T.BoxGeometry(2.7, 0.1, 6.1), silver, 0, 3.1, -0.2, p2);
+  for (const sx of [-1, 1]) { mesh(new T.BoxGeometry(0.06, 0.25, 6.04), lam(0x3a6a9a), sx * 1.33, 2.65, -0.2, p2); mesh(new T.BoxGeometry(0.06, 0.12, 6.04), M.yellow, sx * 1.33, 2.45, -0.2, p2); }
+  mesh(new T.BoxGeometry(2.5, 0.12, 1.62), silver, 0, 1.95, 3.4, p2);
+  const p3 = new T.Group(); cb.add(p3);
+  const dome = new T.Mesh(new T.SphereGeometry(0.95, 16, 10, 0, 6.283, 0, Math.PI / 2), glass); dome.position.set(0, 3.15, 1.2); p3.add(dome);
+  mesh(new T.TorusGeometry(0.95, 0.07, 6, 18), silver, 0, 3.16, 1.2, p3).rotation.x = Math.PI / 2;
+  for (const sx of [-0.55, 0.55]) { mesh(new T.CylinderGeometry(0.28, 0.28, 1.2, 10), M.white, sx, 3.6, -2.8, p3); mesh(new T.SphereGeometry(0.28, 10, 6), M.white, sx, 4.2, -2.8, p3); }
+  const p4 = new T.Group(); cb.add(p4);
+  mesh(new T.CylinderGeometry(0.04, 0.04, 1.6, 5), M.metal, -0.9, 4.0, -1.9, p4);
+  const dish = mesh(new T.ConeGeometry(0.45, 0.25, 12, 1, true), lam(0xf4f2ee, { side: T.DoubleSide }), -0.9, 4.85, -1.9, p4); dish.rotation.x = 0.6;
+  mesh(new T.CylinderGeometry(0.03, 0.03, 1.4, 5), M.dark, 0.9, 3.9, -2.2, p4); mesh(new T.BoxGeometry(0.04, 0.45, 0.7), lam(0x5a8fd0), 0.9, 4.4, -1.85, p4);
+  for (const sx of [-1, 1]) { const bd = mesh(new T.BoxGeometry(0.04, 0.5, 1.5), new T.MeshLambertMaterial({ map: signTex('OSCAR 1', '#3a6a9a') }), sx * 1.34, 2.15, -0.9, p4); bd.rotation.y = sx > 0 ? 0 : Math.PI; }
   rocketParts = [p1, p2, p3, p4];
-  addCircle(rx, rz, 3); addCircle(rx - 4.2, rz, 1.4);
-  sign('BASE SPATIALE D\'OSCAR', rx + 9, rz + 8, -0.4, 2.4, 0.9, '#3a6a9a');
+  addCircle(rx - 4.2, rz, 1.4);
+  sign('BASE DE LANCEMENT', rx + 9, rz + 8, -0.4, 2.4, 0.9, '#3a6a9a');
   // Patrons des métiers (des humains : il faut être déguisé pour leur parler)
   addNPC('fernand', { name: 'Fernand (la Poste)', col: '#2a5aa0', model: makeHuman(0x2a5aa0, 0x2a2a3a, 0xdddddd, { cap: 0x2a5aa0 }), x: POI.poste[0] + 2, z: POI.poste[1] - 5, rot: 0, head: 2.5 });
   addNPC('helene', { name: 'Hélène (pilote)', col: '#3a6a9a', model: makeHuman(0x2a3a5a, 0x2a2a3a, 0x3a2010, { cap: 0x2a3a5a }), x: ax + 4, z: az + 18, rot: Math.PI, head: 2.5 });
@@ -4018,7 +4037,16 @@ function buildJobs() {
   Object.assign(PITCH, { fernand: 0.8, helene: 1.2, loic: 0.9 });
   for (const id of ['fernand', 'helene', 'loic']) { const n = NPCS[id]; addInter({ x: n.x, z: n.z, r: 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(' (')[0], can: () => true, act: () => talkBoss(id) }); }
   addInter({ x: POI.metiers[0], z: POI.metiers[1] + 1.5, r: 3, icon: '📋', label: () => 'Choisir un métier', can: () => true, act: openJobBoard });
-  addInter({ x: POI.base[0] + 6, z: POI.base[1] + 5, r: 4, icon: '🚀', label: () => 'Tirelire de la fusée (' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ')', can: () => true, act: depositRocket });
+  // Tirelire de Max, à côté de l'atelier
+  { const [px, pz] = POI.tirelire, py = groundY(px, pz), pig = new T.Group(); pig.position.set(px, py, pz); pig.rotation.y = 2.4; scene.add(pig);
+    mesh(new T.CylinderGeometry(0.5, 0.6, 1, 10), M.woodD, 0, 0.5, 0, pig);
+    const bd = mesh(new T.SphereGeometry(0.55, 14, 10), M.pink, 0, 1.45, 0, pig); bd.scale.set(1, 0.85, 1.25);
+    mesh(new T.CylinderGeometry(0.18, 0.2, 0.2, 10), M.pink, 0, 1.4, 0.72, pig).rotation.x = Math.PI / 2;
+    for (const s2 of [-1, 1]) { mesh(new T.ConeGeometry(0.12, 0.2, 4), M.pink, s2 * 0.25, 1.95, 0.35, pig); mesh(new T.SphereGeometry(0.04, 5, 4), eyeMat, s2 * 0.18, 1.6, 0.6, pig); }
+    mesh(new T.BoxGeometry(0.3, 0.04, 0.08), M.dark, 0, 1.94, -0.1, pig);
+    addCircle(px, pz, 0.7);
+    const b = mesh(new T.BoxGeometry(2.2, 0.5, 0.1), new T.MeshLambertMaterial({ map: signTex('CAMPING-CAR SPATIAL', '#3a6a9a') }), 0, 2.45, 0, pig); b.rotation.y = 0; }
+  addInter({ x: POI.tirelire[0], z: POI.tirelire[1], r: 2.8, icon: '🐷', label: () => 'Tirelire du camping-car spatial (' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ')', can: () => true, act: depositRocket });
   HOUSES.forEach((h, i) => addInter({ get x() { return h.mail[0]; }, get z() { return h.mail[1]; }, r: 2.8, icon: '✉️', label: () => 'Déposer la lettre de ' + h.who, can: () => S.mail && S.mail.left.includes(i), act: () => deliverLetter(i) }));
   addInter({ x: BT.x, z: BT.z, r: 0, dyn: true, icon: '⛵', label: () => 'Monter dans le bateau', can: () => P.mode === 'walk' && S.boatJob && Math.hypot(P.x - BT.x, P.z - BT.z) < 5, act: enterBoat });
   jobHats();
@@ -4026,7 +4054,7 @@ function buildJobs() {
 const PONTOON_DECKS = [];
 // ---------- Choisir un métier ----------
 function openJobBoard() {
-  $('shopName').textContent = 'Offres d\'emploi'; $('shopTxt').textContent = 'Le rêve d\'Oscar : aller dans l\'espace ! Choisis un métier pour payer ta fusée.';
+  $('shopName').textContent = 'Offres d\'emploi'; $('shopTxt').textContent = 'Le rêve d\'Oscar : aller dans l\'espace ! Choisis un métier pour transformer ton camping-car volant en camping-car spatial.';
   const L = $('shopList'); L.innerHTML = '';
   for (const k in JOBS) {
     const j = JOBS[k], d = document.createElement('div');
@@ -4151,16 +4179,17 @@ function pontoonDeck(x, z) {
   for (const p of PONTOON_DECKS) { const dx = x - p.x, dz = z - p.z, c = Math.cos(p.a), s = Math.sin(p.a), lx = dx * c - dz * s, lz = dx * s + dz * c; if (Math.abs(lx) < 1.4 && lz > -1 && lz < 8.2) return 0.42; }
   return null;
 }
-// ---------- Tirelire de la fusée ----------
+// ---------- Tirelire du camping-car spatial (chez Max) ----------
 function depositRocket() {
   S.rocket = S.rocket || 0;
-  if (S.rocket >= ROCKET_GOAL) return talk([['oscar', 'Ma fusée est prête ! Le grand voyage vers la Lune… ce sera pour le chapitre 2 !']]);
+  if (!S.flags.wings) return talk([['max', 'Le camping-car spatial ? D\'abord, il faut réparer le vieux camping-car et le faire voler !'], ['max', 'Après, je te promets de le transformer pour aller dans l\'espace.']]);
+  if (S.rocket >= ROCKET_GOAL) return talk([['max', 'Ton camping-car spatial est prêt ! Le grand voyage vers la Lune… ce sera pour le chapitre 2 !']]);
   if (S.coins <= 0) return toast('Ta bourse est vide ! Travaille pour gagner des pièces (panneau « Offres d\'emploi » au village).');
-  const put = Math.min(S.coins, ROCKET_GOAL - S.rocket); S.coins -= put; S.rocket += put; sfx.coin(); sparkle(POI.base[0], groundY(POI.base[0], POI.base[1]) + 4, POI.base[1]);
-  toast('🚀 +' + put + ' pièces dans la tirelire : ' + S.rocket + ' / ' + ROCKET_GOAL);
+  const put = Math.min(S.coins, ROCKET_GOAL - S.rocket); S.coins -= put; S.rocket += put; sfx.coin(); sparkle(POI.tirelire[0], groundY(POI.tirelire[0], POI.tirelire[1]) + 2, POI.tirelire[1]);
+  toast('🐷 +' + put + ' pièces dans la tirelire : ' + S.rocket + ' / ' + ROCKET_GOAL);
   const before = rocketParts.filter(p => p.visible).length; showRocket(); const after = rocketParts.filter(p => p.visible).length;
-  if (after > before) { banner('La fusée grandit !', ['Le premier étage est construit', 'Le deuxième étage est construit', 'La pointe est posée', 'La fusée est terminée !'][after - 1]); sfx.fanfare(); confetti(POI.base[0], groundY(POI.base[0], POI.base[1]) + 6, POI.base[1]); }
-  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['oscar', 'Elle est prête… MA fusée ! J\'ai travaillé si dur pour elle.'], ['oscar', 'Bientôt, je partirai vivre sur la Lune avec mes amis. Ce sera le chapitre 2 !']]), 2500);
+  if (after > before) { banner('Le camping-car spatial avance !', ['Max a installé les réacteurs', 'La coque spatiale est posée', 'La bulle d\'oxygène est prête', 'Le camping-car spatial est terminé !'][after - 1]); sfx.fanfare(); confetti(C.x, C.y + 4, C.z); }
+  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['max', 'Ça y est, Oscar ! Ton camping-car peut voler jusque dans l\'espace !'], ['oscar', 'J\'ai travaillé si dur pour ça… Merci Max !'], ['max', 'Bientôt, tu décolleras de la base de lancement du canyon. Direction la Lune : ce sera le chapitre 2 !']]), 2500);
   updateHUD(); saveGame();
 }
 function showRocket() { const k = (S.rocket || 0) / ROCKET_GOAL; rocketParts.forEach((p, i) => { p.visible = k >= (i + 1) / 4; }); }
@@ -4176,6 +4205,8 @@ function updateJobs(dt) {
   for (const b of ambientBoats) { b.a += b.s * dt * 6; const x = LAKE.x + Math.cos(b.a) * LAKE.rx * b.r, z = LAKE.z + Math.sin(b.a) * LAKE.rz * b.r; b.m.position.set(x, WATER_Y + Math.sin(G.t * 1.7 + b.a) * 0.06, z); b.m.rotation.set(Math.sin(G.t + b.a) * 0.04, Math.atan2(-Math.sin(b.a) * LAKE.rx * Math.sign(b.s), Math.cos(b.a) * LAKE.rz * Math.sign(b.s)), 0.12 * Math.sign(b.s)); }
   if (P.mode !== 'boat' && boatM) { boatM.position.set(BT.x, WATER_Y - 0.15 + Math.sin(G.t * 2) * 0.05, BT.z); boatM.rotation.y = BT.rot; }
   for (const h of HOUSES) if (h.flag && h.flag.visible) h.flag.rotation.z = Math.sin(G.t * 3) * 0.2;
+  // Les réacteurs s'allument quand le camping-car spatial vole
+  if (rocketParts[0]) for (const f of rocketParts[0].userData.flames) { f.visible = rocketParts[0].visible && P.mode === 'fly'; if (f.visible) f.scale.set(1, 0.8 + Math.random() * 0.5, 1); }
 }
 
 // ================= Nuages =================
@@ -4630,7 +4661,7 @@ function openJournal() {
   ];
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
   for (const q of SIDEQ) { if (q.friend && !L.querySelector('.amis')) { const h3 = document.createElement('div'); h3.className = 'amis'; h3.innerHTML = '<b>🐾 Jeux avec les amis</b><p>Maurice, Praline, Roquette et Filou t\'attendent !</p>'; L.appendChild(h3); } const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
-  const hj = document.createElement('div'); hj.innerHTML = '<b>🚀 Le rêve d\'Oscar : aller dans l\'espace</b><p></p>'; hj.querySelector('p').textContent = 'Tirelire de la fusée : ' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ' pièces (base spatiale du canyon rouge). ' + (S.job ? 'Ton métier : ' + JOBS[S.job].e + ' ' + JOBS[S.job].name + ' — va à ' + JOBS[S.job].where + '.' : 'Choisis un métier au panneau « Offres d\'emploi » du village !'); L.appendChild(hj);
+  const hj = document.createElement('div'); hj.innerHTML = '<b>🚀 Le rêve d\'Oscar : aller dans l\'espace</b><p></p>'; hj.querySelector('p').textContent = 'Tirelire du camping-car spatial : ' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ' pièces (chez Max, à l\'atelier). Max transforme ton camping-car volant pour aller sur la Lune ! ' + (S.job ? 'Ton métier : ' + JOBS[S.job].e + ' ' + JOBS[S.job].name + ' — va à ' + JOBS[S.job].where + '.' : 'Choisis un métier au panneau « Offres d\'emploi » du village !'); L.appendChild(hj);
   const h = document.createElement('div'); h.innerHTML = '<b>🏔️ Défis de l\'aventure</b><p>Pour jouer encore plus longtemps !</p>'; L.appendChild(h);
   for (const [ok, t, sub] of defis) { const d = document.createElement('div'); if (ok) d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (ok ? '✔ ' : '⭐ ') + t; d.querySelector('p').textContent = ok ? 'Réussi !' : sub; L.appendChild(d); }
   openPanel('pJournal');
@@ -4658,7 +4689,7 @@ function drawMap() {
   for (const rv of RIVERS) { const r = rv.pts; g.lineWidth = rv.w * k * 1.2; g.beginPath(); r.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke(); }
   g.fillStyle = '#41b3e6'; for (const L of LAKES) { g.beginPath(); g.ellipse(X(L.x), Z(L.z), L.rx * k, L.rz * k, 0, 0, 6.283); g.fill(); }
   for (const p of ALL_PATHS) { g.strokeStyle = p === ROADS[0] ? '#9a7f78' : '#e2cc98'; g.lineWidth = p.w * k * 1.1; g.beginPath(); p.pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
-  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile], ['Station de ski', [0, -192]], ['Pic Grizzly', [10, -296]], ['Grande forêt', [-262, -20]], ['Grande prairie', [262, -80]], ['Ferme', POI.ferme], ['Moulin', POI.moulin], ['Canyon rouge', POI.canyon], ['Marais', POI.marais], ['Elliot', POI.elliot], ['Maurice et Praline', POI.niche], ['Roquette', POI.roquette], ['Filou', POI.filou], ['Aéroport', POI.aeroport], ['La Poste', POI.poste], ['Offres d\'emploi', [POI.metiers[0], POI.metiers[1] + 8]], ['Base spatiale', POI.base]].concat(HOUSES.filter(h => h.kind !== 'none').map(h => ['Chez ' + h.who, [h.x, h.z - 5]])).concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
+  const labels = [['Grotte d\'Oscar', POI.cave], ['Camping', POI.camp], ['Village', [138, 8]], ['Atelier de Max', POI.workshop], ['Casse', POI.junk], ['Lac', [LAKE.x, LAKE.z]], ['Grand arbre', POI.owl], ['Épave', POI.wreck], ['Montagne', POI.peak], ['Piste', POI.air], ['Gardes', POI.station], ['Village des arbres', POI.arbres], ['Mairie', [128, 54]], [S.done ? 'Réserve' : 'Chantier Béton', POI.chantier], ['Prairie des cerfs', POI.meadow], ['Musée de Raflex', POI.musee], ['Course', POI.donovan], ['Noisette', POI.noisette], ['Cabanes du lac', POI.cabanesLac], ['Grotte de cristal', POI.grotteCristal], ['Grotte du fossile', POI.grotteFossile], ['Station de ski', [0, -192]], ['Pic Grizzly', [10, -296]], ['Grande forêt', [-262, -20]], ['Grande prairie', [262, -80]], ['Ferme', POI.ferme], ['Moulin', POI.moulin], ['Canyon rouge', POI.canyon], ['Marais', POI.marais], ['Elliot', POI.elliot], ['Maurice et Praline', POI.niche], ['Roquette', POI.roquette], ['Filou', POI.filou], ['Aéroport', POI.aeroport], ['La Poste', POI.poste], ['Offres d\'emploi', [POI.metiers[0], POI.metiers[1] + 8]], ['Base de lancement', POI.base], ['Tirelire', POI.tirelire]].concat(HOUSES.filter(h => h.kind !== 'none').map(h => ['Chez ' + h.who, [h.x, h.z - 5]])).concat(PONDS.map(L => [L.name, [L.x, L.z + L.rz + 6]]));
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
