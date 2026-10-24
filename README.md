@@ -55,6 +55,14 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
 - Une rivière, un ruisseau avec des ponts, 5 lacs (dont le lac d'Oscar), une montagne et beaucoup d'arbres.
 - 9 cabanes dans les arbres reliées par des ponts de corde (le village des arbres et les cabanes du lac).
 - La maison d'Oscar dans sa grotte : lit de feuilles pour dormir, cheminée et étagère à trophées. Deux grottes à explorer (cristaux et fossile).
+- Une carte deux fois et demie plus grande, avec de nouvelles zones autour du parc :
+  - au nord, la station de ski du Pic Grizzly : montagnes enneigées, 3 pistes, 2 télésièges sur lesquels on s'assoit, le chalet d'Yvette (luge, skis, bonnet), Marcel au télésiège et Cabriole la chèvre et son slalom ;
+  - à l'ouest, la grande forêt avec des séquoias géants, des fougères, des champignons à cueillir et Elliot l'élan ;
+  - à l'est, la grande prairie avec les bisons, le moulin à vent et la ferme des tournesols, et au sud-est le canyon rouge ;
+  - au sud, le marais avec ses passerelles en bois, ses roseaux et ses nénuphars.
+- 10 animaux sauvages à noter dans le carnet d'Elliot : élan, loup, sanglier, bison, bouquetin, marmotte, aigle royal, héron, grenouille et lynx.
+- Des nuages qui passent dans le ciel (leur ombre glisse sur le sol), de la neige qui tombe en montagne et une mer de nuages au bord du monde.
+- Des défis en plus des 14 missions : monter au sommet, le slalom, le carnet sauvage. Ils sont listés dans le journal.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.
