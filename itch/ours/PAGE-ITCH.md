@@ -10,20 +10,20 @@
 
 1. Sur itch.io, clique sur **« Upload new project »**.
 2. **Title** : `Ours Malin`
-3. **Short description or tagline** : `Aide Oscar l'ours à sauver son parc, construis un camping-car volant et pars sur la Lune avec tous tes amis !`
+3. **Short description or tagline** : `Aide Oscar, un ours gourmand et têtu, à sauver son parc, va sur la Lune et retrouve tes amis dans la Forêt Immense !`
 4. **Kind of project** : **HTML**.
 5. **Uploads** : envoie `ours-malin-itch.zip` et coche **« This file will be played in the browser »**.
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 65, 59, 67, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `skiing`, `open-world`, `family-friendly`, `space`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
 
 ## Important
 
-Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, Zib et les Zoublis, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
+Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, Zib et les Zoublis, Brume, l'Arbre-Mère, la Forêt Immense, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
 
 Pour les dons : un parent doit t'aider pour le compte de paiement. Après la publication, tu peux mettre l'adresse de ta page dans `ours/index.html` (ligne `const SUPPORT_URL = '';`).
 
@@ -31,7 +31,7 @@ Pour les dons : un parent doit t'aider pour le compte de paiement. Après la pub
 
 ## Description à copier (français)
 
-**Oscar est un ours très malin… et il doit sauver son parc !**
+**Oscar est un ours qui se croit très malin… Il est surtout gourmand, rigolo et têtu comme une mule ! Et il doit sauver son parc.**
 
 Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centre commercial. Avec ses amis Max le castor, Lulu la loutre, Raflex le raton laveur, Donovan le canard, Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau, Oscar doit gagner 7 étoiles du parc pour convaincre la maire d'en faire une réserve naturelle !
 
@@ -48,6 +48,8 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Le rêve d'Oscar : aller dans l'espace !** Choisis un métier (facteur, pilote d'avion ou capitaine de bateau), gagne des pièces et transforme ton camping-car volant en camping-car spatial !
 - **Chapitre 2 : le grand jour !** Tous les amis montent dans le camping-car spatial. On s'envole doucement au-dessus du parc pour admirer le paysage… jusqu'à la **Lune** !
 - **Sur la Lune, surprise : des extraterrestres !** Aide les Zoublis à réparer leur soucoupe (cristaux d'énergie, glace, télescopes) et à retrouver leur planète.
+- **Chapitre 3 : la Forêt Immense !** Une pluie d'étoiles filantes fait tomber le camping-car dans une forêt géante et brumeuse. Avec Brume, le grand cerf blanc, retrouve tes 11 amis perdus, répare le camping-car, rallume les pierres-lanternes et réveille l'Arbre-Mère !
+- **Oscar pense tout haut** : il fonce dans les arbres (et il insiste !), rêve de miel, se croit le plus malin et dit des bêtises qui font rire.
 - **De beaux graphismes** : l'herbe et les fleurs bougent avec le vent, un vrai ciel avec un soleil et des étoiles, de l'eau qui brille et des feuilles qui tombent.
 - **Chaque ami a sa maison** : en facteur, dépose les lettres dans leurs boîtes aux lettres.
 - **De nouveaux amis** : joue à cache-cache avec Praline la carline, fais la course de luge contre Roquette le raton laveur et réponds aux devinettes de Filou le renard !
@@ -65,7 +67,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 
 ## Description to copy (English)
 
-**Oscar is a very clever bear… and he must save his park!**
+**Oscar is a bear who thinks he's very clever… He's mostly greedy, silly and as stubborn as a mule! And he must save his park.**
 
 Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his friends Max the beaver, Lulu the otter, Raflex the raccoon, Donovan the duck, Noisette the squirrel, Madame Plume the owl and Grandpa Badger, Oscar must earn 7 park stars to convince the mayor to turn it into a nature reserve!
 
@@ -82,6 +84,8 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Oscar's dream: going to space!** Pick a job (mail carrier, airplane pilot or boat captain), earn coins and turn your flying camper van into a space camper!
 - **Chapter 2: the big day!** All the friends climb aboard the space camper. Rise slowly above the park to admire the view… all the way to the **Moon**!
 - **Surprise on the Moon: aliens!** Help the Zoublis fix their flying saucer (energy crystals, ice, telescopes) and find their home planet.
+- **Chapter 3: the Immense Forest!** A meteor shower sends the camper crashing into a giant, misty forest. With Brume the white stag, find your 11 lost friends, fix the camper, relight the lantern stones and wake the Mother Tree!
+- **Oscar thinks out loud**: he bumps into trees (and keeps pushing!), dreams of honey, thinks he's the smartest and says silly things that make you laugh.
 - **Beautiful graphics**: grass and flowers sway in the wind, a real sky with a glowing sun and stars, shiny water and falling leaves.
 - **Every friend has a house**: as the mail carrier, drop letters in their mailboxes.
 - **New friends**: play hide-and-seek with Praline the pug, race Roquette the raccoon on a sled and solve Filou the fox's riddles!

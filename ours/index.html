@@ -332,6 +332,8 @@ function setTimeOfDay(h, focus) {
 
 // ================= Le parc des Pins =================
 const HALF = 320;
+// La Forêt Immense (chapitre 3) est une région à part, loin à l'ouest
+const FOREST_X = -2000;
 const LAKE = { x: 40, z: 72, rx: 46, rz: 36 };
 const RIVER_N = [[62, -212], [55, -150], [48, -100], [30, -60], [34, -20], [38, 42]];
 const RIVER_S = [[64, 100], [78, 140], [84, 175], [92, 214], [100, 262], [94, 334]];
@@ -452,6 +454,7 @@ const REG = {
 const MESAS = [[252, 206, 13, 12], [292, 246, 10, 17], [244, 280, 12, 9], [302, 184, 8, 11], [270, 300, 9, 14]];
 function groundY(x, z) {
   if (x > 1500) return moonY(x, z);
+  if (x < -1500) return forestY(x, z);
   if (x > 700) return 0;
   let y = (fbm(x * 0.02, z * 0.02, 3) - 0.45) * 1.6;
   const dm = Math.hypot(x - MOUNT.x, z - MOUNT.z) / MOUNT.r;
@@ -476,6 +479,7 @@ function groundY(x, z) {
 const FROZEN = PONDS.filter(L => L.frozen);
 const onIce = (x, z) => FROZEN.some(L => ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2 < 1.1);
 function deckY(x, z) {
+  if (x < -1500) return forestDeck(x, z);
   if (PONTOON_DECKS.length && lakeE(x, z) < 1.4) { const pd = pontoonDeck(x, z); if (pd !== null) return pd; }
   if (z < -200 && onIce(x, z)) return WATER_Y + 0.06;
   if (z > 205) for (const b of BOARDWALKS) if (polyDist(x, z, b) < 1.5) return 0.3;
@@ -503,21 +507,23 @@ function inZone(x, z) {
 }
 
 // ================= Collisions =================
-const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [];
-for (let i = 0; i < NC * NC; i++) grid.push([]);
+const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [];
+for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); }
 const cellOf = v => clamp(Math.floor((v + HALF + 8) / CELL), 0, NC - 1);
+// La forêt a sa propre grille, centrée sur elle
+const gridOf = x => x < -1500 ? gridF : grid, gridOx = x => x < -1500 ? FOREST_X : 0;
 function addCol(c) {
-  const r = c.r || Math.hypot(c.hw, c.hd);
-  for (let i = cellOf(c.x - r); i <= cellOf(c.x + r); i++) for (let j = cellOf(c.z - r); j <= cellOf(c.z + r); j++) grid[j * NC + i].push(c);
+  const r = c.r || Math.hypot(c.hw, c.hd), gr = gridOf(c.x), ox = gridOx(c.x);
+  for (let i = cellOf(c.x - ox - r); i <= cellOf(c.x - ox + r); i++) for (let j = cellOf(c.z - r); j <= cellOf(c.z + r); j++) gr[j * NC + i].push(c);
   return c;
 }
 const addCircle = (x, z, r) => addCol({ x, z, r });
 const addBox = (x, z, hw, hd, rot) => addCol({ x, z, hw, hd, rot: rot || 0, c: Math.cos(rot || 0), s: Math.sin(rot || 0), box: true });
 function collide(p, r) {
   // Pousse le cercle (p.x, p.z, rayon r) hors des obstacles
-  const seen = new Set();
-  for (let i = cellOf(p.x - r); i <= cellOf(p.x + r); i++) for (let j = cellOf(p.z - r); j <= cellOf(p.z + r); j++) {
-    for (const c of grid[j * NC + i]) {
+  const seen = new Set(), gr = gridOf(p.x), ox = gridOx(p.x);
+  for (let i = cellOf(p.x - ox - r); i <= cellOf(p.x - ox + r); i++) for (let j = cellOf(p.z - r); j <= cellOf(p.z + r); j++) {
+    for (const c of gr[j * NC + i]) {
       if (seen.has(c) || c.off) continue; seen.add(c);
       if (!c.box) {
         const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), m = r + c.r;
@@ -539,7 +545,8 @@ function collide(p, r) {
       }
     }
   }
-  if (p.x < 700) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
+  if (p.x < -1500) { const dx = p.x - FOREST_X, d = Math.hypot(dx, p.z), m = FOREST.r - 4; if (d > m) { p.x = FOREST_X + dx / d * m; p.z = p.z / d * m; } }
+  else if (p.x < 700) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
   else if (p.x > 1500) { const dx = p.x - MOON.x, dz = p.z - MOON.z, d = Math.hypot(dx, dz), m = MOON.r - 4; if (d > m) { p.x = MOON.x + dx / d * m; p.z = MOON.z + dz / d * m; } }
 }
 
@@ -547,7 +554,7 @@ function collide(p, r) {
 function treeCover(x, z) {
   let n = 0;
   for (const k of [[0, 1.5], [0, 3.5], [1.6, 2.5], [-1.6, 2.5]]) {
-    const px = x + k[0], pz = z + k[1], c0 = grid[cellOf(pz) * NC + cellOf(px)];
+    const px = x + k[0], pz = z + k[1], c0 = gridOf(px)[cellOf(pz) * NC + cellOf(px - gridOx(px))];
     for (const c of c0) if (c.tree && Math.hypot(c.x - px, c.z - pz) < 2.6) { n++; break; }
   }
   return n >= 2;
@@ -1732,7 +1739,7 @@ const ITEMS = {
   brochet: { n: 'Brochet', e: '🐟', sell: 16, fish: 1 }, anguille: { n: 'Anguille', e: '🐍', sell: 18, fish: 1 }, saumon: { n: 'Saumon', e: '🐠', sell: 22, fish: 1 },
   silure: { n: 'Poisson-chat', e: '🐡', sell: 26, fish: 1 }, dore: { n: 'Poisson doré', e: '🐠', sell: 60, fish: 1 },
   lait: { n: 'Lait', e: '🥛', en: 20, sell: 4 }, luge: { n: 'Luge', e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: 'Champignon', e: '🍄', en: 15, sell: 5 },
-  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 },
+  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 }, graineM: { n: 'Graine de l\'Arbre-Mère', e: '🌰', key: 1 },
   p_chassis: { n: 'Vieux châssis', e: '🛻', key: 1 }, p_roues: { n: 'Quatre roues', e: '🛞', key: 1 }, p_carrosserie: { n: 'Carrosserie', e: '🚐', key: 1 }, p_volant: { n: 'Volant et sièges', e: '🪑', key: 1 }, p_moteur: { n: 'Moteur de camion', e: '⚙️', key: 1 }, p_phares: { n: 'Phares', e: '💡', key: 1 },
   coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, cristal: { n: 'Cristal bleu', e: '💎', sell: 80 }, fossile: { n: 'Fossile', e: '🦴', sell: 60 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
   chapeau: { n: 'Chapeau', e: '🎩', key: 1 }, manteau: { n: 'Manteau', e: '🧥', key: 1 }, canne: { n: 'Canne à pêche', e: '🎣', key: 1 }, pelle: { n: 'Pelle', e: '⛏️', key: 1 },
@@ -2108,7 +2115,7 @@ let coneMeshes = [], partMeshes = {}, xMarks = [], ringMeshes = [], bobber = nul
 function buildInteractions() {
   for (const b of berryBushes) addInter({ x: b.x, z: b.z, r: b.r + 1.6, icon: '🫐', label: () => 'Manger des baies', can: () => b.eatenDay !== S.day, act: () => {
     b.eatenDay = S.day; setBerries(b, false); S.energy = Math.min(100, S.energy + 15); sfx.eat(); hearts(P.x, P.y + 3, P.z);
-    toast('Miam, des baies ! +15 énergie'); questEvent('berries');
+    toast('Miam, des baies ! +15 énergie'); questEvent('berries'); if (Math.random() < 0.4) oscarSay(pick(OSCAR_EAT), 3);
   } });
   for (const bk of baskets) addInter({ x: bk.x, z: bk.z, r: 2.6, icon: '🧺', label: () => 'Chiper le pique-nique', can: () => bk.takenDay !== S.day, act: () => steal(bk) });
   addInter({ x: POI.bed[0], z: POI.bed[1], r: 3, icon: '💤', label: () => S.time > 18 || S.time < 5 ? 'Dormir jusqu\'au matin' : 'Faire une sieste', can: () => true, act: sleep });
@@ -2175,7 +2182,7 @@ function fishSpot() {
   const fx = P.x + Math.sin(P.rot) * 3.5, fz = P.z + Math.cos(P.rot) * 3.5;
   return waterDepth(fx, fz) > 0.4 || (Math.abs(P.x - POI.dock[0]) < 1.6 && P.z > POI.dock[1] + 6);
 }
-function camperNear() { return P.mode === 'walk' && P.x < 1500 && Math.hypot(C.x - P.x, C.z - P.z) < 4.2; }
+function camperNear() { return P.mode === 'walk' && P.x < 1500 && P.x > -1500 && Math.hypot(C.x - P.x, C.z - P.z) < 4.2; }
 function findInteraction() {
   if (P.mode !== 'walk' || G.talking) return null;
   let best = null, bd = 1e9;
@@ -2346,7 +2353,7 @@ const QUESTS = [
     { t: 'Va voir Max le castor à son atelier, près de la rivière', talk: 'max', at: () => POI.max, lines: [
       ['max', 'Salut Oscar ! J\'ai une très mauvaise nouvelle…'],
       ['max', 'Monsieur Béton veut raser notre parc pour construire un énorme centre commercial !'],
-      ['oscar', 'Quoi ?! Mais c\'est notre maison !'],
+      ['oscar', 'Quoi ?! Un centre commercial ? Ici ? Non, non et NON ! C\'est notre maison !'],
       ['max', 'La maire va bientôt décider. Si le parc est propre et plein de vie, elle en fera une réserve naturelle.'],
       ['max', 'Il faut gagner 7 étoiles du parc. On va y arriver ensemble !'],
       ['max', 'Mais d\'abord… j\'ai une faim de castor ! Rapporte-moi 3 pique-niques du camping.'],
@@ -2472,7 +2479,7 @@ const QUESTS = [
     { t: 'Montre le plan d\'avion à Max', talk: 'max', at: () => POI.max, lines: [
       ['max', 'Wouah ! Un plan pour faire voler… n\'importe quoi !'],
       ['max', 'J\'ai une idée : on va emmener la maire voir le parc d\'en haut. Elle ne pourra pas dire non !'],
-      ['oscar', 'Mais on n\'a pas de véhicule…'],
+      ['oscar', 'Mais on n\'a pas de véhicule… Je peux porter la maire sur mon dos ? Non ? Bon.'],
       ['max', 'Alors on va le construire nous-mêmes ! Un camping-car, avec tout ce qu\'il faut.'],
       ['max', 'Il nous faut 6 pièces : un châssis, des roues, une carrosserie, un volant avec des sièges, un moteur et des phares.'],
       ['max', 'Il y a un vieux châssis à la casse. Pour le reste, demande à nos amis : Raflex, Lulu et Roquette ont sûrement quelque chose !'],
@@ -2481,7 +2488,7 @@ const QUESTS = [
     { get t() { return cpartsLeftText(); }, ev: 'cpart', n: 6, at: () => cpartTarget() },
     { t: 'Parle à Max', talk: 'max', at: () => POI.max, lines: [
       ['max', 'La dernière pièce… et voilà ! Notre camping-car est terminé !'],
-      ['oscar', 'On l\'a construit nous-mêmes ! Il est magnifique !'],
+      ['oscar', 'On l\'a construit nous-mêmes ! Enfin… surtout toi, Max. Mais moi, j\'ai beaucoup regardé.'],
       ['max', 'Tiens, voici la clé. Monte dedans et fais un petit tour d\'essai !'],
     ], done: () => { S.flags.camper = 1; give('cle'); showCamperParts(); sparkle(C.x, 3, C.z); sfx.fanfare(); } },
     { t: 'Monte dans le camping-car et fais un tour d\'essai', ev: 'testDrive', at: () => [C.x, C.z] },
@@ -2503,7 +2510,7 @@ const QUESTS = [
   { id: 'maire', title: 'Le grand jour', steps: [
     { t: 'Va chercher la maire à la mairie du village (déguisé !)', talk: 'gisele', at: () => POI.mairie, lines: [
       ['gisele', 'Bonjour monsieur… euh… vous êtes bien poilu !'],
-      ['oscar', 'Madame la maire, venez voir notre parc d\'en haut, avant de décider !'],
+      ['oscar', 'Madame la maire, venez voir notre parc d\'en haut, avant de décider ! Je conduis très bien. Presque jamais dans les arbres.'],
       ['gisele', 'En camping-car volant ? Quelle drôle d\'idée… D\'accord, allons-y !'],
     ], done: () => { S.flags.mayor = 1; NPCS.gisele.hidden = true; NPCS.gisele.model.visible = false; } },
     { t: 'Monte dans le camping-car et décolle avec la maire', ev: 'takeoff', at: () => [C.x, C.z] },
@@ -2513,7 +2520,7 @@ const QUESTS = [
       ['gisele', 'Quel voyage ! Ce parc est magnifique…'],
       ['gisele', 'Des cerfs, des renards, des cabanes dans les arbres, un lac plein de poissons, et tout est si propre !'],
       ['gisele', 'Et ce musée, cette course, ces cabanes… C\'est décidé : le parc des Pins devient une RÉSERVE NATURELLE !'],
-      ['oscar', 'Hourra ! Le parc est sauvé !'],
+      ['oscar', 'Hourra ! Le parc est sauvé ! Je l\'avais dit. Je l\'avais dit à TOUT le monde !'],
       ['gisele', 'Et Monsieur Béton peut remballer ses bulldozers !'],
     ], done: () => { star(); S.done = true; setChantier(false); NPCS.beton.hidden = true; NPCS.beton.model.visible = false; G.fireworks = 14; setTimeout(() => banner('Le parc est sauvé !', 'Merci Oscar 🐻🌲'), 900); sfx.fanfare(); } },
   ] },
@@ -3236,7 +3243,7 @@ function talkSki(id) {
   if (id === 'yvette' && P.disguise && sideYvette()) return true;
   if (id === 'cabriole') {
     if (!S.flags.luge) {
-      talk([['cabriole', 'Bêêê ! Un ours tout en haut de la montagne ? Ça alors !'], ['cabriole', 'Je m\'appelle Cabriole. Ici, on glisse ! Tiens, je te donne ma vieille luge.'], ['oscar', 'Merci Cabriole ! Comment on fait ?'], ['cabriole', 'Sur une pente enneigée, appuie sur Action pour t\'asseoir dessus. Gauche et droite pour tourner !'], ['cabriole', 'Quand tu seras prêt, reviens me voir pour mon slalom. Les meilleurs gagnent un cadeau !']], () => { S.flags.luge = 1; give('luge'); saveGame(); });
+      talk([['cabriole', 'Bêêê ! Un ours tout en haut de la montagne ? Ça alors !'], ['cabriole', 'Je m\'appelle Cabriole. Ici, on glisse ! Tiens, je te donne ma vieille luge.'], ['oscar', 'Merci Cabriole ! La luge, c\'est facile : on s\'assoit et on crie très fort, c\'est ça ?'], ['cabriole', 'Sur une pente enneigée, appuie sur Action pour t\'asseoir dessus. Gauche et droite pour tourner !'], ['cabriole', 'Quand tu seras prêt, reviens me voir pour mon slalom. Les meilleurs gagnent un cadeau !']], () => { S.flags.luge = 1; give('luge'); saveGame(); });
       return true;
     }
     if (sideCabriole()) return true;
@@ -3433,7 +3440,7 @@ function showMushrooms() { mushMeshes.forEach((g, i) => { g.visible = (S.mush ||
 function talkElliot() {
   const n = Object.keys(S.wild || {}).length;
   if (!S.flags.carnet) {
-    talk([['elliot', 'Ooooh… Bonjour, petit ours. Je suis Elliot, le gardien de la grande forêt.'], ['elliot', 'Autour du parc vivent des animaux sauvages : loups, bisons, aigles, marmottes… dix espèces en tout.'], ['oscar', 'Je ne les ai jamais vus !'], ['elliot', 'Prends ce carnet. Approche-toi doucement de chaque animal pour le noter dedans.'], ['elliot', 'Reviens me voir quand tu en auras trouvé. Je te réserve une belle surprise.']], () => { S.flags.carnet = 1; toast('📖 Carnet sauvage : approche-toi des animaux pour les noter !'); saveGame(); });
+    talk([['elliot', 'Ooooh… Bonjour, petit ours. Je suis Elliot, le gardien de la grande forêt.'], ['elliot', 'Autour du parc vivent des animaux sauvages : loups, bisons, aigles, marmottes… dix espèces en tout.'], ['oscar', 'Je ne les ai jamais vus ! … Sauf peut-être en rêve. Avec du miel.'], ['elliot', 'Prends ce carnet. Approche-toi doucement de chaque animal pour le noter dedans.'], ['elliot', 'Reviens me voir quand tu en auras trouvé. Je te réserve une belle surprise.']], () => { S.flags.carnet = 1; toast('📖 Carnet sauvage : approche-toi des animaux pour les noter !'); saveGame(); });
     return;
   }
   if (sideElliot()) return;
@@ -3672,20 +3679,20 @@ function updateSide(dt) {
 function talkSide(id) {
   if (id === 'gaspard') {
     const s = sqState('marais');
-    if (s === undefined) return talk([['gaspard', 'Kraaak… Bonjour, l\'ours. Je suis Gaspard, je pêche ici depuis des années.'], ['gaspard', 'Mais des promeneurs ont jeté des déchets dans mon marais. Les grenouilles sont tristes…'], ['oscar', 'Je vais tout ramasser !'], ['gaspard', 'Il y en a 6, près des passerelles. Merci !']], () => sqSet('marais', 0));
+    if (s === undefined) return talk([['gaspard', 'Kraaak… Bonjour, l\'ours. Je suis Gaspard, je pêche ici depuis des années.'], ['gaspard', 'Mais des promeneurs ont jeté des déchets dans mon marais. Les grenouilles sont tristes…'], ['oscar', 'Je vais tout ramasser ! Et si je trouve un pot de miel, je le garde.'], ['gaspard', 'Il y en a 6, près des passerelles. Merci !']], () => sqSet('marais', 0));
     if (s === 1) return talk([['gaspard', 'Le marais brille comme un sou neuf ! Les grenouilles chantent à nouveau.'], ['gaspard', 'Voici 70 pièces. Et un secret : les poissons dorés aiment les eaux propres…']], () => sideDone('marais', 70));
     return talk([['gaspard', s === 'done' ? 'Kraaak ! Merci encore pour le marais.' : 'Encore ' + (6 - (S.mtrash || []).length) + ' déchets à ramasser, l\'ours.']]);
   }
   if (id === 'josette') {
     if (!P.disguise) return talk([['josette', 'Aaaah ! Un ours près de mes poules ! Va-t\'en !']], () => toast(S.flags.disguise ? 'Astuce : mets ton déguisement (T) pour parler aux humains.' : 'Les humains ont peur des ours… il te faudrait un déguisement !'));
     const s = sqState('poules');
-    if (s === undefined) return talk([['josette', 'Bonjour monsieur ! Quelle catastrophe : mes 5 poules se sont échappées dans la prairie !'], ['oscar', 'Je vais vous les ramener, madame.'], ['josette', 'Oh merci ! Cours vite et touche-les pour les attraper. Elles sont rapides !']], () => { sqSet('poules', 0); CHICKENS.forEach(c => { c.caught = false; c.hidden = false; c.model.visible = true; }); });
+    if (s === undefined) return talk([['josette', 'Bonjour monsieur ! Quelle catastrophe : mes 5 poules se sont échappées dans la prairie !'], ['oscar', 'Des poules ? Facile ! Je cours plus vite qu\'une poule. Enfin… je crois.'], ['josette', 'Oh merci ! Cours vite et touche-les pour les attraper. Elles sont rapides !']], () => { sqSet('poules', 0); CHICKENS.forEach(c => { c.caught = false; c.hidden = false; c.model.visible = true; }); });
     if (s === 1) return talk([['josette', 'Toutes mes poules ! Vous êtes formidable, monsieur.'], ['josette', 'Tenez, 80 pièces. Et revenez traire mes vaches quand vous voulez !']], () => sideDone('poules', 80));
     return talk([['josette', s === 'done' ? 'Mes poules vont très bien, merci !' : 'Il manque encore ' + (5 - (S.hens || []).length) + ' poules…']]);
   }
   if (id === 'bernard') {
     const s = sqState('bisonneau');
-    if (s === undefined) return talk([['bernard', 'Mmmmmooooh… Je suis Bernard, le chef du troupeau.'], ['bernard', 'Notre petit s\'est éloigné dans le canyon rouge, au sud. Il ne retrouve plus son chemin.'], ['oscar', 'Je vais le chercher !'], ['bernard', 'Ramène-le doucement. Merci, petit ours.']], () => sqSet('bisonneau', 0));
+    if (s === undefined) return talk([['bernard', 'Mmmmmooooh… Je suis Bernard, le chef du troupeau.'], ['bernard', 'Notre petit s\'est éloigné dans le canyon rouge, au sud. Il ne retrouve plus son chemin.'], ['oscar', 'Je vais le chercher ! Et je ne rentre pas avant de l\'avoir trouvé. Même pas pour le goûter. Bon… sauf pour le goûter.'], ['bernard', 'Ramène-le doucement. Merci, petit ours.']], () => sqSet('bisonneau', 0));
     if (s === 2) return talk([['bernard', 'Le petit est de retour ! Tout le troupeau te remercie.'], ['bernard', 'Prends ces 90 pièces. Tu seras toujours le bienvenu dans la prairie.']], () => sideDone('bisonneau', 90));
     return talk([['bernard', s === 'done' ? 'La prairie est belle aujourd\'hui, non ?' : s === 1 ? 'Ramène-le jusqu\'ici, au troupeau !' : 'Le petit est dans le canyon rouge, au sud-est.']]);
   }
@@ -3694,7 +3701,7 @@ function talkSide(id) {
 function sideElliot() {
   const s = sqState('louveteau');
   if (!S.flags.carnet) return false;
-  if (s === undefined) { talk([['elliot', 'Oh, une mauvaise nouvelle : un louveteau a quitté sa meute. On l\'a vu dans le marais, au sud.'], ['elliot', 'Tu veux bien le ramener à ses parents, tout à l\'ouest de la forêt ?'], ['oscar', 'Bien sûr, Elliot !']], () => sqSet('louveteau', 0)); return true; }
+  if (s === undefined) { talk([['elliot', 'Oh, une mauvaise nouvelle : un louveteau a quitté sa meute. On l\'a vu dans le marais, au sud.'], ['elliot', 'Tu veux bien le ramener à ses parents, tout à l\'ouest de la forêt ?'], ['oscar', 'Bien sûr, Elliot ! Je suis très fort pour regarder des choses.']], () => sqSet('louveteau', 0)); return true; }
   if (s === 2) { talk([['elliot', 'Le louveteau est rentré ! Les loups hurlent de joie ce soir.'], ['elliot', 'Voici 60 pièces pour ta gentillesse.']], () => sideDone('louveteau', 60)); return true; }
   return false;
 }
@@ -3706,7 +3713,7 @@ function sideCabriole() {
 }
 function sideYvette() {
   const s = sqState('chocolat');
-  if (s === undefined) { talk([['yvette', 'Oh là là, plus de lait pour mes chocolats chauds ! Et plus de chocolat non plus…'], ['yvette', 'Vous pourriez m\'apporter du lait de la ferme et un chocolat du café de Nina ?'], ['oscar', 'Avec plaisir, madame !']], () => sqSet('chocolat', 0)); return true; }
+  if (s === undefined) { talk([['yvette', 'Oh là là, plus de lait pour mes chocolats chauds ! Et plus de chocolat non plus…'], ['yvette', 'Vous pourriez m\'apporter du lait de la ferme et un chocolat du café de Nina ?'], ['oscar', 'Avec plaisir, madame ! Je suis le meilleur pour ça. Je n\'ai jamais essayé, mais je suis le meilleur.']], () => sqSet('chocolat', 0)); return true; }
   if (s === 0 && has('lait') && has('choco')) { talk([['yvette', 'Merveilleux ! Les skieurs vont être ravis.'], ['yvette', 'Voici 50 pièces. Et pour vous, le chocolat chaud sera toujours gratuit !']], () => { take('lait'); take('choco'); S.flags.chocoFree = 1; sideDone('chocolat', 50); }); return true; }
   return false;
 }
@@ -4221,7 +4228,7 @@ function depositRocket() {
     const help = [[['roquette', 'Les réacteurs ? C\'est pour moi ! Rien ne va plus vite que moi !'], ['max', 'Merci Roquette ! Tac tac tac… Les réacteurs sont posés.']], [['raflex', 'Yo ! J\'ai trouvé des plaques argentées trop stylées pour la coque.'], ['noisette', 'Et moi, je visse les petites vis ! J\'ai des pattes très agiles.']], [['lulu', 'La bulle de verre, c\'est comme un aquarium à l\'envers ! Je la nettoie.'], ['donovan', 'Coin ! J\'ai rempli les réservoirs d\'oxygène. On pourra respirer là-haut !']], [['plume', 'Hou hou ! J\'ai réglé l\'antenne pour parler avec la Terre.'], ['blaireau', 'Et voilà le drapeau. Tout le parc a construit ce camping-car, petit.'], ['maurice', 'Wouf ! Praline et moi, on a gardé les outils !']]][after - 1];
     setTimeout(() => talk(help.filter(l => NPCS[l[0]])), 1600);
   }
-  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['max', 'Ça y est, Oscar ! Ton camping-car peut voler jusque dans l\'espace !'], ['oscar', 'J\'ai travaillé si dur pour ça… Merci Max !'], ['max', 'Et tu ne pars pas seul : on vient TOUS avec toi !'], ['max', 'Rendez-vous à la base de lancement du canyon rouge. Direction la Lune !']]), 2500);
+  if (S.rocket >= ROCKET_GOAL) setTimeout(() => talk([['max', 'Ça y est, Oscar ! Ton camping-car peut voler jusque dans l\'espace !'], ['oscar', 'J\'ai travaillé si dur ! J\'ai même raté deux siestes. Merci Max !'], ['max', 'Et tu ne pars pas seul : on vient TOUS avec toi !'], ['max', 'Rendez-vous à la base de lancement du canyon rouge. Direction la Lune !']]), 2500);
   updateHUD(); saveGame();
 }
 function showRocket() { const k = (S.rocket || 0) / ROCKET_GOAL; rocketParts.forEach((p, i) => { p.visible = k >= (i + 1) / 4; }); }
@@ -4274,8 +4281,8 @@ function buildCamperParts() {
   // Les tôles de carrosserie derrière la grange
   carroMesh = new T.Group(); carroMesh.position.set(CARRO_SPOT[0], groundY(CARRO_SPOT[0], CARRO_SPOT[1]), CARRO_SPOT[1]); scene.add(carroMesh);
   for (let k = 0; k < 3; k++) { const pl = mesh(new T.BoxGeometry(2.4, 1.6, 0.1), [lam(0xf3e6c8), lam(0xf07a3a), lam(0x3a9a9a)][k], k * 0.3 - 0.3, 0.8, k * 0.25, carroMesh); pl.rotation.x = -0.3; }
-  addInter({ x: 152, z: -112, r: 4, icon: '🛻', label: () => 'Prendre le vieux châssis', can: () => buildStep() && !partGot(CPARTS[0]), act: () => { give('p_chassis'); chassisMesh.visible = false; sparkle(152, 1, -112); talk([['oscar', 'Un vieux châssis tout rouillé… Max saura le réparer !']]); } });
-  addInter({ x: CARRO_SPOT[0], z: CARRO_SPOT[1], r: 3, icon: '🚐', label: () => 'Prendre la carrosserie', can: () => buildStep() && !partGot(CPARTS[2]), act: () => { give('p_carrosserie'); carroMesh.visible = false; sparkle(CARRO_SPOT[0], 1.5, CARRO_SPOT[1]); talk([['oscar', 'Des belles tôles crème, orange et bleues. Ce sera parfait !']]); } });
+  addInter({ x: 152, z: -112, r: 4, icon: '🛻', label: () => 'Prendre le vieux châssis', can: () => buildStep() && !partGot(CPARTS[0]), act: () => { give('p_chassis'); chassisMesh.visible = false; sparkle(152, 1, -112); talk([['oscar', 'Un vieux châssis tout rouillé ! Il sent le vieux fromage… Je le garde quand même. Max saura le réparer !']]); } });
+  addInter({ x: CARRO_SPOT[0], z: CARRO_SPOT[1], r: 3, icon: '🚐', label: () => 'Prendre la carrosserie', can: () => buildStep() && !partGot(CPARTS[2]), act: () => { give('p_carrosserie'); carroMesh.visible = false; sparkle(CARRO_SPOT[0], 1.5, CARRO_SPOT[1]); talk([['oscar', 'Des tôles crème, orange et bleues ! Moi, je voulais tout couleur miel… Bon, ça ira.']]); } });
   // Max pose les pièces sur le camping-car, devant l'atelier
   addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 5, icon: '🔧', label: () => 'Donner les pièces à Max', can: () => buildStep() && CPARTS.some(p => has(p.item)), act: deliverCparts });
 }
@@ -4445,7 +4452,7 @@ function buildMoon() {
   for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3.2, icon: '👽', label: () => 'Parler à ' + n.name.split(',')[0], can: () => !n.hidden, act: () => talkZoubli(id) }); }
   // Voyages en camping-car : départ de la base sur Terre, retour depuis la Lune
   addInter({ x: POI.base[0], z: POI.base[1] + 8, r: 6, icon: '🚀', label: () => S.flags.moon ? 'Aller sur la Lune' : 'Le grand jour : partir pour la Lune !', can: () => (S.rocket || 0) >= ROCKET_GOAL && P.x < 1500, act: () => { if (S.flags.moon) quickTravel(true); else startLaunch(); } });
-  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 6, icon: '🌍', label: () => 'Rentrer sur Terre', can: () => onMoon() && S.flags.moon, act: () => quickTravel(false) });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 6, icon: '🌍', label: () => S.flags.ch2done && !S.flags.ch3 ? 'Rentrer sur Terre avec tous les amis' : 'Rentrer sur Terre', can: () => onMoon() && S.flags.moon, act: () => { if (S.flags.ch2done && !S.flags.ch3) startCrash(); else quickTravel(false); } });
 }
 // ---------- Le grand jour : décollage lent, voyage, alunissage ----------
 const CAPTIONS = [[0.5, 'Max : Tout le monde est là ? On part tous ensemble !'], [3, 'Lulu, Raflex, Donovan, Noisette, Papi Blaireau, Madame Plume, Maurice, Praline, Roquette et Filou montent à bord !'], [7, '3…'], [8, '2…'], [9, '1…'], [10, '🚀 DÉCOLLAGE !'], [14, 'Au revoir, le parc des Pins !'], [20, 'Regarde : le grand lac, la forêt et la station de ski…'], [27, 'On traverse les nuages !'], [34, 'Le parc devient tout petit…'], [42, 'Le ciel devient noir : nous voilà dans l\'espace ! ✨'], [51, 'Voilà la Lune ! 🌙'], [58, 'On se pose près d\'un grand cratère…']];
@@ -4463,6 +4470,8 @@ function startLaunch() {
   });
 }
 function updateLaunch(dt) {
+  if (G.cine.kind === 'crash') return updateCrash(dt);
+  if (G.cine.kind === 'home') return updateHome(dt);
   const L = G.cine; L.t += dt; const t = L.t;
   $('quest').style.visibility = 'hidden';
   while (L.cap < CAPTIONS.length && t >= CAPTIONS[L.cap][0]) { status(CAPTIONS[L.cap][1], 'info', 4.5); if (CAPTIONS[L.cap][0] === 10) sfx.takeoff(); L.cap++; }
@@ -4499,15 +4508,15 @@ function updateLaunch(dt) {
     if (k >= 1 && !L.done) { L.done = true; puff(C.x, C.y, C.z, 30, [0.8, 0.8, 0.85], 4); fadeTo(endLaunch); }
   }
 }
-function skipLaunch() { if (!G.cine || G.cine.done || G.cine.t < 3) return; G.cine.done = true; fadeTo(endLaunch); }
+function skipLaunch() { if (G.cine && G.cine.kind) return skipCine(); if (!G.cine || G.cine.done || G.cine.t < 3) return; G.cine.done = true; fadeTo(endLaunch); }
 function endLaunch() {
   launchCrowd.forEach(m => scene.remove(m)); launchCrowd = [];
   G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
   C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; C.y = moonY(C.x, C.z) + 0.8; C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
-  P.mode = 'walk'; P.model.visible = true; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; P.y = moonY(P.x, P.z);
+  P.mode = 'walk'; P.model.visible = true; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; P.y = moonY(P.x, P.z); snapCamera();
   const first = !S.flags.moon; S.flags.moon = 1; if (S.mq === undefined) { S.mq = 0; S.mstep = 0; S.mcnt = 0; }
   refreshMoon(); updateQuestUI(); saveGame();
-  if (first) { banner('Chapitre 2', 'Tous les amis sur la Lune ! 🌙'); setTimeout(() => talk([['lm_max', 'On a réussi ! On est sur la Lune, tous ensemble !'], ['lm_praline', 'Ouaf ! Je saute super haut ici !'], ['oscar', 'Regardez, la Terre, là-haut… Notre parc est quelque part dessus.'], ['lm_plume', 'Hou hou… Explorons un peu. Il y a un grand cratère juste là, à l\'est.']]), 2500); }
+  if (first) { banner('Chapitre 2', 'Tous les amis sur la Lune ! 🌙'); setTimeout(() => talk([['lm_max', 'On a réussi ! On est sur la Lune, tous ensemble !'], ['lm_praline', 'Ouaf ! Je saute super haut ici !'], ['oscar', 'Regardez, la Terre, là-haut ! Notre parc est dessus… Coucou ! Ils me voient, vous croyez ?'], ['lm_plume', 'Hou hou… Explorons un peu. Il y a un grand cratère juste là, à l\'est.']]), 2500); }
 }
 function quickTravel(toMoon) {
   fadeTo(() => {
@@ -4515,7 +4524,7 @@ function quickTravel(toMoon) {
     if (toMoon) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; P.x = MCAMP[0]; P.z = MCAMP[1] + 6; status('🚀 Le camping-car spatial file vers la Lune… Bienvenue au camp de base !', 'info', 4); }
     else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status('🌍 Retour sur Terre, au parc des Pins !', 'info', 4); }
     C.y = groundY(C.x, C.z) + (toMoon ? 0.8 : 0.8); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
-    P.mode = 'walk'; P.y = walkY(P.x, P.z); refreshMoon(); updateQuestUI(); saveGame();
+    P.mode = 'walk'; P.y = walkY(P.x, P.z); snapCamera(); refreshMoon(); updateQuestUI(); saveGame();
   });
 }
 // ---------- Mini-histoire du chapitre 2 ----------
@@ -4524,10 +4533,10 @@ const MQ = [
     { t: 'Explore la Lune avec tes amis… Il y a quelque chose de bizarre dans le grand cratère, à l\'est !', ev: 'discover', at: () => SHIP },
     { t: 'Parle à Zib, le chef des Zoublis', talk: 'zib', at: () => SHIP, lines: [
       ['zib', 'Bliiip ? Bloup ! Vous… vous n\'êtes pas des monstres ?'],
-      ['oscar', 'Non ! Je suis Oscar, un ours. Et voici mes amis. On vient de la Terre !'],
+      ['oscar', 'Non ! Je suis Oscar, un ours très malin. Le plus malin de tous. Et voici mes amis. On vient de la Terre !'],
       ['zib', 'Nous sommes les Zoublis, de la planète Zoubla. Notre vaisseau s\'est écrasé ici, sur la Lune.'],
       ['zib', 'Il n\'a plus d\'énergie, plus de carburant… et nous avons perdu la route de notre planète.'],
-      ['oscar', 'On va vous aider à rentrer chez vous ! Promis !'],
+      ['oscar', 'On va vous aider à rentrer chez vous ! Promis ! Juré ! Croix de bois, croix de miel !'],
       ['zib', 'Merci, ami Oscar ! D\'abord, il faut 5 cristaux d\'énergie violets. Ils sont éparpillés sur la Lune.'],
     ], done: () => refreshMoon() }] },
   { title: 'L\'énergie du vaisseau', steps: [
@@ -4548,7 +4557,7 @@ const MQ = [
   { title: 'La carte des étoiles', steps: [
     { t: 'Regarde dans les 3 télescopes de la Lune (Mont Lunaire, bord du grand cratère, colline de l\'est)', ev: 'mscope', n: 3, at: () => { const k = MSCOPES.findIndex((s, i) => !(S.msc || []).includes(i)); return k >= 0 ? MSCOPES[k] : SHIP; } },
     { t: 'Raconte à Zib ce que tu as vu', talk: 'zib', at: () => SHIP, lines: [
-      ['oscar', 'J\'ai vu une étoile rouge, une étoile bleue en forme de cœur, et trois étoiles alignées…'],
+      ['oscar', 'J\'ai vu une étoile rouge, une étoile bleue en forme de cœur, et trois étoiles alignées… Et une qui ressemblait à un gâteau. Celle-là, je l\'ai peut-être inventée.'],
       ['zib', 'Bloup bloup ! C\'est la route de Zoubla ! Après l\'étoile en cœur, à gauche des trois étoiles !'],
       ['zib', 'Grâce à toi, nous pouvons rentrer à la maison. Viens nous dire au revoir devant le vaisseau.'],
     ] }] },
@@ -4624,17 +4633,724 @@ function updateMoon(dt) {
     G.ufoT += dt; const k = G.ufoT;
     ufo.position.y = moonY(SHIP[0], SHIP[1]) + 1 + k * k * 3; ufo.rotation.y += dt * (2 + k); ufo.position.x = SHIP[0] + Math.max(0, k - 3) ** 2 * 6;
     if (Math.random() < dt * 20) emit(ufo.position.x, ufo.position.y, ufo.position.z, rand(-2, 2), -3, rand(-2, 2), 1, 1, 0.6, 1, 0.8, 0);
-    if (k > 7) { G.ufoT = undefined; S.flags.ch2done = 1; refreshMoon(); banner('Chapitre 2 terminé !', 'Les Zoublis sont rentrés chez eux 👽💚'); sfx.fanfare(); confetti(P.x, P.y + 2, P.z); S.coins += 300; updateHUD(); saveGame(); setTimeout(() => talk([['lm_max', 'Ils sont partis… J\'espère qu\'on les reverra un jour !'], ['oscar', 'Moi aussi. En attendant, on a toute la Lune à explorer !']]), 3500); }
+    if (k > 7) { G.ufoT = undefined; S.flags.ch2done = 1; refreshMoon(); banner('Chapitre 2 terminé !', 'Les Zoublis sont rentrés chez eux 👽💚'); sfx.fanfare(); confetti(P.x, P.y + 2, P.z); S.coins += 300; updateHUD(); saveGame(); setTimeout(() => talk([['lm_max', 'Ils sont partis… J\'espère qu\'on les reverra un jour !'], ['oscar', 'Moi aussi. En attendant, je cherche du miel lunaire. Je sais que ça n\'existe pas. Je cherche quand même.']]), 3500); }
   }
   // Découverte par hasard des Zoublis
   if (onMoon() && S.mq === 0 && S.mstep === 0 && Math.hypot(P.x - SHIP[0], P.z - SHIP[1]) < 32 && !G.talking) {
     moonAdvance();
     for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; puff(n.x, n.y + 1, n.z, 10, [0.6, 1, 0.8], 2); }
     sfx.alert();
-    talk([['oscar', 'Un vaisseau tout cassé ?! Et… qu\'est-ce qui bouge derrière ?'], ['zoubli2', 'Bliiip ! Des géants poilus !'], ['zoubli1', 'Cachez-vous, cachez-vous !'], ['lm_praline', 'Ouaf ! Ce sont des petits bonshommes verts !'], ['oscar', 'N\'ayez pas peur ! On est gentils !']]);
+    talk([['oscar', 'Un vaisseau tout cassé ?! C\'est pas moi ! J\'ai rien touché ! … Et qu\'est-ce qui bouge derrière ?'], ['zoubli2', 'Bliiip ! Des géants poilus !'], ['zoubli1', 'Cachez-vous, cachez-vous !'], ['lm_praline', 'Ouaf ! Ce sont des petits bonshommes verts !'], ['oscar', 'N\'ayez pas peur ! On est gentils ! Surtout moi. Je suis tout doux.']]);
   }
   // Les Zoublis flottent un peu
   for (const id of ['zib', 'zoubli1', 'zoubli2', 'zoubli3']) { const n = NPCS[id]; if (n.model.visible) n.model.position.y = moonY(n.x, n.z) + 0.3 + Math.sin(G.t * 2 + n.x) * 0.15; }
+}
+
+// ================= Chapitre 3 : la Forêt Immense =================
+// En rentrant de la Lune, une pluie d'étoiles filantes touche le camping-car spatial.
+// Il s'écrase dans une forêt géante et brumeuse : les amis ont sauté en parachute-feuille et sont perdus partout.
+// Brume, le grand cerf blanc, aide Oscar à les retrouver, à réparer le camping-car et à réveiller l'Arbre-Mère.
+const FOREST = { x: FOREST_X, z: 0, r: 210 };
+const onForest = () => P.x < -1500;
+const FL = (dx, dz) => [FOREST.x + dx, FOREST.z + dz];
+const FCAMP = FL(-10, 150), FMOTHER = FL(0, -122), FRUINS = FL(150, -42);
+const FRIVER = [[-300, -34], [-230, -30], [-160, -10], [-90, 10], [-30, 0], [30, 15], [90, 30], [150, 20], [230, 40], [300, 44]].map(p => FL(p[0], p[1]));
+const FPOND = { x: FOREST.x + 120, z: 110, rx: 24, rz: 16 };
+const FPATHS = [
+  [FL(-10, 150), FL(-20, 110), FL(-40, 60), FL(-58, 22), FL(-62, -8), FL(-50, -40), FL(-22, -80), FL(-4, -104)],
+  [FL(-10, 150), FL(40, 140), FL(88, 124)],
+  [FL(-20, 110), FL(30, 70), FL(58, 36), FL(62, 8), FL(100, -26), FL(146, -40)],
+  [FL(-40, 60), FL(-100, 76), FL(-146, 66)],
+  [FL(-50, -40), FL(-110, -76), FL(-166, -52)],
+  [FL(100, -26), FL(60, -70), FL(20, -104)],
+  [FL(30, 70), FL(110, 60), FL(170, 58)],
+];
+// Ponts en troncs d'arbre au-dessus de la rivière
+const FBRIDGES = [FL(-60, 6), FL(60, 22)].map(([x, z]) => {
+  let best = null, bd = 1e9;
+  for (let i = 0; i < FRIVER.length - 1; i++) { const a = FRIVER[i], b = FRIVER[i + 1], d = segDist(x, z, a[0], a[1], b[0], b[1]); if (d < bd) { bd = d; best = [b[0] - a[0], b[1] - a[1]]; } }
+  const l = Math.hypot(best[0], best[1]);
+  return { x, z, a: Math.atan2(best[0] / l, -best[1] / l), hl: 8, hw: 1.5, y: 0.55 };
+});
+// Où sont tombés les amis
+const FSPOTS = {
+  max: [-75, 22, 'au bord de la rivière'], lulu: [92, 112, 'au lac des Brumes'], raflex: [146, -36, 'dans les ruines anciennes'], donovan: [40, -30, 'accroché à une branche'],
+  noisette: [-125, -95, 'sous le noisetier géant'], blaireau: [-150, 70, 'dans un vieux terrier'], plume: [-35, -60, 'sur le rocher du Hibou'], maurice: [75, -70, 'au milieu des champignons géants'],
+  praline: [175, 60, 'dans un tronc creux'], roquette: [-168, -56, 'dans un fossé plein de feuilles'], filou: [40, -96, 'près de l\'Arbre-Mère'],
+};
+const FPARTS = [['reacteur', 'le réacteur', -100, 110], ['antenne', 'l\'antenne', 145, 82], ['bulle', 'la bulle d\'oxygène', -98, -130]];
+const FLANTERNS = [[-160, 26, 'de l\'Ouest'], [160, -6, 'de l\'Est'], [10, 74, 'du Sud']];
+const fpos = (k, a) => FL(a[0], a[1]);
+function forestY(x, z) {
+  const dx = x - FOREST.x, dz = z - FOREST.z, d = Math.hypot(dx, dz);
+  let y = (fbm(dx * 0.012 + 70, dz * 0.012, 3) - 0.5) * 9 + (fbm(dx * 0.05, dz * 0.05 + 30, 2) - 0.5) * 1.4;
+  // De grandes collines ferment la forêt tout autour
+  y += sstep(FOREST.r - 40, FOREST.r + 60, d) * 26;
+  // La butte de l'Arbre-Mère
+  y += 6 * sstep(46, 12, Math.hypot(x - FMOTHER[0], z - FMOTHER[1]));
+  // La clairière du crash est plate
+  y = lerp(y, 0.6, sstep(28, 14, Math.hypot(x - FCAMP[0], z - FCAMP[1])));
+  // Le rocher du Hibou
+  const dh = Math.hypot(dx - FSPOTS.plume[0], dz - FSPOTS.plume[1]); if (dh < 6) y += 7 * sstep(6, 2.5, dh);
+  const e = ((x - FPOND.x) / FPOND.rx) ** 2 + ((z - FPOND.z) / FPOND.rz) ** 2;
+  if (e < 1.15) y = lerp(y, -2.4, sstep(1.15, 0.8, e));
+  const rd = polyDist(x, z, FRIVER);
+  if (rd < 18) y = lerp(y, Math.min(y, 0.9), sstep(18, 8, rd));
+  if (rd < 7) y = lerp(y, -1.6, sstep(7, 2.5, rd));
+  return y;
+}
+function forestDeck(x, z) {
+  for (const b of FBRIDGES) { const dx = x - b.x, dz = z - b.z, c = Math.cos(b.a), s = Math.sin(b.a); if (Math.abs(dx * c + dz * s) < b.hl && Math.abs(-dx * s + dz * c) < b.hw) return b.y; }
+  return null;
+}
+// ---------- Modèles ----------
+function makeStag() {
+  // Brume : un grand cerf blanc aux bois qui brillent
+  const g = new T.Group(), f = lam(0xf4f2ee, { flatShading: false }), l = lam(0xdcd6cc, { flatShading: false }), an = lam(0xe8f4ff), glow = new T.MeshBasicMaterial({ color: 0x9fe8ff });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.55, 0, 1.45, 0, 0.9, 0.85, 1.7); ball(body, f, 0.42, 0, 1.62, 0.6, 0.95, 1, 0.8);
+  const neck = new T.Mesh(new T.CylinderGeometry(0.18, 0.26, 0.95, 8), f); neck.position.set(0, 1.98, 0.78); neck.rotation.x = 0.5; body.add(neck);
+  ball(body, l, 0.2, 0, 1.85, 0.92, 1, 1.2, 0.8);
+  const head = new T.Group(); head.position.set(0, 2.42, 1.08); body.add(head);
+  ball(head, f, 0.24, 0, 0, 0, 1, 0.9, 1.3); ball(head, l, 0.14, 0, -0.06, 0.28, 1, 0.8, 1); ball(head, M.dark, 0.06, 0, -0.03, 0.42);
+  for (const s of [-1, 1]) {
+    ball(head, eyeMat, 0.045, s * 0.13, 0.07, 0.17);
+    const e = new T.Mesh(new T.ConeGeometry(0.08, 0.32, 6), f); e.position.set(s * 0.2, 0.18, -0.06); e.rotation.z = -s * 0.9; head.add(e);
+    // Bois ramifiés
+    const main = new T.Group(); main.position.set(s * 0.1, 0.22, -0.05); main.rotation.z = -s * 0.45; main.rotation.x = -0.2; head.add(main);
+    const b0 = new T.Mesh(new T.CylinderGeometry(0.03, 0.045, 1.1, 5), an); b0.position.y = 0.55; main.add(b0);
+    for (let k = 0; k < 3; k++) { const t = new T.Mesh(new T.CylinderGeometry(0.02, 0.03, 0.45, 4), an); t.position.set(-s * 0.12, 0.35 + k * 0.28, 0.08); t.rotation.z = s * 0.9; t.rotation.x = 0.4; main.add(t); const tip = new T.Mesh(new T.SphereGeometry(0.045, 6, 4), glow); tip.position.set(-s * 0.3, 0.45 + k * 0.28, 0.16); main.add(tip); }
+    const top = new T.Mesh(new T.SphereGeometry(0.05, 6, 4), glow); top.position.y = 1.1; main.add(top);
+  }
+  ball(body, l, 0.13, 0, 1.55, -0.92);
+  const rig = { body, head, legL: quad(g, f, 0.08, 1.1, -0.24, 1.1, 0.55), legR: quad(g, f, 0.08, 1.1, 0.24, 1.1, -0.55), armL: quad(g, f, 0.08, 1.1, -0.24, 1.1, -0.55), armR: quad(g, f, 0.08, 1.1, 0.24, 1.1, 0.55) };
+  // Une douce lumière autour de lui
+  const aura = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xbfefff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.35 })); aura.position.y = 1.8; aura.scale.set(5, 5, 1); g.add(aura);
+  g.userData = { rig, aura };
+  g.scale.setScalar(1.25);
+  return g;
+}
+function leafChute() {
+  // Parachute en feuille géante
+  const g = new T.Group(), m = lam(0x6ab04a, { side: T.DoubleSide });
+  const leaf = new T.Mesh(new T.SphereGeometry(1.6, 12, 6, 0, 6.283, 0, 1.1), m); leaf.scale.set(1, 0.45, 1.4); g.add(leaf);
+  const vein = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 4.2, 4), lam(0x3a7a2a)); vein.rotation.x = Math.PI / 2; vein.position.y = 0.72; g.add(vein);
+  for (const s of [-1, 1]) for (const t of [-1, 1]) { const c = new T.Mesh(new T.CylinderGeometry(0.015, 0.015, 2.6, 3), lam(0xf0e8d8)); c.position.set(s * 0.6, -1.0, t * 0.7); c.rotation.z = s * 0.4; c.rotation.x = -t * 0.45; g.add(c); }
+  return g;
+}
+// ---------- Construction ----------
+const FGLOW = { value: 0.4 };
+let fMist = [], fShaftMat = null, fPartM = [], fLanternM = [], fSeedTree = null, fMotherBloom = null, fAnimals = [], fFriends = [], fCrashFx = [], fGroundMat = null, fBridgeM = [];
+function glowLam() {
+  // Matériau qui brille un peu, de la couleur de chaque instance
+  const m = lam(0xffffff);
+  m.onBeforeCompile = sh => { sh.uniforms.uGlow = FGLOW; sh.fragmentShader = 'uniform float uGlow;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )\n totalEmissiveRadiance += vColor * uGlow;\n#endif'); };
+  m.customProgramCacheKey = () => 'fglow';
+  return m;
+}
+function buildForest() {
+  const R = FOREST.r + 200, SZ = R * 2;
+  // Sol de mousse, avec des taches plus claires et de la terre près de l'eau
+  const gg = new T.PlaneGeometry(SZ, SZ, 220, 220); gg.rotateX(-Math.PI / 2);
+  const p = gg.attributes.position, col = new Float32Array(p.count * 3), c = new T.Color();
+  const MO = new T.Color(0x3f7a4a), ML = new T.Color(0x5a9a55), MD = new T.Color(0x2f6440), EA = new T.Color(0x7a6448), SA = new T.Color(0xc8b888), BL = new T.Color(0x4a8a70);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + FOREST.x, z = p.getZ(i) + FOREST.z, y = forestY(x, z); p.setX(i, x); p.setZ(i, z); p.setY(i, y);
+    c.copy(MO);
+    const n = fbm(x * 0.03 + 5, z * 0.03, 3); if (n > 0.56) c.lerp(ML, sstep(0.56, 0.7, n)); else if (n < 0.42) c.lerp(MD, sstep(0.42, 0.3, n));
+    if (fbm(x * 0.08, z * 0.08 + 9, 2) > 0.62) c.lerp(EA, 0.45);
+    if (Math.hypot(x - FMOTHER[0], z - FMOTHER[1]) < 40) c.lerp(BL, 0.3);
+    const rd = polyDist(x, z, FRIVER), e = ((x - FPOND.x) / FPOND.rx) ** 2 + ((z - FPOND.z) / FPOND.rz) ** 2;
+    c.lerp(SA, clamp(sstep(10, 6.5, rd) + sstep(1.5, 1.05, e), 0, 1) * 0.8);
+    if (y < -0.8) c.lerp(new T.Color(0x5a8a7a), 0.6);
+    c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.computeVertexNormals();
+  fGroundMat = new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad });
+  const gm = new T.Mesh(gg, fGroundMat); gm.receiveShadow = true; scene.add(gm);
+  // Eau : rivière et lac des Brumes
+  const wm = waterMats[1];
+  ribbon(FRIVER, 9, () => WATER_Y - 0.01, wm, true);
+  ribbon(FRIVER, 10, () => WATER_Y - 0.04, new T.MeshBasicMaterial({ color: 0xeaf8ff }), true);
+  const pm = new T.Mesh(new T.CircleGeometry(1, 48), wm); pm.rotation.x = -Math.PI / 2; pm.scale.set(FPOND.rx * 1.08, FPOND.rz * 1.08, 1); pm.position.set(FPOND.x, WATER_Y, FPOND.z); pm.receiveShadow = true; scene.add(pm);
+  const pf = new T.Mesh(new T.RingGeometry(1, 1.05, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false })); pf.rotation.x = -Math.PI / 2; pf.scale.set(FPOND.rx, FPOND.rz, 1); pf.position.set(FPOND.x, WATER_Y + 0.02, FPOND.z); scene.add(pf);
+  // Sentiers de terre
+  for (const pts of FPATHS) {
+    ribbon(pts, 4.2, (x, z) => (forestDeck(x, z) !== null ? -9 : forestY(x, z)) + 0.05, lam(0x8a6a48, { flatShading: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    ribbon(pts, 3, (x, z) => (forestDeck(x, z) !== null ? -9 : forestY(x, z)) + 0.08, lam(0xb08a5e, { flatShading: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  }
+  const fpDist = (x, z) => { let d = 1e9; for (const pts of FPATHS) d = Math.min(d, polyDist(x, z, pts)); return d; };
+  // Ponts en troncs
+  for (const b of FBRIDGES) {
+    const g = new T.Group(); g.position.set(b.x, b.y - 0.35, b.z); g.rotation.y = -b.a; scene.add(g);
+    for (const s of [-0.75, 0, 0.75]) { const t = mesh(new T.CylinderGeometry(0.42, 0.46, b.hl * 2 + 1, 9), lam(0x6a4a34), 0, 0, s, g); t.rotation.z = Math.PI / 2; }
+    for (const s of [-1, 1]) for (const k of [-1, 1]) { mesh(new T.CylinderGeometry(0.12, 0.12, 1.6, 5), M.trunk, k * (b.hl - 0.6), 0.9, s * 1.45, g); }
+    for (const s of [-1, 1]) { const r = mesh(new T.CylinderGeometry(0.06, 0.06, b.hl * 2 - 1, 4), lam(0xc8a878), 0, 1.6, s * 1.45, g); r.rotation.z = Math.PI / 2; }
+    fBridgeM.push(g);
+  }
+  const free = (x, z, m) => {
+    if (forestDeck(x, z) !== null || polyDist(x, z, FRIVER) < 8 + m * 0.3 || ((x - FPOND.x) / FPOND.rx) ** 2 + ((z - FPOND.z) / FPOND.rz) ** 2 < 1.3) return false;
+    if (fpDist(x, z) < 2.2 + m) return false;
+    if (Math.hypot(x - FCAMP[0], z - FCAMP[1]) < 24 + m || Math.hypot(x - FMOTHER[0], z - FMOTHER[1]) < 16 + m) return false;
+    for (const k in FSPOTS) { const s = FSPOTS[k]; if (Math.hypot(x - FOREST.x - s[0], z - FOREST.z - s[1]) < 6 + m) return false; }
+    for (const q of FPARTS.concat(FLANTERNS.map(l => [0, 0, l[0], l[1]]))) if (Math.hypot(x - FOREST.x - q[2], z - FOREST.z - q[3]) < 6 + m) return false;
+    if (Math.hypot(x - FRUINS[0], z - FRUINS[1]) < 14 + m) return false;
+    return true;
+  };
+  seed = 9090;
+  // Arbre géant : grand tronc nu, racines, lianes, et un énorme feuillage tout en haut
+  const giant = [[new T.CylinderGeometry(1.3, 2.1, 27, 10).translate(0, 13.5, 0), 0x5e4232], [new T.CylinderGeometry(2.12, 2.2, 1.6, 10).translate(0, 0.8, 0), 0x4f8a48]];
+  for (let k = 0; k < 5; k++) giant.push([new T.ConeGeometry(0.9, 5, 6).rotateZ(-(Math.PI / 2 + 0.26)).translate(3.4, 0.8, 0).rotateY(k * 1.256 + 0.3), 0x5e4232]);
+  for (let k = 0; k < 3; k++) giant.push([new T.CylinderGeometry(0.25, 0.45, 7, 6).rotateZ(-0.9).translate(2.6, 22, 0).rotateY(k * 2.1), 0x5e4232]);
+  [[7, 0, 30, 0, 0x2f6a3e], [5.6, 4.2, 27.5, 2, 0x377a46], [5.2, -4.5, 28, -3, 0x2a5f38], [4.6, 1, 34, -1, 0x3f8a4e], [4.2, -2, 26, 4.5, 0x2f6a3e], [4, 3, 31, -4.5, 0x2a5f38]].forEach(([r, x, y, z, cc]) => giant.push([new T.IcosahedronGeometry(r, 1).translate(x, y, z), cc]));
+  for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.4, rr = 4 + (k % 3); giant.push([new T.CylinderGeometry(0.06, 0.06, 9 + (k % 3) * 2, 3).translate(Math.cos(a) * rr, 21 - (k % 3), Math.sin(a) * rr), 0x3f7a3a]); }
+  const giantGeo = mergeCol(giant);
+  // Séquoia géant
+  const sq = [[new T.CylinderGeometry(1.5, 2.6, 30, 10).translate(0, 15, 0), 0x8a3f34]];
+  for (let k = 0; k < 5; k++) sq.push([new T.ConeGeometry(0.9, 5, 6).rotateZ(-(Math.PI / 2 + 0.26)).translate(3.8, 0.8, 0).rotateY(k * 1.256), 0x7a3a30]);
+  for (let i = 0; i < 6; i++) sq.push([new T.ConeGeometry(6 - i * 0.8, 4.6, 10).rotateY(i).translate(0, 24 + i * 3, 0), [0x2a6a44, 0x2f7448, 0x2a6a44, 0x347a4c, 0x2f7448, 0x2a6a44][i]]);
+  const seqGeo = mergeCol(sq);
+  // Arbre à lanternes : il porte des fruits qui brillent
+  const lanT = mergeCol([[new T.CylinderGeometry(0.3, 0.5, 8, 7).translate(0, 4, 0), 0x6a5040], [new T.IcosahedronGeometry(3.4, 1).translate(0, 9.5, 0), 0x3a7a5a], [new T.IcosahedronGeometry(2.4, 1).translate(1.8, 8.4, 1), 0x438a62]]);
+  const lanFr = []; for (let k = 0; k < 9; k++) { const a = k * 0.7, h = 7.2 + (k % 3) * 1.4; lanFr.push([new T.SphereGeometry(0.32, 8, 6).translate(Math.cos(a) * 3.1, h, Math.sin(a) * 3.1), [0x9fe8ff, 0xffe08a, 0xd8a0ff][k % 3]]); lanFr.push([new T.CylinderGeometry(0.02, 0.02, 0.6, 3).translate(Math.cos(a) * 3.1, h + 0.5, Math.sin(a) * 3.1), 0x3a5a3a]); }
+  const lanFrGeo = mergeCol(lanFr);
+  // Jeune arbre et sapin
+  const youngGeo = mergeCol([[new T.CylinderGeometry(0.18, 0.28, 3.4, 6).translate(0, 1.7, 0), 0x6a4a34], [new T.IcosahedronGeometry(1.8, 1).translate(0, 4.2, 0), 0x4a8a4a], [new T.IcosahedronGeometry(1.2, 1).translate(0.8, 3.4, 0.5), 0x55985a]]);
+  const firP = [[new T.CylinderGeometry(0.35, 0.55, 6, 7).translate(0, 3, 0), 0x5a4030]]; for (let i = 0; i < 5; i++) firP.push([new T.ConeGeometry(3.6 - i * 0.6, 3.4, 9).rotateY(i * 0.5).translate(0, 5 + i * 2.2, 0), [0x265f3f, 0x2c6e47, 0x265f3f, 0x337a4f, 0x2c6e47][i]]);
+  const firGeo = mergeCol(firP);
+  // Arbres lointains, très simples, pour le mur de forêt au bord
+  const farGeo = mergeCol([[new T.CylinderGeometry(1.2, 1.8, 22, 6).translate(0, 11, 0), 0x4a3428], [new T.IcosahedronGeometry(8, 0).translate(0, 28, 0), 0x2a5a38], [new T.IcosahedronGeometry(6, 0).translate(3, 24, 2), 0x2f6a3e]]);
+  const giants = [], seqs = [], lans = [], youngs = [], firs = [], fars = [];
+  for (let t = 0; t < 60000 && giants.length + seqs.length < 900; t++) {
+    const x = FOREST.x + srange(-FOREST.r - 40, FOREST.r + 40), z = FOREST.z + srange(-FOREST.r - 40, FOREST.r + 40), d = Math.hypot(x - FOREST.x, z - FOREST.z);
+    if (d > FOREST.r + 40 || !free(x, z, 6)) continue;
+    if (giants.concat(seqs).some(e => Math.hypot(e[0] - x, e[2] - z) < 12)) continue;
+    const e = [x, forestY(x, z) - 0.3, z, srange(0.8, 1.3), srand() * 6];
+    (srand() < 0.3 ? seqs : giants).push(e); addCircle(x, z, 2.2 * e[3]).tree = 1;
+  }
+  for (let t = 0; t < 30000 && lans.length < 46; t++) {
+    const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r);
+    if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r - 20 || !free(x, z, 3) || giants.concat(seqs, lans).some(e => Math.hypot(e[0] - x, e[2] - z) < 9)) continue;
+    const e = [x, forestY(x, z) - 0.2, z, srange(0.6, 0.75), srand() * 6]; lans.push(e); addCircle(x, z, 0.6).tree = 1;
+  }
+  for (let t = 0; t < 40000 && youngs.length + firs.length < 900; t++) {
+    const x = FOREST.x + srange(-FOREST.r - 30, FOREST.r + 30), z = FOREST.z + srange(-FOREST.r - 30, FOREST.r + 30), d = Math.hypot(x - FOREST.x, z - FOREST.z);
+    if (d > FOREST.r + 30 || !free(x, z, 3) || giants.concat(seqs).some(e => Math.hypot(e[0] - x, e[2] - z) < 6)) continue;
+    const e = [x, forestY(x, z) - 0.1, z, srange(0.7, 1.2), srand() * 6];
+    // Les sapins restent au bord : au milieu, la caméra passe sous les grands arbres sans être gênée
+    if (d > FOREST.r - 25) { firs.push(e); addCircle(x, z, 0.6 * e[3]).tree = 1; } else { youngs.push(e); addCircle(x, z, 0.35).tree = 1; }
+  }
+  for (let t = 0; t < 30000 && fars.length < 1500; t++) {
+    const a = srand() * 6.283, d = srange(FOREST.r + 30, R - 10), x = FOREST.x + Math.cos(a) * d, z = FOREST.z + Math.sin(a) * d;
+    fars.push([x, forestY(x, z) - 0.5, z, srange(0.8, 1.4), srand() * 6]);
+  }
+  tiledInst(giantGeo, windLam(0.0005, { vertexColors: true }), giants, { h: 30, sy: e => e[3] });
+  tiledInst(seqGeo, windLam(0.0005, { vertexColors: true }), seqs, { h: 30, sy: e => e[3] });
+  tiledInst(lanT, windLam(0.002, { vertexColors: true }), lans, { h: 8 });
+  tiledInst(lanFrGeo, addWind(new T.MeshBasicMaterial({ vertexColors: true }), 0.002), lans, { h: 8, shadow: false });
+  tiledInst(youngGeo, windLam(0.004, { vertexColors: true }), youngs, { h: 4 });
+  tiledInst(firGeo, windLam(0.002, { vertexColors: true }), firs, { h: 10 });
+  tiledInst(farGeo, vcMat, fars, { h: 26, shadow: false, sy: e => e[3] });
+  // Sous-bois : fougères, buissons, champignons qui brillent, fleurs, herbe
+  const fernParts = []; for (let k = 0; k < 7; k++) { const l = new T.ConeGeometry(0.26, 1.8, 4); l.scale(1, 1, 0.3); l.translate(0, 0.9, 0); l.rotateX(1.0); l.rotateY(k * 0.9); fernParts.push(l); }
+  const fernGeo = mergeGeos(fernParts), ferns = [], bushL = [], tufts = [], bells = [], glowM = [], bigM = [], stumps = [], logs = [], moss = [];
+  for (let t = 0; t < 60000 && ferns.length < 4200; t++) { const x = FOREST.x + srange(-FOREST.r - 10, FOREST.r + 10), z = FOREST.z + srange(-FOREST.r - 10, FOREST.r + 10); if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r + 10 || !free(x, z, -1)) continue; ferns.push([x, forestY(x, z), z, srange(0.8, 1.9), srand() * 6]); }
+  tiledInst(fernGeo, windLam(0.1), ferns, { h: 1, shadow: false, col: (cc, i) => cc.set([0x3f9a50, 0x4aa85a, 0x358a48, 0x2f7a40][i % 4]).convertSRGBToLinear() });
+  const bushGeo = new T.IcosahedronGeometry(1, 1);
+  for (let t = 0; t < 20000 && bushL.length < 700; t++) { const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r); if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r || !free(x, z, 0)) continue; const s = srange(1.1, 2); bushL.push([x, forestY(x, z) + s * 0.4, z, s, srand() * 6]); }
+  tiledInst(bushGeo, windLam(0.03), bushL, { h: 1, sy: e => e[3] * 0.75, col: (cc, i) => cc.set([0x3a8a4a, 0x44965a, 0x2f7a42][i % 3]).convertSRGBToLinear() });
+  for (const e of bushL) bushes.push({ x: e[0], z: e[2], r: e[3] * 0.95, y: e[1], berries: false, eatenDay: -1, dots: [] });
+  const blades = []; for (let k = 0; k < 3; k++) { const b = new T.ConeGeometry(0.09, 0.55, 3); b.translate(0, 0.27, 0); b.rotateZ((k - 1) * 0.45); b.rotateY(k * 1.2); blades.push(b); }
+  const tuftGeo = mergeGeos(blades);
+  for (let t = 0; t < 30000 && tufts.length < 5000; t++) { const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r); if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r || forestDeck(x, z) !== null || polyDist(x, z, FRIVER) < 7) continue; tufts.push([x, forestY(x, z), z, srange(0.8, 1.4), srand() * 6]); }
+  tiledInst(tuftGeo, windLam(0.3), tufts, { h: 1, shadow: false, col: (cc, i) => cc.set([0x5aa86a, 0x4a9a5a, 0x6ab070][i % 3]).convertSRGBToLinear() });
+  const bellGeo = mergeCol([[new T.CylinderGeometry(0.02, 0.03, 0.5, 3).translate(0, 0.25, 0), 0x3a7a3a], [new T.ConeGeometry(0.1, 0.16, 6).translate(0.05, 0.45, 0), 0xffffff], [new T.ConeGeometry(0.09, 0.14, 6).translate(-0.06, 0.38, 0.04), 0xffffff]]);
+  for (let t = 0; t < 20000 && bells.length < 2200; t++) { const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r); if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r || !free(x, z, -1.5) || fbm((x - FOREST.x) * 0.04, z * 0.04 + 3, 2) < 0.5) continue; bells.push([x, forestY(x, z), z, srange(0.9, 1.4), srand() * 6]); }
+  tiledInst(bellGeo, windLam(0.15, { vertexColors: true }), bells, { h: 1, shadow: false, col: (cc, i) => cc.set([0x8a9aff, 0xb08aff, 0xffffff, 0x6ab0ff][i % 4]).convertSRGBToLinear() });
+  // Petits champignons qui brillent (en groupes)
+  const gm3 = []; for (let k = 0; k < 3; k++) { const a = k * 2.1, h = 0.25 + k * 0.12; gm3.push(new T.CylinderGeometry(0.04, 0.05, h, 5).translate(Math.cos(a) * 0.25, h / 2, Math.sin(a) * 0.25)); gm3.push(new T.SphereGeometry(0.13 + k * 0.03, 8, 4, 0, 6.283, 0, 1.6).scale(1, 0.6, 1).translate(Math.cos(a) * 0.25, h, Math.sin(a) * 0.25)); }
+  const glowGeo = mergeGeos(gm3);
+  for (let t = 0; t < 30000 && glowM.length < 900; t++) { const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r); if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r || !free(x, z, -1)) continue; glowM.push([x, forestY(x, z), z, srange(0.8, 1.6), srand() * 6]); }
+  // Autour des arbres géants, il y en a encore plus
+  for (const e of giants.concat(seqs)) for (let k = 0; k < 2; k++) { const a = srand() * 6.283, d = e[3] * srange(2.8, 4.5), x = e[0] + Math.cos(a) * d, z = e[2] + Math.sin(a) * d; glowM.push([x, forestY(x, z), z, srange(0.8, 1.4), srand() * 6]); }
+  tiledInst(glowGeo, glowLam(), glowM, { h: 1, shadow: false, col: (cc, i) => cc.set([0x5ae0d0, 0x9a7aff, 0x7aff9a, 0xffa0e0, 0x5ac0ff][i % 5]).convertSRGBToLinear() });
+  // Champignons géants
+  const bigStem = new T.CylinderGeometry(0.3, 0.48, 2.6, 8).translate(0, 1.3, 0), bigCap = new T.SphereGeometry(1.6, 14, 7, 0, 6.283, 0, 1.5).scale(1, 0.55, 1).translate(0, 2.5, 0);
+  const spots = []; for (let k = 0; k < 7; k++) { const a = k * 0.9, r = k === 0 ? 0 : 0.9 + (k % 2) * 0.25; spots.push(new T.SphereGeometry(0.17, 6, 4).scale(1, 0.4, 1).translate(Math.cos(a) * r, 3.36 - r * 0.32, Math.sin(a) * r)); }
+  const spotGeo = mergeGeos(spots);
+  const mushSpot = (cx, cz, n, rr) => { for (let k = 0; k < n; k++) { const a = k / n * 6.283 + srand(), d = srange(rr * 0.3, rr), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; bigM.push([x, forestY(x, z) - 0.1, z, srange(0.8, 1.6), srand() * 6]); addCircle(x, z, 0.5); } };
+  mushSpot(...FL(FSPOTS.maurice[0], FSPOTS.maurice[1] - 3), 9, 12);
+  for (let t = 0; t < 20000 && bigM.length < 90; t++) { const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r); if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r - 10 || !free(x, z, 1)) continue; mushSpot(x, z, 3, 3.5); }
+  tiledInst(bigStem, lam(0xf0e8d8), bigM, { h: 3, sy: e => e[3] });
+  tiledInst(bigCap, glowLam(), bigM, { h: 3, sy: e => e[3], col: (cc, i) => cc.set([0x3ab0b0, 0xd0609a, 0xe8903a, 0x7a5ad0][i % 4]).convertSRGBToLinear() });
+  tiledInst(spotGeo, lam(0xfff8ee), bigM, { h: 3, shadow: false, sy: e => e[3] });
+  // Souches, troncs couchés, rochers moussus
+  const stumpGeo = mergeCol([[new T.CylinderGeometry(0.9, 1.2, 1.2, 10).translate(0, 0.6, 0), 0x6a4430], [new T.CylinderGeometry(0.88, 0.88, 0.05, 10).translate(0, 1.21, 0), 0xd8b080], [new T.SphereGeometry(0.5, 6, 4).scale(1.4, 0.4, 1).translate(0.3, 1.25, 0.2), 0x5aa04a]]);
+  const logGeo = mergeCol([[new T.CylinderGeometry(0.7, 0.8, 7, 10).rotateZ(Math.PI / 2).translate(0, 0.7, 0), 0x5e3c2c], [new T.CylinderGeometry(0.68, 0.68, 0.05, 10).rotateZ(Math.PI / 2).translate(3.52, 0.7, 0), 0xd8b080], [new T.SphereGeometry(0.5, 6, 4).scale(1.6, 0.5, 1).translate(-1.2, 1.35, 0.1), 0x5aa04a], [new T.SphereGeometry(0.4, 6, 4).scale(1.6, 0.5, 1).translate(1.4, 1.3, -0.1), 0x4a9040]]);
+  const mossGeo = mergeCol([[new T.DodecahedronGeometry(1, 0).translate(0, 0.2, 0), 0x8a8496], [new T.SphereGeometry(0.85, 8, 5, 0, 6.283, 0, 1.1).scale(1.05, 0.5, 1.05).translate(0, 0.78, 0), 0x5a9a4a]]);
+  for (let t = 0; t < 30000 && stumps.length + logs.length + moss.length < 520; t++) {
+    const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r);
+    if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r - 5 || !free(x, z, 2.5)) continue;
+    const r = srand(), e = [x, forestY(x, z) - 0.1, z, srange(0.8, 1.4), srand() * 6];
+    if (r < 0.3) { stumps.push(e); addCircle(x, z, 1.1 * e[3]); } else if (r < 0.6) { logs.push(e); const c = Math.cos(e[4]), s = Math.sin(e[4]); for (const k of [-2.4, 0, 2.4]) addCircle(x + c * k * e[3], z - s * k * e[3], 0.8 * e[3]); } else { e[3] = srange(0.8, 2); moss.push(e); addCircle(x, z, 0.85 * e[3]); }
+  }
+  tiledInst(stumpGeo, vcMat, stumps, { h: 1, sy: e => e[3] });
+  tiledInst(logGeo, vcMat, logs, { h: 1, sy: e => e[3] });
+  tiledInst(mossGeo, vcMat, moss, { h: 1, sy: e => e[3] * 0.9 });
+  // Rayons de soleil qui passent entre les arbres
+  fShaftMat = new T.ShaderMaterial({ uniforms: { uK: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform float uK; varying vec2 vUv; void main(){ float a = smoothstep(0.0, 0.45, vUv.y) * (1.0 - smoothstep(0.75, 1.0, vUv.y)) * (0.6 + 0.4 * sin(vUv.x * 18.85)); gl_FragColor = vec4(1.0, 0.93, 0.72, a * 0.16 * uK); }',
+    transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, fog: false });
+  { const pos = [], uv = []; const m4 = new T.Matrix4(), q = new T.Quaternion(), e3 = new T.Euler();
+    for (let t = 0, n = 0; t < 4000 && n < 70; t++) {
+      const x = FOREST.x + srange(-FOREST.r + 20, FOREST.r - 20), z = FOREST.z + srange(-FOREST.r + 20, FOREST.r - 20);
+      if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r - 20 || giants.concat(seqs).some(e => Math.hypot(e[0] - x, e[2] - z) < 5)) continue;
+      const cg = new T.CylinderGeometry(3.4, 0.9, 36, 10, 1, true).translate(0, 18, 0), y = forestY(x, z);
+      e3.set(-0.32, srange(-0.15, 0.15), 0.18); q.setFromEuler(e3); m4.compose(new V3(x, y - 1, z), q, new V3(srange(0.7, 1.3), 1, srange(0.7, 1.3))); cg.applyMatrix4(m4);
+      const ng = cg.toNonIndexed(); pos.push(...ng.attributes.position.array); uv.push(...ng.attributes.uv.array); n++;
+    }
+    const sg = new T.BufferGeometry(); sg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); sg.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+    const sm = new T.Mesh(sg, fShaftMat); sm.frustumCulled = false; sm.renderOrder = 2; scene.add(sm); fShaftMat.userData.mesh = sm; }
+  // La brume : de grands voiles blancs qui flottent entre les arbres
+  const mistTex = canvasTex(128, 128, (g2, w, h) => { const gr = g2.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g2.fillStyle = gr; g2.fillRect(0, 0, w, h); });
+  for (let i = 0; i < 42; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: mistTex, color: 0xeef6f0, transparent: true, opacity: 0, depthWrite: false })); sp.scale.set(rand(22, 40), rand(9, 14), 1); sp.visible = false; scene.add(sp); fMist.push({ s: sp, a: rand(0, 6.283), d: rand(8, 70), h: rand(1.5, 7), sp: rand(0.2, 0.6) }); }
+  // L'Arbre-Mère, immense, sur sa butte
+  { const [mx, mz] = FMOTHER, y = forestY(mx, mz) - 0.5, g = new T.Group(); g.position.set(mx, y, mz); scene.add(g);
+    const bark = lam(0x5a3c2c), mossM = lam(0x4f8a48);
+    mesh(new T.CylinderGeometry(5.5, 8.5, 46, 14), bark, 0, 23, 0, g);
+    mesh(new T.CylinderGeometry(8.6, 9, 3, 14), mossM, 0, 1.5, 0, g);
+    for (let k = 0; k < 8; k++) { const a = k * 0.785 + 0.2, r = mesh(new T.ConeGeometry(2.2, 14, 7), bark, Math.cos(a) * 9.5, 1.6, Math.sin(a) * 9.5, g); r.rotation.order = 'YXZ'; r.rotation.y = -a; r.rotation.z = Math.PI / 2 + 0.22; }
+    for (let k = 0; k < 6; k++) { const a = k * 1.05, b = mesh(new T.CylinderGeometry(0.9, 1.8, 20, 8), bark, Math.cos(a) * 9, 44, Math.sin(a) * 9, g); b.rotation.order = 'YXZ'; b.rotation.y = -a; b.rotation.z = -1.0; }
+    const leafCols = [0x2f6a3e, 0x377a46, 0x2a5f38, 0x3f8a4e];
+    for (let k = 0; k < 14; k++) { const a = k * 0.9, r = k < 4 ? 4 : 15 + (k % 3) * 4, bl = mesh(new T.IcosahedronGeometry(9 + (k % 4) * 2, 1), addWind(lam(leafCols[k % 4]), 0.0004), Math.cos(a) * r, 52 + (k % 3) * 5 + (k < 4 ? 10 : 0), Math.sin(a) * r, g); bl.castShadow = true; }
+    // Porte ronde et petites fenêtres dans le tronc (des lucioles y vivent)
+    mesh(new T.CircleGeometry(2.2, 16), lam(0x2a1a12), 0, 2.6, 8.05, g);
+    const wl = new T.MeshBasicMaterial({ color: 0xffe08a }); for (const [wx, wy] of [[-2.5, 12], [2.8, 18], [-1.5, 26]]) mesh(new T.CircleGeometry(0.6, 10), wl, wx, wy, 7.6 - wy * 0.05, g);
+    // Fleurs lumineuses qui s'ouvrent quand l'Arbre-Mère se réveille
+    fMotherBloom = new T.Group(); g.add(fMotherBloom); const fm = new T.MeshBasicMaterial({ color: 0xffd8f0 }), fm2 = new T.MeshBasicMaterial({ color: 0xfff0a0 });
+    for (let k = 0; k < 80; k++) { const a = srand() * 6.283, r = srange(8, 26), b = mesh(new T.IcosahedronGeometry(srange(0.5, 0.9), 0), k % 3 ? fm : fm2, Math.cos(a) * r, srange(46, 70), Math.sin(a) * r, fMotherBloom); b.castShadow = false; }
+    fMotherBloom.visible = false;
+    addCircle(mx, mz, 8.6); for (let k = 0; k < 8; k++) { const a = k * 0.785 + 0.2; addCircle(mx + Math.cos(a) * 11, mz + Math.sin(a) * 11, 1.6); }
+    sign('ARBRE-MÈRE', mx + 3, mz + 20, 0.2, 2.2, 0.9, '#4a7a5a');
+  }
+  // Ruines anciennes (Raflex)
+  { const [rx, rz] = FRUINS, st = lam(0xa8a0b0), stD = lam(0x8a8496);
+    for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283, x = rx + Math.cos(a) * 10, z = rz + Math.sin(a) * 10, h = k % 3 === 0 ? 1.4 : 5 + (k % 2) * 1.5, y = forestY(x, z); mesh(new T.CylinderGeometry(0.75, 0.9, h, 8), k % 2 ? st : stD, x, y + h / 2, z); mesh(new T.BoxGeometry(2, 0.5, 2), st, x, y + h + 0.25, z).visible = h > 2; addCircle(x, z, 1); }
+    const y0 = forestY(rx, rz); mesh(new T.BoxGeometry(5, 1, 3), stD, rx, y0 + 0.5, rz - 3); const tx = canvasTex(128, 64, (g2, w, h) => { g2.fillStyle = '#a8a0b0'; g2.fillRect(0, 0, w, h); g2.strokeStyle = '#6a5a7a'; g2.lineWidth = 5; for (let i = 0; i < 3; i++) { g2.beginPath(); for (let a = 0; a < 12; a += 0.2) { const r = a * 1.8; g2.lineTo(22 + i * 42 + Math.cos(a) * r, 32 + Math.sin(a) * r); } g2.stroke(); } });
+    mesh(new T.PlaneGeometry(4.4, 0.9), new T.MeshLambertMaterial({ map: tx }), rx, y0 + 0.55, rz - 1.48); addBox(rx, rz - 3, 2.5, 1.5, 0);
+    for (let k = 0; k < 6; k++) { const x = rx + rand(-12, 12), z = rz + rand(-12, 12), s = rand(0.6, 1.2); const b = mesh(new T.BoxGeometry(1.2 * s, 0.6 * s, 0.9 * s), stD, x, forestY(x, z) + 0.3 * s, z); b.rotation.set(rand(-0.3, 0.3), rand(0, 3), rand(-0.3, 0.3)); }
+  }
+  // Petits décors près des amis perdus
+  { const L = (k) => FL(FSPOTS[k][0], FSPOTS[k][1]);
+    // Barrage de Max
+    { const [x, z] = L('max'); for (let k = 0; k < 6; k++) { const s = mesh(new T.CylinderGeometry(0.12, 0.14, 2.4, 5), M.trunk, x + 3 + k * 0.35, forestY(x + 3, z - 4) + 0.3 + (k % 2) * 0.2, z - 4 + (k % 3) * 0.3); s.rotation.z = Math.PI / 2; s.rotation.y = k * 0.3; } }
+    // Terrier de Papi Blaireau
+    { const [x, z] = L('blaireau'); mesh(new T.SphereGeometry(3.4, 14, 8, 0, 6.283, 0, 1.4), lam(0x6a5a3a), x, forestY(x, z) - 1.4, z - 4); mesh(new T.CircleGeometry(1.1, 12), lam(0x1a120c), x, forestY(x, z) + 0.9, z - 1.0); addCircle(x, z - 4, 3); }
+    // Tronc creux de Praline
+    { const [x, z] = L('praline'); const t = mesh(new T.CylinderGeometry(1.5, 1.6, 8, 12, 1, true), lam(0x5e3c2c, { side: T.DoubleSide }), x - 4, forestY(x - 4, z) + 1.3, z); t.rotation.z = Math.PI / 2; mesh(new T.SphereGeometry(0.7, 8, 5).scale(2, 0.5, 1), lam(0x5aa04a), x - 4, forestY(x - 4, z) + 2.9, z); addCircle(x - 7, z, 1.6); addCircle(x - 1, z, 1.6); }
+    // Fossé de feuilles de Roquette
+    { const [x, z] = L('roquette'); const lc = [0xe8903a, 0xd0603a, 0xf0c050, 0xb05a2a]; for (let k = 0; k < 40; k++) { const a = rand(0, 6.283), d = rand(0, 4), lx = x + Math.cos(a) * d, lz = z + Math.sin(a) * d; mesh(new T.SphereGeometry(rand(0.4, 0.8), 6, 4).scale(1, 0.35, 1), lam(lc[k % 4]), lx, forestY(lx, lz) + 0.15, lz).castShadow = false; } }
+    // Noisetier géant et ses noisettes géantes
+    { const [x, z] = L('noisette'); const tr = new T.Group(); tr.position.set(x + 5, forestY(x + 5, z - 3), z - 3); scene.add(tr); mesh(new T.CylinderGeometry(0.7, 1, 10, 9), M.trunk, 0, 5, 0, tr); for (let k = 0; k < 4; k++) mesh(new T.IcosahedronGeometry(3.2, 1), lam([0x5a9a4a, 0x4a8a40][k % 2]), Math.cos(k * 1.6) * 2.4, 11 + (k % 2), Math.sin(k * 1.6) * 2.4, tr); addCircle(x + 5, z - 3, 1.1);
+      for (let k = 0; k < 5; k++) { const nx = x + rand(-3, 3), nz = z + rand(-3, 3); mesh(new T.SphereGeometry(0.45, 9, 7).scale(1, 1.15, 1), lam(0xb07a3a), nx, forestY(nx, nz) + 0.45, nz); mesh(new T.SphereGeometry(0.42, 9, 5, 0, 6.283, 0, 1.2), lam(0x7a5028), nx, forestY(nx, nz) + 0.62, nz); } }
+    // Branche et feuille-parachute de Donovan
+    { const [x, z] = L('donovan'); const lc = leafChute(); lc.position.set(x + 1.5, forestY(x, z) + 6.2, z - 1); lc.rotation.set(0.5, 0.4, 0.7); scene.add(lc); const br = mesh(new T.CylinderGeometry(0.25, 0.35, 9, 7), M.trunk, x + 3.5, forestY(x, z) + 4.5, z - 2); br.rotation.z = 0.3; addCircle(x + 3.5, z - 2, 0.6); }
+  }
+  // Pièces du camping-car tombées dans la forêt
+  for (const [k, nm, dx, dz] of FPARTS) {
+    const [x, z] = FL(dx, dz), g = new T.Group(); g.position.set(x, forestY(x, z), z); scene.add(g);
+    if (k === 'reacteur') { const b = mesh(new T.CylinderGeometry(0.6, 0.8, 2.2, 12), lam(0xd8dce8), 0, 0.8, 0, g); b.rotation.z = 0.9; const f = mesh(new T.CylinderGeometry(0.5, 0.3, 0.5, 12), lam(0x4a4a5a), -0.9, 0.2, 0, g); f.rotation.z = 0.9; }
+    else if (k === 'antenne') { const a = mesh(new T.CylinderGeometry(0.05, 0.05, 2.6, 5), M.metal, 0, 1.2, 0, g); a.rotation.z = 0.4; mesh(new T.SphereGeometry(0.9, 12, 6, 0, 6.283, 0, 1.2), lam(0xe8eaf0, { side: T.DoubleSide }), -0.5, 2.4, 0, g).rotation.z = 0.8; }
+    else { mesh(new T.SphereGeometry(1.1, 14, 10), new T.MeshPhongMaterial({ color: 0xcfefff, transparent: true, opacity: 0.45, shininess: 100 }), 0, 1.1, 0, g); mesh(new T.TorusGeometry(1.05, 0.12, 6, 18), lam(0xe8eaf0), 0, 0.3, 0, g).rotation.x = Math.PI / 2; }
+    g.visible = false; fPartM.push(g);
+    addInter({ x, z, r: 3, icon: '🔧', label: () => 'Ramasser ' + nm, can: () => g.visible, act: () => { S.fparts = S.fparts || []; S.fparts.push(k); g.visible = false; sparkle(x, g.position.y + 1, z); sfx.pickup(); toast('🔧 Tu as trouvé ' + nm + ' !'); forestEvent('fpart'); } });
+  }
+  // Pierres-lanternes anciennes
+  FLANTERNS.forEach(([dx, dz, nm], i) => {
+    const [x, z] = FL(dx, dz), y = forestY(x, z), g = new T.Group(); g.position.set(x, y, z); scene.add(g);
+    const st = lam(0x9a94a8); mesh(new T.CylinderGeometry(0.9, 1.2, 0.6, 8), st, 0, 0.3, 0, g); mesh(new T.CylinderGeometry(0.45, 0.6, 2.6, 8), st, 0, 1.9, 0, g); mesh(new T.CylinderGeometry(0.9, 0.5, 0.6, 8), st, 0, 3.4, 0, g);
+    mesh(new T.SphereGeometry(0.42, 6, 4).scale(1.6, 0.4, 1.6), lam(0x5a9a4a), 0.3, 0.65, 0.2, g);
+    const fl = new T.Mesh(new T.OctahedronGeometry(0.42, 0), new T.MeshBasicMaterial({ color: 0x7ae8ff })); fl.position.y = 4.1; fl.scale.y = 1.6; g.add(fl);
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0x7ae8ff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); gl.position.y = 4.1; gl.scale.set(6, 6, 1); g.add(gl);
+    fLanternM.push({ g, fl, gl }); addCircle(x, z, 1.1);
+    addInter({ x, z, r: 3.2, icon: '🏮', label: () => lanternLit(i) ? 'Pierre-lanterne ' + nm + ' (allumée)' : 'Allumer la pierre-lanterne ' + nm, can: () => !!S.flags.ch3, act: () => lightLantern(i) });
+  });
+  // Le camping-car cabossé : de la fumée tant qu'il n'est pas réparé
+  // La graine de l'Arbre-Mère plantée au parc, près de la grotte d'Oscar
+  { const [x, z] = SEED_SPOT, g = new T.Group(); g.position.set(x, groundY(x, z), z); scene.add(g); fSeedTree = g;
+    mesh(new T.CylinderGeometry(0.25, 0.4, 3.4, 8), lam(0x5a3c2c), 0, 1.7, 0, g); for (let k = 0; k < 4; k++) mesh(new T.IcosahedronGeometry(1.4, 1), lam([0x3f8a4e, 0x377a46][k % 2]), Math.cos(k * 1.6) * 0.9, 3.8 + (k % 2) * 0.6, Math.sin(k * 1.6) * 0.9, g);
+    const fm = new T.MeshBasicMaterial({ color: 0xffd8f0 }); for (let k = 0; k < 10; k++) { const a = k * 0.63; mesh(new T.IcosahedronGeometry(0.22, 0), fm, Math.cos(a) * 1.6, 3.6 + (k % 3) * 0.5, Math.sin(a) * 1.6, g).castShadow = false; }
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xffd8f0, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5 })); gl.position.y = 4; gl.scale.set(7, 7, 1); g.add(gl);
+    g.visible = false; addCircle(x, z, 0.5);
+    addInter({ x, z, r: 3, icon: '🌱', label: () => S.flags.seed ? 'Le petit Arbre-Mère' : 'Planter la graine de l\'Arbre-Mère', can: () => has('graineM') || !!S.flags.seed, act: () => { if (S.flags.seed) { talk([['oscar', 'Il pousse ! Je vais le regarder jusqu\'à ce qu\'il soit grand… Ça prend combien de temps ? Mille ans ?! Bon, je reviendrai après le goûter.']]); return; } take('graineM'); S.flags.seed = 1; refreshForest(); sparkle(x, g.position.y + 2, z); confetti(x, g.position.y + 2, z); sfx.fanfare(); forestEvent('plant'); } });
+  }
+  // Animaux de la forêt
+  for (let i = 0; i < 14; i++) {
+    const deer = i < 6, m = deer ? makeDeer(i === 5) : makeRabbit(false), a = rand(0, 6.283), d = rand(30, FOREST.r - 30), x = FOREST.x + Math.cos(a) * d, z = FOREST.z + Math.sin(a) * d;
+    scene.add(m); fAnimals.push({ m, x, z, rot: rand(0, 6), tx: x, tz: z, wait: rand(1, 6), spd: deer ? 2.2 : 3, phase: 0, deer });
+  }
+  // Brume, le grand cerf blanc
+  addNPC('brume', { name: 'Brume, le cerf blanc', col: '#5a9aa8', model: makeStag(), x: FCAMP[0] + 22, z: FCAMP[1] - 14, rot: -2.4, head: 3.4 });
+  { const n = NPCS.brume; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3.6, icon: '🦌', label: () => 'Parler à Brume', can: () => !n.hidden, act: () => talkBrume() }); }
+  // Les amis perdus dans la forêt
+  MOON_FRIENDS.forEach(([id, name, colr, mk]) => {
+    const s = FSPOTS[id], [x, z] = FL(s[0], s[1]), m = mk();
+    addNPC('lf_' + id, { name, col: colr, model: m, x, z, rot: rand(0, 6), head: 2.2, dy: id === 'plume' ? 0.1 : 0 });
+    const n = NPCS['lf_' + id]; fFriends.push(n);
+    addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3, icon: '💬', label: () => 'Parler à ' + name.split(' (')[0], can: () => !n.hidden, act: () => talkForestFriend(id) });
+  });
+  // Voyages : depuis la base de lancement du parc, et depuis la forêt
+  addInter({ x: POI.base[0] - 10, z: POI.base[1] + 9, r: 5, icon: '🌲', label: () => S.flags.ch3 ? 'Aller dans la Forêt Immense' : 'Nouveau voyage avec tous les amis !', can: () => !!S.flags.ch2done && P.x > -1500 && P.x < 700 && (!S.flags.ch3 || !!S.flags.ch3done), act: () => { if (S.flags.ch3) forestTravel(true); else startCrash(); } });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 6, icon: '🏡', label: () => 'Rentrer au parc des Pins', can: () => onForest() && !!S.flags.ch3done, act: () => forestTravel(false) });
+}
+const SEED_SPOT = [-90, -82];
+const lanternLit = i => (S.flan || []).includes(i);
+function lightLantern(i) {
+  const st = fStep();
+  if (lanternLit(i)) { talk([['oscar', 'Elle brille ! C\'est moi qui l\'ai allumée. Moi tout seul. Avec ma patte magique.']]); return; }
+  if (!st || st.ev !== 'flantern') { talk([['oscar', 'Une vieille pierre avec un creux tout en haut… J\'ai essayé de la lécher. C\'est pas bon. Elle attend sûrement autre chose.']]); return; }
+  S.flan = S.flan || []; S.flan.push(i); refreshForest();
+  const g = fLanternM[i].g; sparkle(g.position.x, g.position.y + 4, g.position.z); sfx.ring();
+  toast('🏮 Pierre-lanterne allumée !'); forestEvent('flantern');
+}
+// ---------- Les missions du chapitre 3 ----------
+const fFriendLeft = () => Object.keys(FSPOTS).filter(k => !(S.ffound || []).includes(k));
+const FQ = [
+  { title: 'Perdus dans la Forêt Immense', steps: [
+    { t: 'Parle au grand cerf blanc, près du camping-car', talk: 'brume', at: () => [NPCS.brume.x, NPCS.brume.z], lines: [
+      ['brume', 'N\'aie pas peur, petit ours. Je m\'appelle Brume. Je veille sur la Forêt Immense depuis très, très longtemps.'],
+      ['oscar', 'Des étoiles filantes ont tapé notre camping-car ! BOUM ! Mes amis ont sauté avec des feuilles en parachute. Moi, je suis resté dedans. Exprès. Parce que je suis très courageux.'],
+      ['brume', 'Je les ai vus tomber comme des graines dans le vent. Ils sont éparpillés partout dans ma forêt.'],
+      ['brume', 'Cherche-les bien : au bord de la rivière, au lac des Brumes, dans les vieilles ruines, près des champignons géants…'],
+      ['oscar', 'Pas besoin d\'aide ! J\'ai un flair incroyable. Je sens… je sens… des champignons. Et du cerf.'],
+      ['brume', 'Ta carte te montrera les endroits où je les ai vus tomber. Va, je t\'attends ici.'],
+      ['oscar', 'Je n\'ai pas besoin de carte. … Bon, d\'accord, je regarde la carte. Mais juste un peu.'],
+    ] }] },
+  { title: 'Retrouver tous les amis', steps: [
+    { t: 'Retrouve tes 11 amis perdus dans la forêt (regarde la carte)', ev: 'ffriend', n: 11, count: () => (S.ffound || []).length, at: () => { const l = fFriendLeft(); if (!l.length) return FCAMP; let b = null, bd = 1e9; for (const k of l) { const p = FL(FSPOTS[k][0], FSPOTS[k][1]), d = Math.hypot(p[0] - P.x, p[1] - P.z); if (d < bd) { bd = d; b = p; } } return b; } },
+    { t: 'Retourne au camping-car : Max a quelque chose à te dire', talk: 'lf_max', at: () => [NPCS.lf_max.x, NPCS.lf_max.z], lines: [
+      ['lf_max', 'Tout le monde est là ! Ouf… On a eu une sacrée peur.'],
+      ['lf_praline', 'Ouaf ! C\'était le meilleur atterrissage de ma vie !'],
+      ['lf_max', 'Bon. Le camping-car a perdu trois morceaux en tombant : le réacteur, l\'antenne et la bulle d\'oxygène.'],
+      ['lf_plume', 'Hou hou ! De mon rocher, j\'ai vu des choses briller entre les arbres. Ça doit être ça !'],
+      ['oscar', 'Moi, je dis qu\'on peut décoller sans réacteur. On saute très fort, tous ensemble !'],
+      ['lf_max', 'Non, Oscar.'],
+      ['oscar', 'Si !'],
+      ['lf_max', 'NON, Oscar. Trouve les trois pièces et rapporte-les-moi. Je répare tout le reste !'],
+      ['oscar', '… Bon. D\'accord. Mais c\'était une bonne idée.'],
+    ] }] },
+  { title: 'Réparer le camping-car', steps: [
+    { t: 'Trouve les 3 pièces tombées du camping-car (réacteur, antenne, bulle d\'oxygène)', ev: 'fpart', n: 3, count: () => (S.fparts || []).length, at: () => { const k = FPARTS.find(p => !(S.fparts || []).includes(p[0])); return k ? FL(k[2], k[3]) : FCAMP; } },
+    { t: 'Rapporte les pièces à Max', talk: 'lf_max', at: () => [NPCS.lf_max.x, NPCS.lf_max.z], lines: [
+      ['lf_max', 'Le réacteur, l\'antenne, la bulle… Parfait ! Un petit coup de clé, deux coups de queue… Et voilà !'],
+      ['lf_roquette', 'Il est comme neuf ! On décolle ?'],
+      ['lf_max', 'Attends… Regarde cette brume. On ne voit même pas le haut des arbres. Impossible de voler là-dedans !'],
+      ['lf_filou', 'Devinette : je suis blanche, je cache tout, et je disparais quand la lumière revient… La brume !'],
+      ['oscar', 'Je vais souffler sur la brume ! FFFFFFF… Elle ne bouge pas. Elle est têtue. Comme moi.'],
+      ['lf_max', 'Oscar, demande plutôt à Brume. Lui saura quoi faire.'],
+    ], done: () => { S.flags.ffixed = 1; refreshForest(); } }] },
+  { title: 'La brume magique', steps: [
+    { t: 'Demande à Brume comment chasser la brume', talk: 'brume', at: () => [NPCS.brume.x, NPCS.brume.z], lines: [
+      ['brume', 'Cette brume, c\'est le sommeil de l\'Arbre-Mère. Elle dort depuis si longtemps que sa forêt s\'est endormie avec elle.'],
+      ['brume', 'Autrefois, trois pierres-lanternes brillaient dans la forêt : à l\'ouest, à l\'est et au sud. Leur lumière la réveillait chaque matin.'],
+      ['oscar', 'Facile ! Je vais rallumer les trois pierres-lanternes. Et si ça ne marche pas, je souffle très fort dessus !'],
+      ['brume', 'Pose ta patte sur chacune d\'elles. Ton grand cœur suffira à les rallumer.'],
+    ] },
+    { t: 'Allume les 3 pierres-lanternes (ouest, est et sud de la forêt)', ev: 'flantern', n: 3, count: () => (S.flan || []).length, at: () => { const i = FLANTERNS.findIndex((l, k) => !lanternLit(k)); return i >= 0 ? FL(FLANTERNS[i][0], FLANTERNS[i][1]) : FMOTHER; } },
+  ] },
+  { title: 'Le réveil de l\'Arbre-Mère', steps: [
+    { t: 'Va voir Brume au pied de l\'Arbre-Mère, au nord de la forêt', talk: 'brume', at: () => FMOTHER, lines: [
+      ['brume', 'Les trois lanternes brillent… Écoute, Oscar. L\'Arbre-Mère se réveille !'],
+      ['oscar', 'Waouh… Elle est encore plus grande que moi ! Bon. À peine plus grande.'],
+      ['brume', 'Merci, petit ours. Grâce à toi et à tes amis, la Forêt Immense revoit le soleil.'],
+      ['brume', 'Voici une graine de l\'Arbre-Mère. Plante-la chez toi : elle protégera ton parc, comme elle protège ma forêt.'],
+    ], done: () => { give('graineM'); S.flags.fmist = 1; refreshForest(); banner('La brume se lève !', 'L\'Arbre-Mère est réveillée 🌸'); sfx.fanfare(); confetti(P.x, P.y + 3, P.z); setTimeout(() => talk([['lf_plume', 'Hou hou ! Oscar ! Je suis montée tout en haut de l\'Arbre-Mère… On voit la mer, très loin !'], ['lf_plume', 'Et sous l\'eau, il y avait des lumières qui bougeaient, comme des petites maisons… Un peuple vit peut-être sous la mer ?'], ['oscar', 'Un peuple des mers ?! Je ne sais pas très bien nager… mais j\'irai quand même. Na !']]), 3800); } }] },
+  { title: 'Retour au parc des Pins', steps: [
+    { t: 'Retourne voir Max au camping-car pour rentrer à la maison', talk: 'lf_max', at: () => [NPCS.lf_max.x, NPCS.lf_max.z], lines: [
+      ['lf_max', 'Le ciel est tout dégagé ! Tout le monde à bord, on rentre au parc des Pins !'],
+      ['lf_lulu', 'Au revoir, Brume ! Au revoir, la Forêt Immense !'],
+      ['brume', 'Revenez quand vous voulez, mes amis. La forêt vous attendra.'],
+    ], done: () => startHome() },
+    { t: 'Plante la graine de l\'Arbre-Mère près de ta grotte', ev: 'plant', at: () => SEED_SPOT },
+  ] },
+];
+const fStep = () => { const q = FQ[S.fq]; return q ? q.steps[S.fstep] : null; };
+function forestEvent(ev) {
+  const st = fStep(); if (!st || st.ev !== ev) { updateQuestUI(); saveGame(); return; }
+  const n = st.count ? st.count() : (S.fcnt = (S.fcnt || 0) + 1);
+  if (st.n && n < st.n) { toast(FQ[S.fq].title + ' : ' + n + ' / ' + st.n); updateQuestUI(); saveGame(); return; }
+  forestAdvance();
+}
+function forestAdvance() {
+  S.fstep++; S.fcnt = 0;
+  if (S.fstep >= FQ[S.fq].steps.length) {
+    S.fq++; S.fstep = 0;
+    if (FQ[S.fq]) { banner('Forêt Immense', FQ[S.fq].title); sfx.quest(); }
+    else { S.flags.ch3done = 1; banner('Chapitre 3 terminé !', 'Tous les amis sont rentrés à la maison 🌳'); sfx.fanfare(); S.coins += 300; updateHUD(); }
+  } else sfx.step();
+  // Si ce qu'il faut est déjà fait (amis trouvés avant de parler à Brume…), on passe tout de suite
+  const st = fStep(); if (st && st.ev && st.count && st.count() >= st.n) return forestAdvance();
+  refreshForest(); updateQuestUI(); saveGame();
+}
+function talkBrume() {
+  const st = fStep();
+  if (st && st.talk === 'brume') return talk(st.lines, () => { if (st.done) st.done(); forestAdvance(); });
+  const L = !S.flags.fmist ? ['La brume est épaisse aujourd\'hui… Reste sur les sentiers, petit ours.', 'Les champignons brillent la nuit pour guider ceux qui se sont perdus.', 'La rivière traverse toute la forêt. Les ponts en troncs t\'aideront à passer.'] : ['Regarde comme la forêt est belle, maintenant que le soleil y entre.', 'L\'Arbre-Mère chante doucement. Tu l\'entends ?', 'Mes cerfs et mes lapins sont si heureux de revoir la lumière.'];
+  talk([['brume', pick(L)]]);
+}
+const FFOUND = {
+  max: 'Oscar ! Je voulais construire un pont pour traverser la rivière… mais tout seul, c\'est long !', lulu: 'Je suis tombée pile dans le lac des Brumes ! L\'eau est toute douce, ici.', raflex: 'Yo ! Regarde ces vieilles pierres sculptées. Des trésors pour mon musée !',
+  donovan: 'Coin coin ! Mon parachute s\'est accroché à une branche. J\'ai cru que j\'allais rester là pour toujours !', noisette: 'Des noisettes grosses comme des pommes ! J\'ai cru que j\'étais au paradis des écureuils.', blaireau: 'Ah, petit… J\'ai trouvé un terrier bien confortable. À mon âge, on se repose où on peut.',
+  plume: 'Hou hou ! Je surveillais la forêt du haut de mon rocher. Je n\'ai jamais vu d\'arbres aussi grands.', maurice: 'Wouf ! Ces champignons brillent dans le noir ! Mais j\'ai perdu Praline… Tu l\'as vue ?', praline: 'Ouaf ! Tu m\'as trouvée ! C\'était la meilleure cachette du monde !',
+  roquette: 'J\'ai glissé dans un fossé plein de feuilles. Quelle descente ! On recommence ?', filou: 'Devinette : qui est grand, très vieux, et garde toute la forêt ? … L\'Arbre-Mère, juste là-haut !',
+};
+function talkForestFriend(id) {
+  const st = fStep(), lf = 'lf_' + id;
+  if (st && st.talk === lf) return talk(st.lines, () => { if (st.done) st.done(); forestAdvance(); });
+  if (!(S.ffound || []).includes(id)) {
+    return talk([[lf, FFOUND[id]], ['oscar', 'Je t\'ai trouvé ! Grâce à mon flair de super-ours. Va vite au camping-car, dans la clairière : on s\'y retrouve tous.']], () => {
+      S.ffound = S.ffound || []; S.ffound.push(id); const n = NPCS[lf]; puff(n.x, n.y + 1, n.z, 12, [1, 1, 1], 2); placeForestFriends(); sfx.quest();
+      const left = fFriendLeft().length; toast(left ? '🐾 Ami retrouvé ! Encore ' + left + ' à trouver.' : '🐾 Tous les amis sont retrouvés !'); forestEvent('ffriend');
+    });
+  }
+  const L = { max: 'Avec un peu de colle de résine, ce camping-car sera comme neuf.', lulu: 'J\'irai encore nager au lac des Brumes avant de partir !', raflex: 'J\'ai gardé une petite pierre sculptée pour mon musée. Chut !', donovan: 'Coin ! Ces arbres sont plus hauts que le Pic Grizzly !', noisette: 'J\'ai rempli mes joues de noisettes géantes. Hmpf hmpf !', blaireau: 'Cette forêt est encore plus vieille que moi, petit.', plume: 'Hou hou ! La nuit, la forêt brille de partout.', maurice: 'Wouf ! Praline et moi, on a fait la course autour de l\'Arbre-Mère !', praline: 'Ouaf ! Je veux une cachette dans un tronc creux à la maison !', roquette: 'Quand le camping-car sera réparé, je conduis !', filou: 'Devinette : je suis dans la forêt, mais aussi dans ta grotte… Un ours malin, bien sûr !' };
+  talk([[lf, L[id]]]);
+}
+// Les amis retrouvés attendent autour du camping-car
+function placeForestFriends() {
+  const found = S.ffound || [];
+  MOON_FRIENDS.forEach(([id], i) => {
+    const n = NPCS['lf_' + id]; if (!n) return;
+    n.hidden = !S.flags.ch3; n.model.visible = !!S.flags.ch3;
+    if (found.includes(id)) { const a = 2.6 + i / MOON_FRIENDS.length * 3.2, x = FCAMP[0] + Math.cos(a) * 13, z = FCAMP[1] + Math.sin(a) * 10; n.x = x; n.z = z; n.rot = Math.atan2(FCAMP[0] - x, FCAMP[1] - z); n.dy = 0; }
+    else { const s = FSPOTS[id]; n.x = FOREST.x + s[0]; n.z = FOREST.z + s[1]; n.dy = id === 'plume' ? 0.1 : 0; }
+  });
+}
+function refreshForest() {
+  if (!S) return;
+  placeForestFriends();
+  const b = NPCS.brume;
+  b.hidden = !S.flags.ch3; b.model.visible = !!S.flags.ch3;
+  // Brume attend au pied de l'Arbre-Mère pendant les lanternes, puis revient dire au revoir
+  if (S.fq === 4 || (S.fq === 3 && S.fstep === 1)) { b.x = FMOTHER[0] + 6; b.z = FMOTHER[1] + 16; } else { b.x = FCAMP[0] + 22; b.z = FCAMP[1] - 14; }
+  fPartM.forEach((g, i) => { g.visible = !!S.flags.ch3 && S.fq === 2 && !(S.fparts || []).includes(FPARTS[i][0]); });
+  fLanternM.forEach((l, i) => { const on = lanternLit(i); l.fl.visible = on; l.gl.visible = on; });
+  if (fMotherBloom) fMotherBloom.visible = !!S.flags.fmist;
+  if (fSeedTree) fSeedTree.visible = !!S.flags.seed;
+  if (C.model && P.mode !== 'drive' && P.mode !== 'fly') { const u = C.model.userData, tilt = onForest() && !S.flags.ffixed; u.body.rotation.z = tilt ? 0.22 : 0; u.body.rotation.x = tilt ? -0.12 : 0; }
+}
+// ---------- Ambiance : brume, rayons de soleil, lucioles, animaux ----------
+function forestFog() {
+  // Couleur et distance du brouillard dans la forêt (appelé par la boucle principale)
+  const mk = S && S.flags.fmist ? 0.15 : 1;
+  scene.fog.color.lerp(_c1.set(nightK > 0.5 ? 0x1a2a32 : 0xb4d2c0), 0.35 + 0.3 * mk);
+  scene.background.lerp(scene.fog.color, 0.25 + 0.3 * mk);
+  hemi.intensity *= 0.88;
+  if (G.cine) return [90, 520, 600];
+  return [lerp(70, 26, mk), lerp(300, 210, mk), 360];
+}
+function updateForest(dt) {
+  const on = onForest() && G.state === 'play';
+  FGLOW.value = 0.25 + nightK * 0.75;
+  if (fShaftMat) { fShaftMat.userData.mesh.visible = on; fShaftMat.uniforms.uK.value = (1 - nightK) * (S && S.flags.fmist ? 1.3 : 0.7); }
+  const mk = S && S.flags.fmist ? 0.25 : 1;
+  for (const m of fMist) {
+    m.s.visible = on;
+    if (!on) continue;
+    m.a += dt * 0.01 * m.sp;
+    let x = P.x + Math.cos(m.a) * m.d, z = P.z + Math.sin(m.a) * m.d;
+    if (m.x === undefined || Math.hypot(m.x - P.x, m.z - P.z) > 80) { m.x = x; m.z = z; }
+    m.x += dt * m.sp; m.s.position.set(m.x, forestY(m.x, m.z) + m.h, m.z);
+    const dc = m.s.position.distanceTo(camera.position);
+    m.s.material.opacity = 0.22 * mk * sstep(10, 30, dc) * (nightK > 0.5 ? 0.5 : 1);
+  }
+  if (!on) { for (const a of fAnimals) a.m.visible = false; return; }
+  // Lucioles et petites lumières magiques
+  if (!G.cine && Math.random() < dt * (6 + nightK * 22)) {
+    const x = P.x + rand(-24, 24), z = P.z + rand(-20, 16), c = pick([[0.5, 1, 0.8], [0.6, 0.9, 1], [1, 0.95, 0.5]]);
+    emit(x, forestY(x, z) + rand(0.6, 3.5), z, rand(-0.3, 0.3), rand(0.05, 0.35), rand(-0.3, 0.3), 3.5, 0.22, c[0], c[1], c[2], 0);
+  }
+  // Le camping-car cabossé fume encore
+  if (S.flags.ch3 && !S.flags.ffixed && Math.random() < dt * 4) puff(C.x + rand(-1, 1), C.y + 2.6, C.z + rand(-1, 1), 1, [0.45, 0.45, 0.5], 1);
+  // Brume brille doucement
+  const b = NPCS.brume; if (b && b.model.visible) b.model.userData.aura.material.opacity = 0.25 + 0.15 * Math.sin(G.t * 1.5) + nightK * 0.3;
+  // Animaux qui se promènent
+  for (const a of fAnimals) {
+    const near = Math.hypot(a.x - P.x, a.z - P.z) < 110; a.m.visible = near; if (!near) continue;
+    const dp = Math.hypot(a.x - P.x, a.z - P.z);
+    if (dp < 7 && !a.flee) { a.flee = 2.5; const ang = Math.atan2(a.x - P.x, a.z - P.z); a.tx = a.x + Math.sin(ang) * 18; a.tz = a.z + Math.cos(ang) * 18; }
+    if (a.flee) a.flee = Math.max(0, a.flee - dt) || 0;
+    const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
+    if (d < 0.5) { a.wait -= dt; a.v = 0; if (a.wait <= 0) { a.wait = rand(2, 8); const ang = rand(0, 6.283), r = rand(6, 20); a.tx = a.x + Math.cos(ang) * r; a.tz = a.z + Math.sin(ang) * r; if (Math.hypot(a.tx - FOREST.x, a.tz - FOREST.z) > FOREST.r - 20 || waterDepth(a.tx, a.tz) > 0.2) { a.tx = a.x; a.tz = a.z; } } }
+    else { const s = a.spd * (a.flee ? 2.6 : 1); a.v = s; a.x += dx / d * s * dt; a.z += dz / d * s * dt; collide(a, 0.5); a.rot += angDiff(a.rot, Math.atan2(dx, dz)) * (1 - Math.exp(-dt * 6)); }
+    a.phase += dt * (a.v || 0) * 2.4;
+    a.m.position.set(a.x, forestY(a.x, a.z), a.z); a.m.rotation.y = a.rot; animRig(a.m, a.phase, a.v ? 1 : 0, dt);
+  }
+}
+// ---------- Cinématique : la pluie d'étoiles filantes et le crash ----------
+const CRASH_CAP = [[0.5, 'Max : On rentre à la maison, tout le monde !'], [3.5, 'Oh oh… Qu\'est-ce que c\'est, toutes ces lumières ?'], [5, '☄️ Une pluie d\'étoiles filantes !'], [7.6, '💥 BOUM ! Le réacteur est touché !'], [9, 'On tombe vers la Terre ! Accrochez-vous !']];
+const CRASH_CAP2 = [[0.5, 'Max : Tout le monde saute ! Les feuilles géantes font des parachutes !'], [4.5, 'Une forêt immense… Les arbres touchent les nuages !'], [8, 'Le camping-car tombe dans une clairière…']];
+let meteors = [], chutes = [];
+function startCrash() {
+  fadeTo(() => {
+    G.cine = { kind: 'crash', t: 0, cap: 0, space: true, ph: 1 };
+    P.mode = 'cine'; P.model.visible = false; if (P.disguise) setDisguise(false); G.wanted = 0;
+    S.flags.camper = 1; showCamperParts();
+    P.x = MOON.x + 60; P.z = MOON.z - 200;
+    C.x = MOON.x + 40; C.y = 140; C.z = MOON.z - 120; C.rot = 0; C.model.rotation.set(0, 0, 0);
+    camera.far = 6000; camera.updateProjectionMatrix(); sfx.takeoff();
+  });
+}
+const _cd = new V3(), _cv = new V3();
+function updateCrash(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  const caps = L.ph === 1 ? CRASH_CAP : CRASH_CAP2;
+  while (L.cap < caps.length && t >= caps[L.cap][0]) { status(caps[L.cap][1], 'info', 4); L.cap++; }
+  if (L.ph === 1) {
+    // Dans l'espace, vers la Terre
+    G.spaceK = 1;
+    _cd.set(earthM.position.x - C.x, earthM.position.y - C.y, earthM.position.z - C.z).normalize();
+    const hit = t > 7.6, spd = hit ? 16 : 26;
+    C.x += _cd.x * spd * dt; C.y += _cd.y * spd * dt - (hit ? (t - 7.6) * 6 * dt : 0); C.z += _cd.z * spd * dt;
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(hit ? Math.sin(t * 7) * 0.5 : -0.05, Math.atan2(_cd.x, _cd.z), hit ? (t - 7.6) * 3 : 0);
+    if (Math.random() < dt * 30) emit(C.x - _cd.x * 3, C.y, C.z - _cd.z * 3, 0, 0, 0, 1, 1.1, 1, 0.7, 0.3, 0);
+    if (hit && Math.random() < dt * 25) puff(C.x, C.y + 1, C.z, 1, [0.35, 0.35, 0.4], 2);
+    const sh = hit && t < 8.6 ? 0.8 : 0;
+    camera.position.set(C.x - _cd.x * 20 + 6 + rand(-sh, sh), C.y + 7 + rand(-sh, sh), C.z - _cd.z * 20);
+    camera.lookAt(C.x + _cd.x * 30, C.y, C.z + _cd.z * 30);
+    // Étoiles filantes
+    if (t > 3.5 && t < 10 && Math.random() < dt * 5) {
+      const m = new T.Mesh(new T.SphereGeometry(rand(0.7, 1.5), 10, 8), new T.MeshBasicMaterial({ color: pick([0xffd070, 0xffa050, 0xfff0c0]), fog: false }));
+      const side = rand(-1, 1) > 0 ? 1 : -1;
+      m.position.set(C.x + _cd.x * 140 + side * rand(12, 45), C.y + rand(-15, 30), C.z + _cd.z * 140 + rand(-30, 30));
+      m.userData.v = new V3(-_cd.x * 80 - side * rand(5, 15), rand(-12, -4), -_cd.z * 80); m.userData.life = 4; scene.add(m); meteors.push(m);
+    }
+    if (t >= 7.6 && !L.hitDone) { L.hitDone = true; sfx.alert(); for (let i = 0; i < 40; i++) emit(C.x, C.y + 1, C.z, rand(-8, 8), rand(-4, 8), rand(-8, 8), rand(0.6, 1.2), 0.5, 1, rand(0.5, 0.9), 0.2, 0); }
+    if (t > 10.8 && !L.faded) { L.faded = true; fadeTo(() => crashPhase2()); }
+  } else if (L.ph === 2) {
+    // Au-dessus de la Forêt Immense : le camping-car tombe, les amis sautent en parachute
+    const k = clamp(t / 10, 0, 1), e = k * k;
+    const sx = FCAMP[0] - 150, sz = FCAMP[1] - 170, ex = FCAMP[0] + 14, ez = FCAMP[1] - 2;
+    C.x = lerp(sx, ex, k); C.z = lerp(sz, ez, k); C.y = lerp(150, forestY(ex, ez) + 0.8, e);
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(Math.sin(t * 3) * 0.3, t * 1.6, 0.4 + Math.sin(t * 2) * 0.2);
+    if (Math.random() < dt * 35) puff(C.x, C.y + 1, C.z, 1, [0.4, 0.4, 0.45], 2);
+    if (Math.random() < dt * 20) emit(C.x, C.y, C.z, rand(-1, 1), rand(0, 1), rand(-1, 1), 0.8, 0.9, 1, 0.6, 0.2, 0);
+    // Les amis sautent un par un
+    MOON_FRIENDS.forEach(([id, , , mk], i) => {
+      if (t < 0.8 + i * 0.35 || chutes.find(c => c.id === id)) return;
+      const m = mk(), lc = leafChute(); lc.position.y = 3.2; m.add(lc); scene.add(m); const s = FSPOTS[id];
+      chutes.push({ id, m, x0: C.x, y0: C.y, z0: C.z, x1: FOREST.x + s[0], z1: FOREST.z + s[1], t0: t });
+      puff(C.x, C.y + 1, C.z, 6, [1, 1, 1], 2);
+    });
+    for (const c of chutes) { const u = clamp((t - c.t0) / 9, 0, 1); c.m.position.set(lerp(c.x0, c.x1, u), lerp(c.y0, forestY(c.x1, c.z1) + 40, u), lerp(c.z0, c.z1, u)); c.m.rotation.y = t * 0.6 + c.t0; c.m.rotation.z = Math.sin(t * 2 + c.t0) * 0.15; }
+    // La caméra suit le camping-car qui tombe, avec la forêt immense en dessous
+    camera.position.set(C.x + 30, Math.max(C.y + 16, forestY(C.x, C.z) + 55), C.z + 42); camera.lookAt(C.x, C.y - 6, C.z);
+    if (k >= 1 && !L.done) { L.done = true; puff(C.x, C.y + 1, C.z, 40, [0.55, 0.5, 0.45], 5); sfx.land(); fadeTo(endCrash); }
+  }
+  for (let i = meteors.length - 1; i >= 0; i--) { const m = meteors[i]; m.position.addScaledVector(m.userData.v, dt); m.userData.life -= dt; if (Math.random() < 0.6) emit(m.position.x, m.position.y, m.position.z, 0, 0, 0, 0.7, 1.2, 1, 0.75, 0.35, 0); if (m.userData.life <= 0) { scene.remove(m); meteors.splice(i, 1); } }
+}
+function crashPhase2() {
+  const L = G.cine; L.ph = 2; L.t = 0; L.cap = 0; L.space = false; G.spaceK = 0;
+  for (const m of meteors) scene.remove(m); meteors = [];
+  P.x = FCAMP[0]; P.z = FCAMP[1]; P.y = forestY(P.x, P.z);
+  S.flags.ch3 = 1; if (S.fq === undefined) { S.fq = 0; S.fstep = 0; S.fcnt = 0; S.ffound = []; } refreshForest(); for (const n of fFriends) { n.hidden = true; n.model.visible = false; } NPCS.brume.model.visible = false;
+}
+function endCrash() {
+  for (const c of chutes) scene.remove(c.m); chutes = []; for (const m of meteors) scene.remove(m); meteors = [];
+  G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
+  S.flags.ch3 = 1; if (S.fq === undefined) { S.fq = 0; S.fstep = 0; S.fcnt = 0; S.ffound = []; }
+  C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; C.y = forestY(C.x, C.z) + 0.8; C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
+  P.mode = 'walk'; P.model.visible = true; P.x = FCAMP[0] + 4; P.z = FCAMP[1] + 4; P.y = forestY(P.x, P.z); P.rot = 2; snapCamera();
+  if (!S.time || S.time > 17 || S.time < 7) S.time = 9;
+  refreshForest(); updateQuestUI(); saveGame();
+  banner('Chapitre 3', 'La Forêt Immense 🌳');
+  setTimeout(() => talk([['oscar', 'Aïe aïe aïe… J\'ai atterri sur la tête. Ou sur les fesses. Les deux, je crois.'], ['oscar', 'Max ? Lulu ? Praline ? … Personne. Ils ont tous sauté avec les feuilles-parachutes. Ils auraient pu m\'attendre !'], ['oscar', 'Cette forêt est immense… Pas de panique ! Je suis un ours MALIN. Je vais tous les retrouver. Euh… on commence par où ?'], ['oscar', 'Oh ! Un grand cerf blanc me regarde… Je fais le mort ? Non… Il a l\'air gentil.']]), 2600);
+}
+// ---------- Cinématique : le retour au parc ----------
+const HOME_CAP = [[0.5, 'Au revoir, Brume ! Au revoir, la Forêt Immense !'], [5, 'Regarde : sans la brume, on voit toute la forêt et l\'Arbre-Mère en fleurs !'], [10, 'Cap sur le parc des Pins !'], [15.5, 'Nous voilà à la maison !']];
+function startHome() {
+  fadeTo(() => {
+    G.cine = { kind: 'home', t: 0, cap: 0, ph: 1 };
+    P.mode = 'cine'; P.model.visible = false; G.wanted = 0;
+    for (const n of fFriends) { n.hidden = true; n.model.visible = false; }
+    C.model.userData.body.rotation.set(0, 0, 0);
+  });
+}
+function updateHome(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  while (L.cap < HOME_CAP.length && t >= HOME_CAP[L.cap][0]) { status(HOME_CAP[L.cap][1], 'info', 4); L.cap++; }
+  if (L.ph === 1) {
+    const k = clamp(t / 12, 0, 1), e = k * k * (3 - 2 * k);
+    const bx = FCAMP[0] + 14, bz = FCAMP[1] - 2;
+    C.x = lerp(bx, FMOTHER[0] + 40, e); C.z = lerp(bz, FMOTHER[1] + 60, e); C.y = forestY(bx, bz) + 0.8 + 120 * Math.pow(e, 1.3);
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(-0.12, Math.atan2(FMOTHER[0] + 40 - bx, FMOTHER[1] + 60 - bz), 0);
+    if (Math.random() < dt * 30) emit(C.x + rand(-1.5, 1.5), C.y - 1, C.z + rand(-1.5, 1.5), rand(-1, 1), -6, rand(-1, 1), 1.2, 1.4, 1, 0.7, 0.3, 0);
+    const a = 0.8 + k * 1.6, dist = lerp(20, 140, k), h = lerp(8, 60, k);
+    camera.position.set(C.x + Math.sin(a) * dist, C.y + h, C.z + Math.cos(a) * dist); camera.lookAt(lerp(C.x, FMOTHER[0], k * 0.6), lerp(C.y, 40, k * 0.5), lerp(C.z, FMOTHER[1], k * 0.6));
+    if (t > 12 && !L.faded) { L.faded = true; fadeTo(() => homePhase2()); }
+  } else {
+    const k = clamp((t - 12.5) / 5, 0, 1), e = 1 - (1 - k) * (1 - k);
+    const bx = POI.base[0], bz = POI.base[1];
+    C.x = bx; C.z = bz; C.y = groundY(bx, bz) + 0.8 + 50 * (1 - e); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
+    if (k < 1 && Math.random() < dt * 30) emit(C.x + rand(-1.5, 1.5), C.y - 1, C.z + rand(-1.5, 1.5), rand(-1, 1), -6, rand(-1, 1), 1.2, 1.4, 1, 0.7, 0.3, 0);
+    launchCrowd.forEach((m, i) => { m.position.y = groundY(m.position.x, m.position.z) + Math.abs(Math.sin(t * 5 + i)) * 0.6; });
+    camera.position.set(bx + 16, groundY(bx, bz) + 9, bz + 18); camera.lookAt(bx, C.y * 0.5 + 2, bz);
+    if (k >= 1 && t > 18.5 && !L.done) { L.done = true; fadeTo(endHome); }
+  }
+}
+function homePhase2() {
+  const L = G.cine; L.ph = 2;
+  P.x = POI.base[0] + 2; P.z = POI.base[1] + 10;
+  launchCrowd = MOON_FRIENDS.map(([id, , , mk], i) => { const m = mk(), a = i / MOON_FRIENDS.length * 6.283, x = POI.base[0] + Math.cos(a) * 9, z = POI.base[1] + Math.sin(a) * 9; m.position.set(x, groundY(x, z), z); m.rotation.y = Math.atan2(POI.base[0] - x, POI.base[1] - z); scene.add(m); return m; });
+  C.rot = 0;
+}
+function endHome() {
+  launchCrowd.forEach(m => scene.remove(m)); launchCrowd = [];
+  G.cine = null; $('quest').style.visibility = '';
+  C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; C.y = groundY(C.x, C.z) + 0.8; C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, 0, 0);
+  P.mode = 'walk'; P.model.visible = true; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; P.y = walkY(P.x, P.z); snapCamera();
+  refreshForest(); updateQuestUI(); saveGame();
+  setTimeout(() => talk([['oscar', 'La maison ! J\'ai faim. Oui, je sais, j\'ai toujours faim. C\'est normal : je suis un ours.'], ['oscar', 'Maintenant, je plante la graine de l\'Arbre-Mère près de ma grotte. La carte me montre l\'endroit. Je ne vais pas me perdre. Presque pas.']]), 1200);
+}
+function skipCine() {
+  const L = G.cine; if (!L || L.done || L.t < 3) return;
+  if (L.kind === 'crash') { L.done = true; fadeTo(() => { if (L.ph === 1) crashPhase2(); endCrash(); }); }
+  else if (L.kind === 'home') { L.done = true; fadeTo(() => { if (L.ph === 1) homePhase2(); endHome(); }); }
+}
+function forestTravel(toForest) {
+  fadeTo(() => {
+    G.spaceK = 0; G.wanted = 0; if (P.disguise) setDisguise(false);
+    if (toForest) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; P.x = FCAMP[0] + 4; P.z = FCAMP[1] + 4; status('🌲 Le camping-car vole jusqu\'à la Forêt Immense…', 'info', 4); }
+    else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status('🏡 Retour au parc des Pins !', 'info', 4); }
+    C.y = groundY(C.x, C.z) + 0.8; C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
+    P.mode = 'walk'; P.y = walkY(P.x, P.z); snapCamera(); refreshForest(); updateQuestUI(); saveGame();
+  });
+}
+function drawForestMap() {
+  const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, R = FOREST.r + 12, k = Wm / (R * 2);
+  const X = x => (x - FOREST.x + R) * k, Z = z => (z - FOREST.z + R) * k;
+  g.fillStyle = '#1e3a2a'; g.fillRect(0, 0, Wm, Wm);
+  g.fillStyle = '#3f7a4a'; g.beginPath(); g.arc(Wm / 2, Wm / 2, FOREST.r * k, 0, 6.283); g.fill();
+  g.fillStyle = 'rgba(30,70,40,.45)'; for (let i = 0; i < 260; i++) { const a = i * 2.4, r = Math.sqrt(i / 260) * FOREST.r; g.beginPath(); g.arc(X(FOREST.x + Math.cos(a) * r), Z(FOREST.z + Math.sin(a) * r), 7, 0, 6.283); g.fill(); }
+  g.strokeStyle = '#41b3e6'; g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 9 * k * 1.2; g.beginPath(); FRIVER.forEach((p, i) => i ? g.lineTo(X(p[0]), Z(p[1])) : g.moveTo(X(p[0]), Z(p[1]))); g.stroke();
+  g.fillStyle = '#41b3e6'; g.beginPath(); g.ellipse(X(FPOND.x), Z(FPOND.z), FPOND.rx * k, FPOND.rz * k, 0, 0, 6.283); g.fill();
+  g.strokeStyle = '#d8b88a'; g.lineWidth = 3.5 * k * 1.2; for (const pts of FPATHS) { g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(X(q[0]), Z(q[1])) : g.moveTo(X(q[0]), Z(q[1]))); g.stroke(); }
+  g.fillStyle = '#7a5a3a'; for (const b of FBRIDGES) { g.beginPath(); g.arc(X(b.x), Z(b.z), 6, 0, 6.283); g.fill(); }
+  g.fillStyle = '#2a5a38'; g.beginPath(); g.arc(X(FMOTHER[0]), Z(FMOTHER[1]), 24 * k, 0, 6.283); g.fill();
+  g.font = '700 18px Nunito, sans-serif'; g.textAlign = 'center';
+  const labels = [['Clairière du crash', [FCAMP[0], FCAMP[1] + 16]], ['Arbre-Mère', [FMOTHER[0], FMOTHER[1] - 18]], ['Lac des Brumes', [FPOND.x, FPOND.z + 26]], ['Ruines anciennes', [FRUINS[0], FRUINS[1] - 16]], ['Rivière', FL(-200, -40)], ['Rocher du Hibou', FL(-35, -72)], ['Champignons géants', FL(75, -56)]].concat(FLANTERNS.map(l => ['Lanterne ' + l[2], FL(l[0], l[1] + 12)]));
+  for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#20302a'; g.fillText(t, X(p[0]), Z(p[1])); }
+  // Endroits où Brume a vu tomber les amis
+  if (S.flags.ch3 && S.fq <= 1) for (const id of fFriendLeft()) { const s = FSPOTS[id]; g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(FOREST.x + s[0]), Z(FOREST.z + s[1]), 7, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); }
+  for (let i = 0; i < FLANTERNS.length; i++) { const [x, z] = FL(FLANTERNS[i][0], FLANTERNS[i][1]); g.fillStyle = lanternLit(i) ? '#7ae8ff' : '#7a7488'; g.beginPath(); g.arc(X(x), Z(z), 6, 0, 6.283); g.fill(); }
+  const st = S.flags.ch3done ? null : fStep(), tgt = st && st.at && st.at();
+  if (tgt && onForest()) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
+  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
+  g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+  g.restore();
 }
 
 // ================= Nuages =================
@@ -4668,7 +5384,7 @@ const _cp = new V3(), _cs = new V3();
 function updateClouds(dt) {
   const camP = camera.position, tgt = _cs.set(P.x, P.y + 1, P.z);
   for (const c of clouds) {
-    const m = c.m; m.visible = P.x < 1500;
+    const m = c.m; m.visible = P.x < 1500 && P.x > -1500;
     m.position.x += c.spd * dt;
     if (m.position.x > HALF + 20) m.position.x = -HALF - 20;
     // Le nuage devient transparent s'il passe entre la caméra et Oscar
@@ -4700,7 +5416,7 @@ function buildWeather() {
 function startRain() { WX.rain = 1; WX.until = S.time + rand(1.2, 2.6); if (WX.until >= 24) WX.until -= 24; if (G.state === 'play' && !P.inHome) toast(P.z < -214 ? '❄️ Il commence à neiger…' : '🌧️ Il commence à pleuvoir…'); }
 function updateWeather(dt) {
   if (G.state !== 'play') { WX.k = 0; return; }
-  if (P.x > 1500 || G.cine) { WX.k = 0; WX.bow.visible = false; WX.flies.material.opacity = 0; return; }
+  if (P.x > 1500 || P.x < -1500 || G.cine) { WX.k = 0; WX.bow.visible = false; WX.flies.material.opacity = 0; return; }
   const h = Math.floor(S.time);
   if (h !== WX.lastH) {
     WX.lastH = h;
@@ -4808,7 +5524,7 @@ function updateGfx(dt) {
     }
   }
   if (G.state !== 'play' || P.inHome || P.x > 1500 || G.cine) return;
-  const fk = forestK(P.x, P.z), pr = REG.prairie(P.x, P.z), snowy = P.z < -214, rain = (typeof WX !== 'undefined' && WX.k > 0.3);
+  const fo = P.x < -1500, fk = fo ? 0.85 : forestK(P.x, P.z), pr = fo ? 0 : REG.prairie(P.x, P.z), snowy = !fo && P.z < -214, rain = (typeof WX !== 'undefined' && WX.k > 0.3);
   if (!snowy && !rain && fk > 0.45 && Math.random() < dt * 4 * fk) {
     const x = P.x + rand(-22, 22), z = P.z + rand(-18, 14), c = pick([[0.95, 0.6, 0.2], [0.9, 0.75, 0.25], [0.45, 0.75, 0.3], [0.8, 0.4, 0.2]]);
     emit(x, walkY(x, z) + rand(6, 10), z, rand(0.4, 1.2), -0.9, rand(-0.4, 0.4), 7, 0.35, c[0], c[1], c[2], 0);
@@ -4817,6 +5533,61 @@ function updateGfx(dt) {
     const x = P.x + rand(-22, 22), z = P.z + rand(-18, 14);
     emit(x, walkY(x, z) + rand(0.5, 2.5), z, rand(0.6, 1.4), rand(0.05, 0.3), rand(-0.3, 0.3), 6, 0.18, 1, 1, 0.92, 0);
   }
+}
+
+// ================= Le caractère d'Oscar : un ours un peu bête, très drôle et têtu =================
+// De temps en temps, Oscar pense tout haut dans une petite bulle au-dessus de sa tête.
+const OSAY = { txt: '', t: 0, cd: 20, idle: 0, bump: 0, run: 0, lastX: 0, lastZ: 0, swim: false };
+const OSCAR_IDLE = [
+  'Si je ne bouge plus, peut-être que le miel viendra tout seul…', 'Je compte les nuages… un… deux… beaucoup !', 'J\'ai oublié ce que je faisais. Ah oui : rien.',
+  'Je suis un ours malin. Le plus malin. Enfin, je crois.', 'Hmm… Est-ce que les poissons font la sieste ?', 'Je pourrais faire une sieste. Une toute petite. De trois heures.',
+  'Mon ventre fait des bruits bizarres. Il veut des baies.', 'Je ne m\'ennuie pas. Je réfléchis très fort. Avec les yeux fermés.', 'Personne ne regarde ? … Je danse ! 🕺',
+  'Et si je mettais mon chapeau à l\'envers ? Ce serait très élégant.', 'Un jour, j\'apprendrai à siffler. Fffff… Pas aujourd\'hui.',
+];
+const OSCAR_BUMP = [
+  'Pousse-toi ! … Il ne se pousse pas.', 'Je passe quand même ! … Bon, je fais le tour. Mais c\'est lui qui a commencé.', 'Aïe ! Qui a mis ça là ?!',
+  'Je ne recule jamais ! … Sauf maintenant.', 'Allez, laisse-moi passer, s\'il te plaît… Non ? Têtu, va !', 'Je pousse, je pousse… Je suis plus fort que toi ! … Ah non.',
+];
+const OSCAR_SWIM = ['Je suis un poisson ! Blub blub !', 'Brrr, elle est froide ! Mais je ne sors pas. Non, non.', 'Je nage comme un champion ! … Un champion très lent.'];
+const OSCAR_RUN = ['Je suis le plus rapide du monde ! … Ouf, pause.', 'Attention, ours pressé ! Pousse-toi, papillon !', 'Je cours tellement vite que mes pattes ne savent plus où elles sont !'];
+const OSCAR_NIGHT = ['Il fait noir… Je n\'ai pas peur. C\'est le noir qui a peur de moi.', 'La lune est ronde comme une crêpe. J\'ai faim.', 'Chut… Les campeurs dorment. Et leurs pique-niques aussi.'];
+const OSCAR_EAT = ['Miam ! Encore ! ENCORE !', 'Les baies, c\'est presque aussi bon que le miel.', 'Je n\'avais pas faim. Mais maintenant, j\'ai encore plus faim.', 'Une baie pour moi, une baie pour moi, une baie pour moi…'];
+const OSCAR_FOREST = ['Ces arbres sont trop grands. C\'est de la triche.', 'Je ne suis pas perdu. Je visite. Très longtemps.', 'Un champignon qui brille ! Je ne le mange pas. … Peut-être un tout petit bout ?', 'Ohé ! Les amis ! … Il n\'y a que l\'écho qui répond. Il est poli, l\'écho.'];
+const OSCAR_MOON = ['Je saute haut comme un kangourou ! Un kangourou poilu.', 'Il n\'y a pas de miel, sur la Lune. Quelle drôle de planète.', 'Je vais planter un drapeau ! … J\'ai oublié le drapeau.'];
+function oscarSay(t, dur) { if (G.talking || G.cine) return; OSAY.txt = t; OSAY.t = dur || 4; OSAY.cd = rand(16, 26); }
+function updateOscar(dt) {
+  OSAY.t -= dt; OSAY.cd -= dt;
+  if (G.state !== 'play' || G.talking || G.cine || P.mode !== 'walk' || P.inHome) { OSAY.idle = 0; OSAY.bump = 0; if (G.talking) OSAY.t = 0; OSAY.lastX = P.x; OSAY.lastZ = P.z; return; }
+  const inp = Math.hypot(IN.x, IN.z), moved = Math.hypot(P.x - OSAY.lastX, P.z - OSAY.lastZ) / Math.max(dt, 1e-3);
+  OSAY.lastX = P.x; OSAY.lastZ = P.z;
+  OSAY.idle = inp < 0.1 ? OSAY.idle + dt : 0;
+  OSAY.bump = inp > 0.5 && moved < 0.8 ? OSAY.bump + dt : Math.max(0, OSAY.bump - dt * 2);
+  OSAY.run = IN.run && moved > 5 ? OSAY.run + dt : 0;
+  const swimNow = P.swim && !OSAY.swim; OSAY.swim = P.swim;
+  if (OSAY.cd > 0 && !(OSAY.bump > 1.2 && OSAY.cd < 12)) return;
+  if (OSAY.bump > 1.2) { oscarSay(pick(OSCAR_BUMP)); OSAY.bump = 0; }
+  else if (swimNow) oscarSay(pick(OSCAR_SWIM));
+  else if (OSAY.run > 6) { oscarSay(pick(OSCAR_RUN)); OSAY.run = 0; }
+  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
+  else if (P.x < -1500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_FOREST), 4.5);
+  else if (P.x > 1500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_MOON), 4.5);
+}
+// La bulle de pensée, dessinée par-dessus la 3D
+function drawOscarThought() {
+  if (OSAY.t <= 0 || G.talking || P.mode !== 'walk') return;
+  const s = toScreen(P.x, P.y + 3.9, P.z); if (!s.front) return;
+  oc.globalAlpha = clamp(OSAY.t / 0.4, 0, 1);
+  oc.font = '600 15px Fredoka, sans-serif';
+  const words = OSAY.txt.split(' '), lines = []; let ln = '';
+  for (const w of words) { const t = ln ? ln + ' ' + w : w; if (oc.measureText(t).width > 250 && ln) { lines.push(ln); ln = w; } else ln = t; }
+  lines.push(ln);
+  const w = Math.max(...lines.map(l => oc.measureText(l).width)) + 24, h = lines.length * 19 + 14, x = clamp(s.x, w / 2 + 8, innerWidth - w / 2 - 8), y = s.y - 30 - h;
+  oc.fillStyle = 'rgba(255,255,255,.95)'; oc.strokeStyle = '#8e3b46'; oc.lineWidth = 2.5;
+  roundRect(x - w / 2, y, w, h, 14); oc.fill(); oc.stroke();
+  // Petites bulles de pensée
+  for (const [dx, dy, r] of [[-6, h + 8, 5], [-12, h + 18, 3]]) { oc.beginPath(); oc.arc(s.x + dx, y + dy, r, 0, 6.283); oc.fill(); oc.stroke(); }
+  oc.fillStyle = '#3a2e2a'; lines.forEach((l, i) => oc.fillText(l, x, y + 16 + i * 19));
+  oc.globalAlpha = 1;
 }
 
 // ================= État général =================
@@ -4866,7 +5637,8 @@ const sfx = (() => {
   function music() {
     if (!ac || !OPT.music || G.state !== 'play' && G.state !== 'title') return;
     const moon = G.state === 'play' && (P.x > 1500 || !!G.cine), snow = G.state === 'play' && (P.z < -214 || moon), night = nightK > 0.5 || moon;
-    const bpm = chase ? 150 : moon ? 70 : snow ? 84 : night ? 78 : 96, st = 60 / bpm / 2;
+    const forest = G.state === 'play' && P.x < -1500 && !G.cine;
+    const bpm = chase ? 150 : moon ? 70 : forest ? 74 : snow ? 84 : night ? 78 : 96, st = 60 / bpm / 2;
     while (nextNote < ac.currentTime + 0.2) {
       const bar = Math.floor(step / 8) % 4, prog = (chase ? CHASE : PROG)[bar];
       const pat = [0, 2, 1, 3, 2, 1, 3, 2][step % 8];
@@ -5015,6 +5787,8 @@ function updateHUD() {
   $('starN').textContent = (S.stars || 0) + ' / ' + STARS_MAX;
 }
 function updateQuestUI() {
+  if (S.flags.ch3 && !S.flags.ch3done && (P.x < -1500 || !QUESTS[S.q])) { const fq = FQ[S.fq], fs = fStep(); if (fq && fs) { $('qTitle').textContent = 'Chapitre 3 · ' + fq.title; $('qText').textContent = fs.t + (fs.n ? ' (' + (fs.count ? fs.count() : S.fcnt || 0) + ' / ' + fs.n + ')' : ''); return; } }
+  if (S.flags.ch2done && !S.flags.ch3 && (P.x > 1500 || !QUESTS[S.q])) { $('qTitle').textContent = 'Chapitre 3 · Un nouveau voyage'; $('qText').textContent = P.x > 1500 ? 'Rentre sur Terre avec le camping-car spatial : tous les amis montent à bord !' : 'Va à la base de lancement du canyon rouge : un nouveau voyage t\'attend avec tous les amis !'; return; }
   if (S.flags.moon && !S.flags.ch2done && (P.x > 1500 || !QUESTS[S.q])) { const mq = MQ[S.mq], ms = mStep(); if (mq && ms) { $('qTitle').textContent = 'Chapitre 2 · ' + mq.title; $('qText').textContent = ms.t + (ms.n ? ' (' + (S.mcnt || 0) + ' / ' + ms.n + ')' : ''); return; } }
   const q = QUESTS[S.q], st = curStep();
   const sq = !q && SIDEQ.find(x => x.id === S.sqActive), ss = sq && sqState(sq.id);
@@ -5168,6 +5942,7 @@ function openJournal() {
     [S.flags.carnetDone, '📖 Carnet sauvage d\'Elliot : ' + nw + ' / ' + WILD.length, S.flags.carnet ? 'Approche-toi des animaux sauvages pour les noter.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.'],
   ];
   if (S.flags.moon) { const hm = document.createElement('div'); hm.innerHTML = '<b>🌙 Chapitre 2 : les Zoublis</b><p></p>'; hm.querySelector('p').textContent = S.flags.ch2done ? 'Terminé ! Les Zoublis sont rentrés chez eux.' : (MQ[S.mq] ? MQ[S.mq].title + ' — ' + mStep().t : ''); L.appendChild(hm); }
+  if (S.flags.ch2done) { const h3 = document.createElement('div'); h3.innerHTML = '<b>🌳 Chapitre 3 : la Forêt Immense</b><p></p>'; h3.querySelector('p').textContent = S.flags.ch3done ? 'Terminé ! Tous les amis sont rentrés, et la graine de l\'Arbre-Mère pousse près de ta grotte.' : S.flags.ch3 ? (FQ[S.fq] ? FQ[S.fq].title + ' — ' + fStep().t : '') : 'Un nouveau voyage t\'attend à la base de lancement (ou en rentrant de la Lune).'; L.appendChild(h3); }
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
   for (const q of SIDEQ) { if (q.friend && !L.querySelector('.amis')) { const h3 = document.createElement('div'); h3.className = 'amis'; h3.innerHTML = '<b>🐾 Jeux avec les amis</b><p>Maurice, Praline, Roquette et Filou t\'attendent !</p>'; L.appendChild(h3); } const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
   const hj = document.createElement('div'); hj.innerHTML = '<b>🚀 Le rêve d\'Oscar : aller dans l\'espace</b><p></p>'; hj.querySelector('p').textContent = 'Tirelire du camping-car spatial : ' + (S.rocket || 0) + ' / ' + ROCKET_GOAL + ' pièces (chez Max, à l\'atelier). Max transforme ton camping-car volant pour aller sur la Lune ! ' + (S.job ? 'Ton métier : ' + JOBS[S.job].e + ' ' + JOBS[S.job].name + ' — va à ' + JOBS[S.job].where + '.' : 'Choisis un métier au panneau « Offres d\'emploi » du village !'); L.appendChild(hj);
@@ -5193,6 +5968,7 @@ function drawMoonMap() {
 function openMap() { drawMap(); openPanel('pMap'); }
 function drawMap() {
   if (P.x > 1500) { drawMoonMap(); return; }
+  if (P.x < -1500) { drawForestMap(); return; }
   const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, k = Wm / (HALF * 2);
   const X = x => (x + HALF) * k, Z = z => (z + HALF) * k;
   g.fillStyle = '#62b96b'; g.fillRect(0, 0, Wm, Wm);
@@ -5218,7 +5994,7 @@ function drawMap() {
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
-  const st = curStep(), tgt = mapTarget();
+  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : mapTarget();
   const stg = sideTarget(); if (stg && stg !== tgt) { g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(stg[0]), Z(stg[1]), 9, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
@@ -5238,13 +6014,13 @@ $('bQuit').addEventListener('click', () => { saveGame(); closePanels(); toTitle(
 
 // ================= Partie : sauvegarde, chargement =================
 function saveGame() {
-  if (!S || G.state !== 'play') return;
+  if (!S || G.state !== 'play' || G.cine) return;
   S.pos = P.mode === 'boat' ? [PONTOONS[0].x, PONTOONS[0].z + 6] : P.mode === 'plane' ? [AIRPORT.x + 4, AIRPORT.z + 15] : [P.x, P.z]; if (P.mode !== 'fly') S.camper = [C.x, C.z, C.rot];
   S.baskets = baskets.map(b => b.takenDay);
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
 }
 function applyState() {
-  P.x = S.pos[0]; P.z = S.pos[1]; P.vx = P.vz = 0; P.mode = 'walk'; P.board = null; P.lift = null; G.slalom = null; showGear(); slalomGates.forEach(g => { g.g.visible = false; }); P.model.visible = true; P.inHome = P.x > 700 && P.x < 1500; G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
+  P.x = S.pos[0]; P.z = S.pos[1]; P.y = walkY(P.x, P.z); snapCamera(); P.vx = P.vz = 0; P.mode = 'walk'; P.board = null; P.lift = null; G.slalom = null; showGear(); slalomGates.forEach(g => { g.g.visible = false; }); P.model.visible = true; P.inHome = P.x > 700 && P.x < 1500; G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
   C.x = S.camper[0]; C.z = S.camper[1]; C.rot = S.camper[2]; C.spd = 0;
   if (!S.flags.camper) { C.x = POI.workshop[0] - 2; C.z = POI.workshop[1] + 14; C.rot = 0.4; }
   if (S.baskets) baskets.forEach((b, i) => { b.takenDay = S.baskets[i]; });
@@ -5265,7 +6041,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } refreshMoon(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -5280,7 +6056,7 @@ function startGame(fresh) {
   const g = NPCS.gerard; g.state = 'patrol'; g.x = g.route[0][0]; g.z = g.route[0][1]; g.ri = 1;
   if (fresh || !saved) {
     banner('Ours Malin', 'Jour 1');
-    setTimeout(() => talk([['oscar', 'Aaah… Quelle bonne nuit dans ma grotte !'], ['oscar', 'Mmmh, j\'ai un petit creux. Il y a des buissons à baies roses près d\'ici !'], ['oscar', 'Ma mission est écrite en haut à droite. La flèche orange me montre où aller.']]), 3300);
+    setTimeout(() => talk([['oscar', 'Aaah… Quelle bonne nuit ! J\'ai rêvé d\'un pot de miel géant. Il était délicieux. Et puis je me suis réveillé.'], ['oscar', 'Mmmh, j\'ai un petit creux. Non, un ÉNORME creux. Il y a des buissons à baies roses près d\'ici !'], ['oscar', 'Ma mission est écrite en haut à droite. La flèche orange me montre où aller. Je n\'en ai pas besoin… mais je vais la suivre quand même.']]), 3300);
   }
   saveGame();
 }
@@ -5295,6 +6071,8 @@ $('bNew').addEventListener('click', () => { try { localStorage.removeItem(SAVE_K
 
 // ================= Caméra =================
 const camPos = new V3(0, 30, 30), camLook = new V3();
+// Après un voyage, la caméra se place tout de suite derrière Oscar
+function snapCamera() { const lo = P.x < -1500; camPos.set(P.x, P.y + (lo ? 13.2 : 34.2), P.z + 17); camLook.set(P.x, P.y + 1.2, P.z); }
 function updateCamera(dt) {
   if (G.camOverride || G.cine) return;
   if (G.state === 'title') {
@@ -5309,6 +6087,8 @@ function updateCamera(dt) {
   if (P.mode === 'boat') off = [0, 36, 20];
   if (P.mode === 'ski') { off = [0, 30, 19]; target.x += Math.sin(P.rot) * P.skiSpd * 0.35; target.z += Math.cos(P.rot) * P.skiSpd * 0.35; }
   if (P.mode === 'lift') off = [0, 26, 22];
+  // Dans la Forêt Immense, la caméra passe sous les grands arbres
+  if (P.x < -1500 && P.mode === 'walk') off = [0, 12, 17];
   if (G.talking && G.talkWho && G.talkWho !== 'oscar' && NPCS[G.talkWho]) {
     const n = NPCS[G.talkWho];
     target.set((P.x + n.x) / 2, Math.max(P.y + 1.5, n.id === 'plume' ? n.y - 2 : P.y + 1.5), (P.z + n.z) / 2);
@@ -5331,7 +6111,7 @@ function drawOverlay() {
   oc.textAlign = 'center'; oc.textBaseline = 'middle';
   // Repère au-dessus d'Oscar quand il est caché sous les arbres
   G.coverT = (G.coverT || 0) - 1;
-  if (G.coverT <= 0) { G.coverT = 8; G.covered = (P.mode === 'walk' || P.mode === 'ski') && !P.inHome && treeCover(P.x, P.z); }
+  if (G.coverT <= 0) { G.coverT = 8; G.covered = (P.mode === 'walk' || P.mode === 'ski') && !P.inHome && P.x > -1500 && treeCover(P.x, P.z); }
   G.coverK = lerp(G.coverK || 0, G.covered ? 1 : 0, 0.15);
   if (G.coverK > 0.05 && !G.talking) {
     const s = toScreen(P.x, P.y + 3, P.z), b = Math.sin(G.t * 4) * 3;
@@ -5392,6 +6172,7 @@ function drawOverlay() {
     if (s.front) { oc.fillStyle = '#fff'; oc.beginPath(); oc.arc(s.x, s.y + Math.sin(G.t * 4) * 3, 17, 0, 6.283); oc.fill(); oc.font = '18px sans-serif'; oc.fillText(actNow.icon, s.x, s.y + Math.sin(G.t * 4) * 3 + 1); }
   }
   if (FS && FS.state === 'bite') { const s = toScreen(FS.x, WATER_Y + 1.5, FS.z); oc.fillStyle = '#e0403a'; oc.beginPath(); oc.arc(s.x, s.y, 16, 0, 6.283); oc.fill(); oc.fillStyle = '#fff'; oc.font = '700 22px Fredoka, sans-serif'; oc.fillText('!', s.x, s.y + 1); }
+  drawOscarThought();
   if (P.hidden && P.mode === 'walk') { const s = toScreen(P.x, P.y + 3.4, P.z); oc.font = '700 15px Fredoka, sans-serif'; oc.fillStyle = '#fff'; oc.strokeStyle = 'rgba(30,80,40,.8)'; oc.lineWidth = 4; oc.strokeText('🌿 Caché', s.x, s.y); oc.fillText('🌿 Caché', s.x, s.y); }
 }
 function roundRect(x, y, w, h, r) { oc.beginPath(); oc.moveTo(x + r, y); oc.arcTo(x + w, y, x + w, y + h, r); oc.arcTo(x + w, y + h, x, y + h, r); oc.arcTo(x, y + h, x, y, r); oc.arcTo(x, y, x + w, y, r); oc.closePath(); }
@@ -5430,7 +6211,7 @@ function step(dt) {
     else if (P.mode === 'cine') updateLaunch(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateMoon(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -5461,7 +6242,8 @@ function step(dt) {
   const space = G.state === 'play' && (P.x > 1500 || (G.cine && G.cine.space));
   if (space) { scene.background.set(0x05060c); scene.fog.color.set(0x05060c); hemi.intensity = 0.42; hemi.color.set(0xcfd8ff); hemi.groundColor.set(0x404050); sun.intensity = 0.95; sun.color.setRGB(1, 1, 1); winMat.emissiveIntensity = 0.6; }
   else if (G.spaceK > 0) { _c1.set(0x05060c); scene.background.lerp(_c1, G.spaceK); scene.fog.color.lerp(_c1, G.spaceK); }
-  const fogN = space ? 260 : G.cine ? 2500 : 140, fogF = space ? 900 : G.cine ? 6000 : 340, far = space || G.cine ? 6000 : 380;
+  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : null;
+  const fogN = space ? 260 : ff ? ff[0] : G.cine ? 2500 : 140, fogF = space ? 900 : ff ? ff[1] : G.cine ? 6000 : 340, far = space ? 6000 : ff ? ff[2] : G.cine ? 6000 : 380;
   scene.fog.near = fogN; scene.fog.far = fogF; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   if (G.state === 'play' && P.x > 700 && P.x < 1500) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
   updateCamera(dt);
@@ -5507,6 +6289,7 @@ buildFriends();
 buildJobs();
 buildCamperParts();
 buildMoon();
+buildForest();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -5516,7 +6299,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, OSAY, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>

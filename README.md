@@ -47,7 +47,7 @@ Pour y jouer en local, ouvre `escadron/index.html`.
 
 ## Jeu : Ours Malin
 
-Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
+Aventure 3D tout en douceur dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
 
 - 14 missions qui se suivent, avec Max le castor, Lulu la loutre, Raflex le raton laveur (son musée), Donovan le canard (course contre la montre), Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau.
 - Une ligne blanche au sol guide vers l'objectif pendant les deux premières missions.
@@ -75,6 +75,16 @@ Aventure 3D tout en douceur dans le parc des Pins. Le but : sauver le parc que M
   Les pièces vont dans la tirelire de Max, à côté de son atelier (4000 pièces). Max transforme le camping-car volant en camping-car spatial en 4 étapes (réacteurs, coque spatiale, bulle d'oxygène, antenne), et tous les amis viennent aider à chaque étape.
 - Chapitre 2, le grand jour : tous les amis montent à bord à la base de lancement du canyon rouge. Le camping-car monte doucement au-dessus du parc pour admirer le paysage, le ciel devient noir, puis on se pose sur la Lune (on peut passer la scène).
 - Sur la Lune, une petite planète ronde avec des cratères et une montagne, nos héros découvrent par hasard les Zoublis, des petits extraterrestres dont la soucoupe est en panne. 5 missions pour les aider à rentrer chez eux : les rencontrer, trouver 5 cristaux d'énergie, rapporter 3 blocs de glace pour le carburant, régler 3 télescopes pour retrouver leur planète, puis leur dire au revoir. Ensuite, on peut aller et venir entre la Terre et la Lune.
+- Chapitre 3, la Forêt Immense : en rentrant de la Lune, une pluie d'étoiles filantes touche le camping-car. Il s'écrase dans une forêt géante et brumeuse, et les amis sautent avec des feuilles-parachutes. Oscar se réveille seul et rencontre Brume, un grand cerf blanc. 6 missions :
+  1. parler à Brume ;
+  2. retrouver les 11 amis perdus (au bord de la rivière, au lac des Brumes, dans les ruines anciennes, au milieu des champignons géants, dans un tronc creux…) ;
+  3. trouver les 3 pièces tombées du camping-car (réacteur, antenne, bulle d'oxygène) ;
+  4. rallumer les 3 pierres-lanternes pour chasser la brume magique ;
+  5. réveiller l'Arbre-Mère, qui se couvre de fleurs lumineuses et donne une graine ;
+  6. rentrer au parc et planter la graine près de la grotte d'Oscar.
+  À la fin, Madame Plume voit la mer du haut de l'Arbre-Mère, avec des lumières sous l'eau : un peuple des mers, pour une prochaine aventure ?
+- La Forêt Immense : arbres géants et séquoias de plus de 30 mètres, lianes, racines, rivière avec des ponts en troncs, lac des Brumes, ruines anciennes, champignons géants et petits champignons qui brillent la nuit, arbres à lanternes, rayons de soleil entre les arbres, brume qui flotte, lucioles, cerfs et lapins. La caméra passe sous les grands arbres.
+- Oscar a du caractère : c'est un ours un peu bête, très drôle et têtu. Il est gourmand, il se croit le plus malin et il ne veut jamais avoir tort. Il pense tout haut dans une petite bulle : quand il reste sans bouger, quand il fonce dans un arbre (il insiste !), quand il nage, court, mange des baies, se promène la nuit, dans la forêt ou sur la Lune.
 - Graphismes plus beaux : les herbes, fleurs et feuillages bougent avec le vent, un vrai ciel avec un soleil qui brille et des étoiles la nuit, de l'eau qui brille, des feuilles qui tombent dans la forêt, des graines qui volent dans la prairie et un léger voile sombre au bord de l'écran.
 - Des avions dans le ciel, des voiliers sur le lac, une musique plus riche avec une mélodie à la flûte, plus d'arbres, des souches, des troncs couchés et des rochers moussus.
 - Les personnages ne parlent plus à voix haute (on lit les bulles), et la flèche orange n'apparaît que pour les deux premières missions : ensuite, on utilise la carte.
