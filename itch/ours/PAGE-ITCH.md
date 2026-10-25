@@ -16,7 +16,7 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 65, 59, 67, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 68, 65, 69, 70, 59, 67, 71, 72, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `skiing`, `open-world`, `family-friendly`, `space`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
@@ -50,6 +50,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Sur la Lune, surprise : des extraterrestres !** Aide les Zoublis à réparer leur soucoupe (cristaux d'énergie, glace, télescopes) et à retrouver leur planète.
 - **Chapitre 3 : la Forêt Immense !** Une pluie d'étoiles filantes fait tomber le camping-car dans une forêt géante et brumeuse. Avec Brume, le grand cerf blanc, retrouve tes 11 amis perdus, répare le camping-car, rallume les pierres-lanternes et réveille l'Arbre-Mère !
 - **Oscar pense tout haut** : il fonce dans les arbres (et il insiste !), rêve de miel, se croit le plus malin et dit des bêtises qui font rire.
+- **Une nature pleine de vie** : écureuils qui grimpent aux arbres, oiseaux qui s'envolent, oies en V, cygnes, canetons, feuilles mortes, lys et nénuphars, rivières qui coulent, barques, canoë et tas de bûches.
 - **De beaux graphismes** : l'herbe et les fleurs bougent avec le vent, un vrai ciel avec un soleil et des étoiles, de l'eau qui brille et des feuilles qui tombent.
 - **Chaque ami a sa maison** : en facteur, dépose les lettres dans leurs boîtes aux lettres.
 - **De nouveaux amis** : joue à cache-cache avec Praline la carline, fais la course de luge contre Roquette le raton laveur et réponds aux devinettes de Filou le renard !
@@ -86,6 +87,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Surprise on the Moon: aliens!** Help the Zoublis fix their flying saucer (energy crystals, ice, telescopes) and find their home planet.
 - **Chapter 3: the Immense Forest!** A meteor shower sends the camper crashing into a giant, misty forest. With Brume the white stag, find your 11 lost friends, fix the camper, relight the lantern stones and wake the Mother Tree!
 - **Oscar thinks out loud**: he bumps into trees (and keeps pushing!), dreams of honey, thinks he's the smartest and says silly things that make you laugh.
+- **Nature full of life**: squirrels climbing trees, birds flying off, geese in V formation, swans, ducklings, fallen leaves, lilies and water lilies, flowing rivers, rowboats, a canoe and woodpiles.
 - **Beautiful graphics**: grass and flowers sway in the wind, a real sky with a glowing sun and stars, shiny water and falling leaves.
 - **Every friend has a house**: as the mail carrier, drop letters in their mailboxes.
 - **New friends**: play hide-and-seek with Praline the pug, race Roquette the raccoon on a sled and solve Filou the fox's riddles!

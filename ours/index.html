@@ -645,7 +645,8 @@ function buildGround() {
   });
   waterTex.wrapS = waterTex.wrapT = T.RepeatWrapping;
   // L'eau brille au soleil (reflets)
-  const wm = new T.MeshPhongMaterial({ map: waterTex, color: 0xffffff, emissive: colorL(0x0a3a55), emissiveIntensity: 0.25, specular: 0x9ab8cc, shininess: 70 });
+  // L'eau est un peu transparente : on devine le fond, plus sombre là où c'est profond
+  const wm = new T.MeshPhongMaterial({ map: waterTex, color: 0xffffff, emissive: colorL(0x0a3a55), emissiveIntensity: 0.25, specular: 0x9ab8cc, shininess: 70, transparent: true, opacity: 0.86 });
   const lake = new T.Mesh(new T.CircleGeometry(1, 72), wm);
   lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx * 1.06, LAKE.rz * 1.06, 1); lake.position.set(LAKE.x, WATER_Y, LAKE.z);
   lake.receiveShadow = true; scene.add(lake);
@@ -760,21 +761,26 @@ const isSnowy = (x, z, y) => z < -214 || y > 31;
 const MUSHROOMS = [];
 function buildPlants() {
   seed = 777;
-  // Sapin : tronc + 4 étages de feuillage pointus
+  // Sapin : 5 étages de branches qui retombent, plus clairs au bout des branches et plus sombres près du tronc
   const fol = [], caps = [];
-  for (let i = 0; i < 4; i++) {
-    const r0 = 2.6 - i * 0.5, c = new T.ConeGeometry(r0, 2.5, 12); c.rotateY(i * 0.4);
-    const p = c.attributes.position;
+  for (let i = 0; i < 5; i++) {
+    const r0 = 2.75 - i * 0.5, h = 2.3, y0 = 1.9 + i * 1.12, c = new T.ConeGeometry(r0, h, 9, 2, true); c.rotateY(i * 0.6);
+    const p = c.attributes.position, col = [];
     for (let v = 0; v < p.count; v++) {
-      const x = p.getX(v), z = p.getZ(v), r = Math.hypot(x, z);
-      if (r < 0.01) continue;
-      const k = Math.round((Math.atan2(z, x) - i * 0.4) / (Math.PI / 6)) & 1 ? 0.7 : 1.08;
-      p.setX(v, x * k); p.setZ(v, z * k);
+      const x = p.getX(v), y = p.getY(v), z = p.getZ(v), r = Math.hypot(x, z), t = (y + h / 2) / h;
+      let k = 1, dy = 0;
+      if (t < 0.01) { k = Math.round((Math.atan2(z, x) - i * 0.6) / (Math.PI / 4.5)) & 1 ? 0.78 : 1.12; dy = k > 1 ? -0.28 : 0.05; }
+      else if (t < 0.99) k = 0.8;
+      if (r > 0.01) { p.setX(v, x * k); p.setZ(v, z * k); } p.setY(v, y + dy);
+      const sh = t < 0.01 ? (k > 1 ? 1.0 : 0.88) : t < 0.99 ? 0.74 : 0.62;
+      col.push(sh, sh * (t < 0.01 ? 1.04 : 1), sh * (t < 0.01 ? 0.86 : 0.95));
     }
-    c.translate(0, 2.4 + i * 1.35, 0); c.computeVertexNormals(); fol.push(c);
-    const cap = new T.ConeGeometry(r0 * 0.6, 1.35, 12); cap.rotateY(i * 0.4); cap.translate(0, 2.4 + i * 1.35 + 0.6, 0); caps.push(cap);
+    c.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+    c.translate(0, y0, 0); c.computeVertexNormals(); fol.push(c);
+    const cap = new T.ConeGeometry(r0 * 0.62, h * 0.55, 9); cap.rotateY(i * 0.6); cap.translate(0, y0 + h * 0.28, 0); caps.push(cap);
   }
-  const folGeo = mergeGeos(fol), capGeo = mergeGeos(caps);
+  const mergeVC = list => { const parts = list.map(g => g.index ? g.toNonIndexed() : g); let n = 0; for (const g of parts) n += g.attributes.position.count; const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), cl = new Float32Array(n * 3); let o = 0; for (const g of parts) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); cl.set(g.attributes.color.array, o * 3); o += g.attributes.position.count; } const r = new T.BufferGeometry(); r.setAttribute('position', new T.BufferAttribute(pos, 3)); r.setAttribute('normal', new T.BufferAttribute(nor, 3)); r.setAttribute('color', new T.BufferAttribute(cl, 3)); return r; };
+  const folGeo = mergeVC(fol), capGeo = mergeGeos(caps);
   const trunkGeo = new T.CylinderGeometry(0.22, 0.32, 2.4, 6); trunkGeo.translate(0, 1.2, 0);
   const roundGeo = new T.IcosahedronGeometry(2.4, 1); roundGeo.translate(0, 4.4, 0);
   // Séquoia géant de la grande forêt
@@ -797,7 +803,7 @@ function buildPlants() {
     addCircle(x, z, 0.45 * s).tree = 1;
   }
   const pineCols = [0x2c6e47, 0x337a4f, 0x265f3f, 0x3a8656];
-  tiledInst(folGeo, windLam(0.006), pines, { h: 6, col: (c, i) => c.set(pineCols[i % 4]).convertSRGBToLinear() });
+  tiledInst(folGeo, windLam(0.006, { vertexColors: true }), pines, { h: 6, col: (c, i) => c.set(pineCols[i % 4]).convertSRGBToLinear() });
   tiledInst(capGeo, addWind(lam(0xf4f8ff), 0.006), snowP, { h: 6, sy: e => e[3] * (0.9 + (e[5] % 7) * 0.04) * 1.01 });
   tiledInst(trunkGeo, M.trunk, pines.concat(rounds), { h: 2 });
   const roundCols = [0x4f9e57, 0x5aa865, 0x6bb25f, 0x8fbf4f];
@@ -5353,6 +5359,270 @@ function drawForestMap() {
   g.restore();
 }
 
+// ================= Encore plus de nature : feuilles mortes, bûches, lys, nénuphars, rivières vivantes,
+// oiseaux, écureuils, cygnes, canetons et bateaux =================
+let flowMats = [], glints = [], perched = [], geese = [], swans = [], duckFam = [], squirrels = [], boats = [], canoe = null;
+const LILY_LAKES = () => LAKES.filter(L => !L.frozen);
+function lakeOf(x, z) { for (const L of LAKES) if (((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2 < 1) return L; return null; }
+// Le tronc d'arbre le plus proche (pour que les écureuils grimpent dessus)
+function nearTree(x, z, R) {
+  const gr = gridOf(x), ox = gridOx(x); let best = null, bd = R;
+  for (let i = cellOf(x - ox - R); i <= cellOf(x - ox + R); i++) for (let j = cellOf(z - R); j <= cellOf(z + R); j++) for (const c of gr[j * NC + i]) { if (!c.tree) continue; const d = Math.hypot(c.x - x, c.z - z); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+function makeSwan() {
+  const g = new T.Group(), w = lam(0xfbfaf6, { flatShading: false });
+  ball(g, w, 0.45, 0, 0.3, 0, 0.9, 0.62, 1.4);
+  for (const s of [-1, 1]) { const wing = ball(g, w, 0.3, s * 0.28, 0.48, -0.1, 0.5, 0.45, 1.3); wing.rotation.z = s * 0.3; }
+  ball(g, w, 0.16, 0, 0.5, -0.62, 1, 0.8, 1.2);
+  const neck = [[0, 0.65, 0.48, 0.12], [0, 0.88, 0.56, 0.1], [0, 1.1, 0.54, 0.09], [0, 1.3, 0.46, 0.09]]; neck.forEach(p => ball(g, w, p[3], p[0], p[1], p[2]));
+  const head = ball(g, w, 0.13, 0, 1.42, 0.52, 1, 0.9, 1.3);
+  const beak = new T.Mesh(new T.ConeGeometry(0.06, 0.24, 6), lam(0xf08a2a)); beak.rotation.x = Math.PI / 2 + 0.3; beak.position.set(0, 1.38, 0.72); g.add(beak);
+  for (const s of [-1, 1]) ball(g, eyeMat, 0.025, s * 0.09, 1.45, 0.6);
+  g.userData = { head };
+  return g;
+}
+function makeDuckling() {
+  const g = new T.Group(), y = lam(0xffd84d, { flatShading: false });
+  ball(g, y, 0.13, 0, 0.08, 0, 0.9, 0.8, 1.2); ball(g, y, 0.09, 0, 0.22, 0.12);
+  const b = new T.Mesh(new T.ConeGeometry(0.035, 0.09, 5), lam(0xf2a23a)); b.rotation.x = Math.PI / 2; b.position.set(0, 0.21, 0.22); g.add(b);
+  for (const s of [-1, 1]) ball(g, eyeMat, 0.015, s * 0.05, 0.25, 0.18);
+  return g;
+}
+function makeRowboat(col) {
+  const g = new T.Group();
+  const hull = mesh(new T.SphereGeometry(1, 14, 6, 0, 6.283, Math.PI / 2, Math.PI / 2), lam(col, { side: T.DoubleSide }), 0, 0.42, 0, g); hull.scale.set(0.85, 0.45, 2);
+  mesh(new T.TorusGeometry(1, 0.06, 5, 20), lam(0xf4ead8), 0, 0.42, 0, g).scale.set(0.85, 2, 1); g.children[1].rotation.x = Math.PI / 2;
+  mesh(new T.BoxGeometry(1.5, 0.06, 0.32), M.woodL, 0, 0.32, 0.2, g); mesh(new T.BoxGeometry(1.3, 0.06, 0.3), M.woodL, 0, 0.32, -0.9, g);
+  for (const s of [-1, 1]) { const o = mesh(new T.CylinderGeometry(0.035, 0.035, 2.2, 4), M.woodD, s * 0.7, 0.42, 0.1, g); o.rotation.z = s * 1.35; o.rotation.y = s * 0.3; mesh(new T.BoxGeometry(0.18, 0.02, 0.5), M.woodD, s * 1.75, 0.18, 0.4, g); }
+  return g;
+}
+function makeCanoe() {
+  const g = new T.Group();
+  const hull = mesh(new T.SphereGeometry(1, 14, 6, 0, 6.283, Math.PI / 2, Math.PI / 2), lam(0xd8502a, { side: T.DoubleSide }), 0, 0.35, 0, g); hull.scale.set(0.55, 0.4, 2.6);
+  const paddlers = [];
+  for (const [z, shirt, hair] of [[0.9, 0x4a8ad0, 0x4a2a1a], [-0.9, 0xf0c040, 0xd8a050]]) {
+    const h = makeHuman(shirt, 0x3a4a6a, hair); h.scale.setScalar(0.7); h.position.set(0, -0.15, z); g.add(h);
+    const pd = new T.Group(); pd.position.set(0, 1.0, z + 0.25); g.add(pd);
+    mesh(new T.CylinderGeometry(0.03, 0.03, 1.8, 4), M.woodD, 0, 0, 0, pd); mesh(new T.BoxGeometry(0.2, 0.45, 0.04), M.woodD, 0, -0.85, 0, pd);
+    paddlers.push(pd);
+  }
+  g.userData = { paddlers };
+  return g;
+}
+function buildNature() {
+  seed = 5151;
+  // ---- Feuilles mortes par terre dans les forêts ----
+  const leafGeo = new T.CircleGeometry(0.22, 5).rotateX(-Math.PI / 2); leafGeo.scale(1, 1, 0.55);
+  const leaves = [];
+  for (let t = 0; t < 60000 && leaves.length < 7000; t++) {
+    const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
+    if (forestK(x, z) < 0.45 || isSnowy(x, z, groundY(x, z)) || !isFree(x, z, 0.4)) continue;
+    leaves.push([x, groundY(x, z) + 0.04, z, srange(0.8, 1.6), srand() * 6]);
+  }
+  for (let t = 0; t < 30000 && leaves.length < 10500; t++) {
+    const x = FOREST.x + srange(-FOREST.r, FOREST.r), z = FOREST.z + srange(-FOREST.r, FOREST.r);
+    if (Math.hypot(x - FOREST.x, z - FOREST.z) > FOREST.r || polyDist(x, z, FRIVER) < 8 || forestDeck(x, z) !== null) continue;
+    leaves.push([x, forestY(x, z) + 0.05, z, srange(0.9, 1.8), srand() * 6]);
+  }
+  tiledInst(leafGeo, lam(0xffffff, { side: T.DoubleSide }), leaves, { h: 0, shadow: false, sy: () => 1, col: (c, i) => c.set([0xe8903a, 0xd0603a, 0xf0c050, 0xb05a2a, 0x9a6a3a, 0xc8a040][i % 6]).convertSRGBToLinear() });
+  // ---- Tas de bûches et billots ----
+  const pile = [];
+  for (const [x, y, z] of [[-0.55, 0.24, 0], [0, 0.24, 0], [0.55, 0.24, 0], [-0.28, 0.7, 0], [0.28, 0.7, 0], [0, 1.16, 0]]) {
+    pile.push([new T.CylinderGeometry(0.25, 0.25, 2.2, 8).rotateX(Math.PI / 2).translate(x, y, z), 0x7a4a2a]);
+    for (const s of [-1, 1]) pile.push([new T.CircleGeometry(0.24, 8).rotateY(s > 0 ? 0 : Math.PI).translate(x, y, s * 1.11), 0xe0b880]);
+  }
+  const pileGeo = mergeCol(pile);
+  const blockGeo = mergeCol([[new T.CylinderGeometry(0.42, 0.48, 0.7, 10).translate(0, 0.35, 0), 0x6a4430], [new T.CylinderGeometry(0.41, 0.41, 0.03, 10).translate(0, 0.71, 0), 0xe0b880], [new T.CylinderGeometry(0.04, 0.04, 0.8, 5).rotateZ(0.6).translate(0.15, 1.0, 0), 0x8a5a30], [new T.BoxGeometry(0.06, 0.22, 0.32).rotateZ(0.6).translate(-0.12, 0.72, 0), 0xb8bcc8], [new T.CylinderGeometry(0.2, 0.2, 0.5, 8).rotateZ(1.4).translate(0.7, 0.2, 0.3), 0x7a4a2a], [new T.CylinderGeometry(0.18, 0.18, 0.5, 8).rotateZ(1.5).rotateY(1).translate(-0.6, 0.18, 0.5), 0x7a4a2a]]);
+  const piles = [], blocks = [];
+  const place = (arr, x, z, rot, r) => { if (lakeE(x, z) < 1.2 || riverDist(x, z) < RIVER_W + 1 || pathDist(x, z) < 1.2) return; arr.push([x, groundY(x, z), z, 1, rot]); addCircle(x, z, r); };
+  for (const h of HOUSES) if (h.kind === 'cabin') { const c = Math.cos(h.rot), s = Math.sin(h.rot), lx = 4.6, lz = -0.8; place(piles, h.x + lx * c + lz * s, h.z - lx * s + lz * c, h.rot, 1.3); const bx = 4.4, bz = 2.4; place(blocks, h.x + bx * c + bz * s, h.z - bx * s + bz * c, h.rot, 0.6); }
+  for (const c of CAMPSITES) { const a = c[2] - 1.2, x = c[0] + Math.cos(a) * 7, z = c[1] + Math.sin(a) * 7; place(piles, x, z, a, 1.3); }
+  place(piles, POI.workshop[0] - 7, POI.workshop[1] - 3, 0.3, 1.3); place(blocks, POI.workshop[0] - 6, POI.workshop[1] + 2, 0, 0.6);
+  for (let t = 0; t < 8000 && blocks.length < 40; t++) { const x = srange(-HALF, HALF), z = srange(-HALF, HALF); if (forestK(x, z) < 0.5 || isSnowy(x, z, groundY(x, z)) || !isFree(x, z, 2)) continue; (srand() < 0.5 ? blocks : piles).push([x, groundY(x, z), z, 1, srand() * 6]); addCircle(x, z, 1.2); }
+  for (const [dx, dz] of [[8, -12], [-22, 4], [24, 12]]) { const x = FCAMP[0] + dx, z = FCAMP[1] + dz; piles.push([x, forestY(x, z), z, 1, dx]); addCircle(x, z, 1.3); }
+  tiledInst(pileGeo, vcMat, piles, { h: 1, sy: () => 1 });
+  tiledInst(blockGeo, vcMat, blocks, { h: 1, sy: () => 1 });
+  // ---- Lys au bord des lacs et nénuphars en fleurs ----
+  const lilyGeo = mergeCol([[new T.CylinderGeometry(0.025, 0.035, 1.1, 4).translate(0, 0.55, 0), 0x3f8a3a], [new T.ConeGeometry(0.06, 0.5, 4).scale(1, 1, 0.3).rotateZ(0.5).translate(0.12, 0.3, 0), 0x4a9a42], [new T.ConeGeometry(0.06, 0.45, 4).scale(1, 1, 0.3).rotateZ(-0.5).translate(-0.1, 0.35, 0.05), 0x4a9a42],
+    ...[0, 1, 2, 3, 4, 5].map(k => [new T.ConeGeometry(0.07, 0.32, 4).translate(0, 0.16, 0).rotateZ(1.0).rotateY(k * 1.047).translate(0, 1.12, 0), 0xffffff]), [new T.SphereGeometry(0.05, 6, 4).translate(0, 1.16, 0), 0xffd84d]]);
+  const lilies = [];
+  for (let t = 0; t < 40000 && lilies.length < 700; t++) {
+    const L = pick(LILY_LAKES()), a = srand() * 6.283, k = srange(1.22, 1.6), x = L.x + Math.cos(a) * L.rx * k, z = L.z + Math.sin(a) * L.rz * k;
+    if (riverDist(x, z) < RIVER_W + 1 || pathDist(x, z) < 1 || isSnowy(x, z, groundY(x, z)) || Math.abs(x) > HALF - 6 || Math.abs(z) > HALF - 6) continue;
+    for (let j = 0; j < 4 && lilies.length < 700; j++) { const lx = x + srange(-1.2, 1.2), lz = z + srange(-1.2, 1.2); lilies.push([lx, groundY(lx, lz), lz, srange(0.8, 1.25), srand() * 6]); }
+  }
+  tiledInst(lilyGeo, windLam(0.12, { vertexColors: true }), lilies, { h: 1, shadow: false, col: (c, i) => c.set([0xffffff, 0xffb070, 0xf59ac0, 0xfff0a0][Math.floor(i / 4) % 4]).convertSRGBToLinear() });
+  const padGeo = mergeCol([[new T.CircleGeometry(0.75, 10, 0.4, 5.7).rotateX(-Math.PI / 2), 0x4a9a4a]]);
+  const wlGeo = mergeCol([[new T.CircleGeometry(0.75, 10, 0.4, 5.7).rotateX(-Math.PI / 2), 0x4a9a4a], ...[0, 1, 2, 3, 4, 5, 6, 7].map(k => [new T.ConeGeometry(0.12, 0.34, 4).scale(1, 1, 0.4).translate(0, 0.17, 0).rotateZ(0.9 - (k % 2) * 0.35).rotateY(k * 0.785).translate(0.1, 0.08, 0.1), 0xffffff]), [new T.SphereGeometry(0.07, 6, 4).translate(0.1, 0.15, 0.1), 0xffd84d]]);
+  const pads = [], wl = [];
+  for (const L of LILY_LAKES()) {
+    const n = Math.round(L.rx * L.rz / 30);
+    for (let t = 0, m = 0; t < n * 20 && m < n; t++) {
+      const a = srand() * 6.283, k = srange(0.55, 0.88), x = L.x + Math.cos(a) * L.rx * k, z = L.z + Math.sin(a) * L.rz * k;
+      if (PONTOONS.some(p => Math.hypot(p.x - x, p.z - z) < 12)) continue;
+      for (let j = 0; j < 3; j++) { const px = x + srange(-1.8, 1.8), pz = z + srange(-1.8, 1.8); (srand() < 0.3 ? wl : pads).push([px, WATER_Y + 0.03, pz, srange(0.7, 1.3), srand() * 6]); }
+      m++;
+    }
+  }
+  tiledInst(padGeo, vcMat, pads, { h: 0, shadow: false, sy: () => 1 });
+  tiledInst(wlGeo, lam(0xffffff, { vertexColors: true }), wl, { h: 0, shadow: false, sy: () => 1, col: (c, i) => c.set([0xffffff, 0xffc0d8, 0xffffff, 0xfff0a0][i % 4]).convertSRGBToLinear() });
+  // ---- Les rivières vivantes : rochers avec de l'écume, et le courant qui coule ----
+  const flowTex = canvasTex(64, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineCap = 'round'; for (let k = 0; k < 16; k++) { const x = rand(4, w - 4), y = rand(0, h), l = rand(18, 50); g.lineWidth = rand(1.5, 3.5); g.beginPath(); g.moveTo(x, y); g.lineTo(x + rand(-3, 3), y + l); g.stroke(); } });
+  flowTex.wrapS = flowTex.wrapT = T.RepeatWrapping;
+  const flowMat = new T.MeshBasicMaterial({ map: flowTex, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  for (const r of RIVERS) ribbon(r.pts, r.w * 0.9, () => WATER_Y + 0.015, flowMat, true);
+  ribbon(FRIVER, 7.5, () => WATER_Y + 0.015, flowMat, true);
+  flowMats.push(flowMat);
+  const rocks = [], foams = [];
+  const addRiverRocks = (pts, w, gy) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), nx = -(b[1] - a[1]) / L, nz = (b[0] - a[0]) / L;
+      for (let d = 3; d < L; d += srange(5, 11)) {
+        const s = srand() < 0.5 ? -1 : 1, off = s * w * srange(0.32, 0.62), x = a[0] + (b[0] - a[0]) * d / L + nx * off, z = a[1] + (b[1] - a[1]) * d / L + nz * off, sc = srange(0.45, 1.1);
+        if (forestDeck(x, z) !== null || (x > -1500 && deckY(x, z) !== null)) continue;
+        rocks.push([x, WATER_Y - 0.05, z, sc, srand() * 6]); foams.push([x, WATER_Y + 0.025, z, sc * 1.05, srand() * 6]);
+      }
+    }
+  };
+  for (const r of RIVERS) addRiverRocks(r.pts, r.w, groundY);
+  addRiverRocks(FRIVER, 9, forestY);
+  tiledInst(new T.DodecahedronGeometry(1, 0), lam(0xffffff), rocks, { h: 1, sy: e => e[3] * 0.7, col: (c, i) => c.set([0x8a8496, 0x9a94a8, 0x7a7488][i % 3]).convertSRGBToLinear() });
+  const foamGeo = new T.RingGeometry(0.8, 1.15, 14).rotateX(-Math.PI / 2);
+  tiledInst(foamGeo, new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }), foams, { h: 0, shadow: false, sy: () => 1 });
+  // ---- Reflets de soleil qui scintillent sur l'eau ----
+  const gm = new T.SpriteMaterial({ map: glowTex, color: 0xfffbe8, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 });
+  for (let i = 0; i < 36; i++) { const s = new T.Sprite(gm.clone()); s.scale.set(0.9, 0.9, 1); s.visible = false; scene.add(s); glints.push({ s, t: rand(0, 2), life: 0 }); }
+  // ---- Petits oiseaux posés par terre (ils s'envolent quand Oscar arrive) ----
+  for (let i = 0; i < 26; i++) { const m = makeBird([0x8a5a3a, 0x3a6ab0, 0xd84a3a, 0x5a5a5a, 0xe8c040][i % 5]); m.scale.setScalar(0.75); scene.add(m); const b = { m, state: 'ground', t: 0, x: 0, z: 0, y: 0, rot: 0, hop: 0 }; spotBird(b); perched.push(b); }
+  // ---- Des oies sauvages qui passent en V dans le ciel ----
+  for (let i = 0; i < 9; i++) { const m = makeBird(0x8a8478); m.scale.setScalar(1.7); scene.add(m); const k = Math.ceil(i / 2), s = i % 2 ? 1 : -1; geese.push({ m, ox: s * k * 2.6, oz: -k * 2.4, ph: i * 0.4 }); }
+  G.geese = { t: 0, a: 0, x: -HALF - 60, z: 0 };
+  // ---- Cygnes sur le grand lac, et une maman cane avec ses canetons ----
+  for (let i = 0; i < 3; i++) { const m = makeSwan(); scene.add(m); swans.push({ m, x: LAKE.x + rand(-15, 15), z: LAKE.z + rand(-10, 10), tx: LAKE.x, tz: LAKE.z, rot: rand(0, 6), t: 0, ph: rand(0, 6) }); }
+  { const L = PONDS[0], mom = makeDuck(); scene.add(mom); duckFam.push({ m: mom, x: L.x, z: L.z, rot: 0 }); for (let i = 0; i < 5; i++) { const d = makeDuckling(); scene.add(d); duckFam.push({ m: d, x: L.x, z: L.z - i, rot: 0 }); } }
+  // ---- Écureuils qui courent et grimpent aux arbres ----
+  for (let i = 0; i < 22; i++) {
+    const inF = i >= 14; let x = 0, z = 0;
+    for (let k = 0; k < 80; k++) { if (inF) { const a = srand() * 6.283, d = srange(20, FOREST.r - 20); x = FOREST.x + Math.cos(a) * d; z = FOREST.z + Math.sin(a) * d; if (polyDist(x, z, FRIVER) > 10) break; } else { x = srange(-260, 260); z = srange(-200, 200); if (forestK(x, z) > 0.55 && isFree(x, z, 1) && !isSnowy(x, z, groundY(x, z))) break; } }
+    const m = makeSquirrel(); m.scale.setScalar(0.5); m.rotation.order = 'YXZ'; scene.add(m);
+    squirrels.push({ m, x, z, y: 0, hx: x, hz: z, tx: x, tz: z, rot: rand(0, 6), state: 'ground', t: rand(1, 4), up: 0, tree: null, ph: 0 });
+  }
+  // ---- Bateaux : barques amarrées, une barque de pêcheur, un canoë qui descend la rivière ----
+  const moor = (L, a, col, fisher) => { const x = L.x + Math.cos(a) * L.rx * 0.82, z = L.z + Math.sin(a) * L.rz * 0.82, m = makeRowboat(col); scene.add(m); if (fisher) { const h = makeHuman(0x3a8a5a, 0x3a4a6a, 0x5a3a2a); h.scale.setScalar(0.7); h.position.set(0, -0.05, -0.3); m.add(h); const rod = mesh(new T.CylinderGeometry(0.02, 0.03, 3, 4), M.woodD, 0.3, 1.4, 0.9, m); rod.rotation.x = 0.9; } boats.push({ m, x, z, rot: Math.atan2(-Math.sin(a) * L.rx, Math.cos(a) * L.rz) + Math.PI / 2, ph: rand(0, 6) }); };
+  moor(LAKE, 2.2, 0x3a7ab0); moor(LAKE, 2.5, 0xd84a3a); moor(LAKE, 3.9, 0x3e8a5a);
+  moor(PONDS[2], 1.0, 0xf2c040); moor(PONDS[2], 4.2, 0x3a7ab0, true); moor(PONDS[5], 0.6, 0xd84a3a, true);
+  canoe = { m: makeCanoe(), k: 0, dir: 1 }; scene.add(canoe.m);
+}
+function spotBird(b) {
+  for (let k = 0; k < 60; k++) {
+    const x = srange(-HALF + 20, HALF - 20), z = srange(-HALF + 20, HALF - 20), pd = pathDist(x, z);
+    if (pd < 0.5 || pd > 7 || lakeE(x, z) < 1.2 || riverDist(x, z) < RIVER_W + 1 || isSnowy(x, z, groundY(x, z)) || Math.hypot(x - P.x, z - P.z) < 30) continue;
+    b.x = x; b.z = z; b.y = groundY(x, z); b.state = 'ground'; b.t = rand(0.5, 2); return;
+  }
+}
+function updateNature(dt) {
+  if (G.state !== 'play' && G.state !== 'title') return;
+  for (const m of flowMats) m.map.offset.y -= dt * 0.12;
+  const park = P.x > -1500 && P.x < 700, forest = P.x < -1500;
+  // Reflets sur l'eau, le jour
+  for (const g of glints) {
+    g.life -= dt;
+    if (g.life <= 0) {
+      g.s.visible = false; g.t -= dt; if (g.t > 0 || nightK > 0.5 || G.cine || P.inHome || P.x > 1500) continue;
+      for (let k = 0; k < 6; k++) { const x = P.x + rand(-38, 38), z = P.z + rand(-34, 22); if (waterDepth(x, z) > 0.3 && !(forest && x > -1500)) { g.s.position.set(x, WATER_Y + 0.12, z); g.life = rand(0.4, 1.1); g.max = g.life; g.s.visible = true; break; } }
+      g.t = rand(0.05, 0.6);
+    } else { const k = g.life / g.max; g.s.material.opacity = Math.sin(k * Math.PI) * 0.9 * (1 - nightK); const sc = 0.5 + Math.sin(k * Math.PI) * 0.9; g.s.scale.set(sc * 1.6, sc * 0.6, 1); }
+  }
+  // Petits oiseaux posés
+  for (const b of perched) {
+    const near = park && Math.hypot(b.x - P.x, b.z - P.z) < 120; b.m.visible = near; if (!near) continue;
+    const w = b.m.userData.wings;
+    if (b.state === 'ground') {
+      b.t -= dt;
+      if (b.t <= 0) { b.t = rand(0.4, 1.8); if (Math.random() < 0.5) { const a = rand(0, 6.283); b.tx = b.x + Math.cos(a) * 0.8; b.tz = b.z + Math.sin(a) * 0.8; b.hop = 0.3; b.rot = Math.atan2(b.tx - b.x, b.tz - b.z); } }
+      if (b.hop > 0) { b.hop -= dt; b.x += (b.tx - b.x) * dt * 5; b.z += (b.tz - b.z) * dt * 5; }
+      b.y = groundY(b.x, b.z) + 0.12 + (b.hop > 0 ? Math.sin(b.hop / 0.3 * Math.PI) * 0.25 : 0);
+      w.forEach((p, k) => { p.rotation.z = (k ? -1 : 1) * 1.2; });
+      b.m.rotation.x = Math.sin(G.t * 9 + b.x) > 0.8 ? 0.5 : 0; // il picore
+      if (Math.hypot(b.x - P.x, b.z - P.z) < 6 && P.mode === 'walk') { b.state = 'fly'; b.t = 4; const a = Math.atan2(b.x - P.x, b.z - P.z) + rand(-0.5, 0.5); b.vx = Math.sin(a) * 9; b.vz = Math.cos(a) * 9; b.rot = a; b.m.rotation.x = 0; if (Math.random() < 0.5) sfx.blip(); }
+    } else {
+      b.t -= dt; b.x += b.vx * dt; b.z += b.vz * dt; b.y += dt * 5;
+      w.forEach((p, k) => { p.rotation.z = (k ? -1 : 1) * Math.sin(G.t * 26 + k) * 0.9; });
+      if (b.t <= 0) spotBird(b);
+    }
+    b.m.position.set(b.x, b.y, b.z); b.m.rotation.y = b.rot;
+  }
+  // Les oies traversent le ciel en V
+  { const Gs = G.geese; Gs.t -= dt;
+    if (Gs.t <= 0 && Gs.t > -1e9) { const a = rand(0, 6.283); Gs.a = a + Math.PI; Gs.x = Math.cos(a) * (HALF + 80); Gs.z = Math.sin(a) * (HALF + 80); Gs.t = -1e10; }
+    if (Gs.t < -1e9) { Gs.x += Math.sin(Gs.a) * 11 * dt; Gs.z += Math.cos(Gs.a) * 11 * dt; if (Math.hypot(Gs.x, Gs.z) > HALF + 100) Gs.t = rand(25, 60); }
+    const c = Math.cos(Gs.a), s = Math.sin(Gs.a);
+    for (const g of geese) {
+      g.m.visible = park && Gs.t < -1e9;
+      if (!g.m.visible) continue;
+      g.m.position.set(Gs.x + g.ox * c + g.oz * s, 52 + Math.sin(G.t * 0.8 + g.ph) * 0.6, Gs.z - g.ox * s + g.oz * c); g.m.rotation.y = Gs.a;
+      g.m.userData.wings.forEach((p, k) => { p.rotation.z = (k ? -1 : 1) * Math.sin(G.t * 5 + g.ph) * 0.55; });
+    }
+  }
+  // Cygnes
+  for (const w of swans) {
+    w.m.visible = park; if (!park) continue;
+    w.t -= dt; if (w.t <= 0) { w.t = rand(6, 14); for (let k = 0; k < 10; k++) { const tx = LAKE.x + rand(-LAKE.rx, LAKE.rx) * 0.7, tz = LAKE.z + rand(-LAKE.rz, LAKE.rz) * 0.7; if (lakeE(tx, tz) < 0.55 && !PONTOONS.some(p => Math.hypot(p.x - tx, p.z - tz) < 10)) { w.tx = tx; w.tz = tz; break; } } }
+    const dx = w.tx - w.x, dz = w.tz - w.z, d = Math.hypot(dx, dz);
+    if (d > 0.4) { w.x += dx / d * 0.9 * dt; w.z += dz / d * 0.9 * dt; w.rot += angDiff(w.rot, Math.atan2(dx, dz)) * (1 - Math.exp(-dt * 1.5)); }
+    w.m.position.set(w.x, WATER_Y - 0.12 + Math.sin(G.t * 1.5 + w.ph) * 0.03, w.z); w.m.rotation.y = w.rot;
+    w.m.userData.head.rotation.y = Math.sin(G.t * 0.6 + w.ph) * 0.4;
+  }
+  // La cane et ses canetons, en file indienne
+  { const L = PONDS[0], mom = duckFam[0], a = G.t * 0.07; mom.x = L.x + Math.cos(a) * L.rx * 0.55; mom.z = L.z + Math.sin(a) * L.rz * 0.55; mom.rot = Math.atan2(-Math.sin(a) * L.rx, Math.cos(a) * L.rz);
+    for (let i = 0; i < duckFam.length; i++) {
+      const d = duckFam[i]; d.m.visible = park; if (!park) continue;
+      if (i > 0) { const p = duckFam[i - 1], dx = p.x - d.x, dz = p.z - d.z, l = Math.hypot(dx, dz), gap = i === 1 ? 1.1 : 0.55; if (l > gap) { d.x += dx / l * (l - gap); d.z += dz / l * (l - gap); } d.rot = Math.atan2(dx, dz); }
+      d.m.position.set(d.x, WATER_Y + Math.sin(G.t * 3 + i) * 0.02, d.z); d.m.rotation.y = d.rot;
+    }
+  }
+  // Écureuils
+  for (const q of squirrels) {
+    const inF = q.hx < -1500, near = (inF ? forest : park) && Math.hypot(q.x - P.x, q.z - P.z) < 90; q.m.visible = near; if (!near) continue;
+    const gy = inF ? forestY(q.x, q.z) : groundY(q.x, q.z), dp = Math.hypot(q.x - P.x, q.z - P.z), rig = q.m.userData.rig;
+    if (q.state === 'ground') {
+      q.t -= dt;
+      if (dp < 7 && P.mode === 'walk') { const tr = nearTree(q.x, q.z, 14); if (tr) { q.state = 'run'; q.tree = tr; q.tx = tr.x + (q.x - tr.x) / (Math.hypot(q.x - tr.x, q.z - tr.z) || 1) * (tr.r + 0.2); q.tz = tr.z + (q.z - tr.z) / (Math.hypot(q.x - tr.x, q.z - tr.z) || 1) * (tr.r + 0.2); } }
+      else if (q.t <= 0) { q.t = rand(1.5, 4); const a = rand(0, 6.283), r = rand(2, 6); q.tx = q.hx + Math.cos(a) * r; q.tz = q.hz + Math.sin(a) * r; }
+      const dx = q.tx - q.x, dz = q.tz - q.z, d = Math.hypot(dx, dz);
+      if (d > 0.2) { const s = q.state === 'run' ? 7 : 2.4; q.x += dx / d * Math.min(d, s * dt); q.z += dz / d * Math.min(d, s * dt); q.rot = Math.atan2(dx, dz); q.ph += dt * 14; q.y = gy + Math.abs(Math.sin(q.ph)) * 0.18; }
+      else { q.y = gy; if (rig.tail) rig.tail.rotation.x = Math.sin(G.t * 3 + q.hx) * 0.15; }
+      q.m.rotation.set(0, q.rot, 0);
+    } else if (q.state === 'run') {
+      const dx = q.tx - q.x, dz = q.tz - q.z, d = Math.hypot(dx, dz);
+      if (d > 0.25) { q.x += dx / d * Math.min(d, 7 * dt); q.z += dz / d * Math.min(d, 7 * dt); q.rot = Math.atan2(dx, dz); q.ph += dt * 18; q.y = gy + Math.abs(Math.sin(q.ph)) * 0.2; q.m.rotation.set(0, q.rot, 0); }
+      else { q.state = 'climb'; q.up = 0; q.base = gy; q.rot = Math.atan2(q.tree.x - q.x, q.tree.z - q.z); }
+    } else if (q.state === 'climb') {
+      // Il grimpe le long du tronc et regarde Oscar d'en haut
+      q.up = Math.min(q.up + dt * 3.2, 4.2); q.y = q.base + q.up;
+      q.m.rotation.set(-Math.PI / 2 + 0.2, q.rot, 0);
+      if (q.up >= 4.2 && dp > 14) { q.state = 'down'; }
+    } else if (q.state === 'down') {
+      q.up = Math.max(q.up - dt * 2.5, 0); q.y = q.base + q.up; q.m.rotation.set(Math.PI / 2 - 0.2, q.rot + Math.PI, 0);
+      if (q.up <= 0) { q.state = 'ground'; q.t = rand(1, 3); q.hx = q.x; q.hz = q.z; q.m.rotation.set(0, q.rot, 0); }
+    }
+    q.m.position.set(q.x, q.y, q.z);
+  }
+  // Bateaux qui se balancent
+  for (const b of boats) { b.m.visible = park; if (!park) continue; b.m.position.set(b.x, WATER_Y - 0.2 + Math.sin(G.t * 1.2 + b.ph) * 0.05, b.z); b.m.rotation.set(Math.sin(G.t * 0.9 + b.ph) * 0.03, b.rot + Math.sin(G.t * 0.3 + b.ph) * 0.08, Math.sin(G.t * 1.1 + b.ph) * 0.04); }
+  // Le canoë descend la rivière du sud puis remonte
+  if (canoe) {
+    canoe.m.visible = park; if (park) {
+      const pts = RIVER_S, n = pts.length - 1; canoe.k += dt * 0.022 * canoe.dir; if (canoe.k > 0.82) { canoe.k = 0.82; canoe.dir = -1; } if (canoe.k < 0) { canoe.k = 0; canoe.dir = 1; }
+      const f = canoe.k * n, i = Math.min(n - 1, Math.floor(f)), u = f - i, a = pts[i], b = pts[i + 1];
+      const x = lerp(a[0], b[0], u), z = lerp(a[1], b[1], u), rot = Math.atan2((b[0] - a[0]) * canoe.dir, (b[1] - a[1]) * canoe.dir);
+      canoe.m.position.set(x, WATER_Y - 0.15 + Math.sin(G.t * 2) * 0.03, z); canoe.m.rotation.y = rot;
+      canoe.m.userData.paddlers.forEach((p, k) => { const s = Math.sin(G.t * 2.4 + k * Math.PI); p.rotation.z = s * 0.6; p.rotation.x = Math.cos(G.t * 2.4 + k * Math.PI) * 0.4; });
+    }
+  }
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -6236,6 +6506,7 @@ function step(dt) {
   for (const k in partMeshes) if (partMeshes[k].visible) partMeshes[k].rotation.y += dt;
   if (Math.random() < dt * 3) for (const k in partMeshes) { const m = partMeshes[k]; if (m.visible && m.position.distanceTo(camera.position) < 80) emit(m.position.x + rand(-1, 1), m.position.y + 1, m.position.z + rand(-1, 1), 0, 1, 0, 0.8, 0.3, 1, 0.9, 0.4, 0); }
   updateParticles(dt);
+  updateNature(dt);
   setTimeOfDay(G.state === 'title' ? 18.7 : S.time, G.state === 'title' ? new V3(-30, 0, 60) : new V3(P.x, 0, P.z));
   updateWeather(dt);
   // Ciel de l'espace et de la Lune
@@ -6290,6 +6561,7 @@ buildJobs();
 buildCamperParts();
 buildMoon();
 buildForest();
+buildNature();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();

@@ -85,6 +85,16 @@ Aventure 3D tout en douceur dans le parc des Pins, avec Oscar, un ours un peu b�
   À la fin, Madame Plume voit la mer du haut de l'Arbre-Mère, avec des lumières sous l'eau : un peuple des mers, pour une prochaine aventure ?
 - La Forêt Immense : arbres géants et séquoias de plus de 30 mètres, lianes, racines, rivière avec des ponts en troncs, lac des Brumes, ruines anciennes, champignons géants et petits champignons qui brillent la nuit, arbres à lanternes, rayons de soleil entre les arbres, brume qui flotte, lucioles, cerfs et lapins. La caméra passe sous les grands arbres.
 - Oscar a du caractère : c'est un ours un peu bête, très drôle et têtu. Il est gourmand, il se croit le plus malin et il ne veut jamais avoir tort. Il pense tout haut dans une petite bulle : quand il reste sans bouger, quand il fonce dans un arbre (il insiste !), quand il nage, court, mange des baies, se promène la nuit, dans la forêt ou sur la Lune.
+- Encore plus de nature :
+  - de plus beaux sapins, avec des branches qui retombent et des pointes plus claires ;
+  - des feuilles mortes par terre dans les forêts ;
+  - des tas de bûches à côté des maisons, des campings et de l'atelier, et des billots avec une hache ;
+  - des lys au bord des lacs, des nénuphars en fleurs ;
+  - des rivières plus vivantes : le courant qui coule, des rochers avec de l'écume et des reflets de soleil qui scintillent sur l'eau, qui est un peu transparente ;
+  - des petits oiseaux qui picorent au bord des chemins et s'envolent quand Oscar approche, et des oies sauvages qui passent en V dans le ciel ;
+  - des cygnes sur le grand lac et une maman cane suivie de ses canetons ;
+  - des écureuils qui courent et grimpent aux arbres quand Oscar arrive ;
+  - des barques amarrées, des pêcheurs dans leur barque et un canoë qui descend la rivière.
 - Graphismes plus beaux : les herbes, fleurs et feuillages bougent avec le vent, un vrai ciel avec un soleil qui brille et des étoiles la nuit, de l'eau qui brille, des feuilles qui tombent dans la forêt, des graines qui volent dans la prairie et un léger voile sombre au bord de l'écran.
 - Des avions dans le ciel, des voiliers sur le lac, une musique plus riche avec une mélodie à la flûte, plus d'arbres, des souches, des troncs couchés et des rochers moussus.
 - Les personnages ne parlent plus à voix haute (on lit les bulles), et la flèche orange n'apparaît que pour les deux premières missions : ensuite, on utilise la carte.
