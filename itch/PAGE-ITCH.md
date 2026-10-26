@@ -20,7 +20,7 @@
    - Coche **« Mobile friendly »** et **« Fullscreen button »**.
 7. **Pricing** : choisis **« No payment required »**, puis active **« Suggested donation »** avec **2 €**. Un jeu gratuit attire beaucoup plus de joueurs, et ceux qui l'aiment donnent quand même.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : ajoute les images de `captures/` dans cet ordre : 02, 04, 06, 09, 10, 07, 03, 05, 08, 01. Les plus belles d'abord.
+9. **Screenshots** : ajoute les images de `captures/` dans cet ordre : 19, 21, 20, 02, 13, 25, 26, 18, 23, 28, 04, 06, 15, 14, 22, 27, 09, 10, 17, 16, 24, 07, 03, 05, 08, 11, 12, 01. Les plus belles d’abord (itch.io accepte beaucoup d’images ; si tu dois choisir, garde les 12 premières).
 10. **Genre** : Simulation. **Tags** : `space`, `rocket`, `moon`, `3d`, `simulation`, `arcade`, `webgl`, `french`, `browser`, `singleplayer`.
 11. **Description** : copie le texte plus bas (le français puis l'anglais, pour attirer aussi les joueurs étrangers).
 12. Clique sur **Save**, puis passe la page en **Public** quand tout est prêt.
