@@ -115,6 +115,7 @@ Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
   - des écureuils qui courent et grimpent aux arbres quand Oscar arrive ;
   - des barques amarrées, des pêcheurs dans leur barque et un canoë qui descend la rivière.
 - Graphismes plus beaux : les herbes, fleurs et feuillages bougent avec le vent, un vrai ciel avec un soleil qui brille et des étoiles la nuit, de l'eau qui brille, des feuilles qui tombent dans la forêt, des graines qui volent dans la prairie et un léger voile sombre au bord de l'écran.
+- Paysages encore plus beaux : des montagnes bleues aux sommets enneigés tout autour du parc, un sol avec des taches d'herbe claire, foncée et dorée, des arbres et buissons avec de l'ombre douce, de vraies petites fleurs à 5 pétales en massifs de couleur, une lumière du soleil plus forte et des reflets qui scintillent sur les lacs et les rivières.
 - Des avions dans le ciel, des voiliers sur le lac, une musique plus riche avec une mélodie à la flûte, plus d'arbres, des souches, des troncs couchés et des rochers moussus.
 - Les personnages ne parlent plus à voix haute (on lit les bulles), et la flèche orange n'apparaît que pour les deux premières missions : ensuite, on utilise la carte.
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.

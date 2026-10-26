@@ -321,11 +321,11 @@ scene.add(hemi);
 const SKY_KEYS = [
   [0, 0x14204a, 0x1a2858, [0.55, 0.65, 1], 0.12, 0x2a3a70, 0x101820, 0.32],
   [5, 0x2a3466, 0x3a4478, [0.7, 0.7, 1], 0.15, 0x3a4a80, 0x1a2020, 0.36],
-  [6.5, 0xf6a77a, 0xf3b58a, [1, 0.75, 0.55], 0.4, 0xffd8c0, 0x5a6040, 0.72],
-  [8.5, 0x8fd0f2, 0xc8e6ee, [1, 0.97, 0.9], 0.42, 0xd8f0ea, 0x6a8a50, 0.74],
-  [12, 0x7cc8f0, 0xc0e2ec, [1, 1, 0.97], 0.45, 0xd8f0ea, 0x6a8a50, 0.76],
-  [17, 0x84c8ee, 0xc0e0ea, [1, 0.95, 0.86], 0.42, 0xd8f0ea, 0x6a8a50, 0.74],
-  [19.3, 0xf59a6a, 0xf5b080, [1, 0.66, 0.45], 0.42, 0xffc8b0, 0x5a5a40, 0.72],
+  [6.5, 0xf6a77a, 0xf3b58a, [1, 0.75, 0.55], 0.52, 0xffd8c0, 0x5a6040, 0.62],
+  [8.5, 0x8fd0f2, 0xc8e6ee, [1, 0.96, 0.86], 0.58, 0xd0ecf0, 0x5a7a48, 0.64],
+  [12, 0x7cc8f0, 0xc0e2ec, [1, 0.98, 0.92], 0.62, 0xd0ecf0, 0x5a7a48, 0.64],
+  [17, 0x84c8ee, 0xc0e0ea, [1, 0.93, 0.8], 0.58, 0xd0ecf0, 0x5a7a48, 0.64],
+  [19.3, 0xf59a6a, 0xf5b080, [1, 0.66, 0.45], 0.55, 0xffc8b0, 0x5a5a40, 0.6],
   [20.8, 0x5a4a8a, 0x6a5a90, [0.75, 0.6, 0.9], 0.25, 0x6a5a9a, 0x202030, 0.38],
   [22, 0x18244e, 0x1e2c5c, [0.55, 0.65, 1], 0.12, 0x2a3a70, 0x101820, 0.32],
   [24, 0x14204a, 0x1a2858, [0.55, 0.65, 1], 0.12, 0x2a3a70, 0x101820, 0.32],
@@ -594,6 +594,41 @@ function treeCover(x, z) {
 }
 // ================= Matériaux =================
 const toonGrad = (() => { const d = new Uint8Array([165, 165, 165, 255, 225, 225, 225, 255, 255, 255, 255, 255]); const t = new T.DataTexture(d, 3, 1, T.RGBAFormat); t.minFilter = t.magFilter = T.NearestFilter; t.needsUpdate = true; return t; })();
+// Sol avec des taches de couleur (herbe plus claire, plus foncée, un peu jaune) pour qu'il ne soit pas tout plat
+function groundMat(amt) {
+  const m = new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uGA = { value: amt || 1 };
+    sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = `varying vec3 vWp; uniform float uGA;
+      float gHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float gNoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(gHash(i), gHash(i + vec2(1.0, 0.0)), f.x), mix(gHash(i + vec2(0.0, 1.0)), gHash(i + vec2(1.0, 1.0)), f.x), f.y); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      { vec2 q = vWp.xz;
+        float gn = gNoise(q * 0.09) * 0.55 + gNoise(q * 0.37) * 0.3 + gNoise(q * 1.6) * 0.15;
+        float warm = smoothstep(0.55, 0.8, gNoise(q * 0.025 + 17.0));
+        float cool = smoothstep(0.6, 0.85, gNoise(q * 0.03 - 9.0));
+        vec3 dc = diffuseColor.rgb * (0.8 + 0.36 * gn);
+        dc = mix(dc, dc * vec3(1.12, 1.06, 0.78), warm * 0.45);
+        dc = mix(dc, dc * vec3(0.86, 0.98, 1.04), cool * 0.4);
+        diffuseColor.rgb = mix(diffuseColor.rgb, dc, uGA); }`);
+  };
+  return m;
+}
+// Ombre douce au creux des feuillages : le bas et l'intérieur sont plus sombres, le haut plus clair
+function aoGeo(geo, lo) {
+  const g = geo.index ? geo.toNonIndexed() : geo; g.computeBoundingBox();
+  const p = g.attributes.position, n = g.attributes.normal, b = g.boundingBox, h = Math.max(b.max.y - b.min.y, 1e-3), k = p.count;
+  const old = g.attributes.color, a = new Float32Array(k * 3);
+  for (let i = 0; i < k; i++) {
+    const t = (p.getY(i) - b.min.y) / h, ny = n ? n.getY(i) : 0;
+    const f = clamp((lo || 0.62) + (1 - (lo || 0.62)) * t * 0.8 + ny * 0.14, 0.45, 1.12);
+    for (let c = 0; c < 3; c++) a[i * 3 + c] = (old ? old.array[i * 3 + c] : 1) * f * (c === 2 ? 0.97 + 0.05 * t : 1);
+  }
+  g.setAttribute('color', new T.BufferAttribute(a, 3));
+  return g;
+}
 const lam = (hex, o) => { o = Object.assign({}, o || {}); delete o.flatShading; return new T.MeshToonMaterial(Object.assign({ color: colorL(hex), gradientMap: toonGrad }, o)); };
 const M = {
   trunk: lam(0x8e3b46), wood: lam(0x9a6440), woodD: lam(0x6e4430), woodL: lam(0xc08a5a), roofG: lam(0x3e6b4f), roofR: lam(0xc0504a),
@@ -665,7 +700,7 @@ function buildGround() {
   }
   g.setAttribute('color', new T.BufferAttribute(col, 3));
   g.computeVertexNormals();
-  const m = new T.Mesh(g, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad }));
+  const m = new T.Mesh(g, groundMat());
   m.receiveShadow = true; scene.add(m);
   // Eau : lac et rivière, avec des vaguelettes qui bougent
   waterTex = canvasTex(256, 256, (gg, w, h) => {
@@ -679,7 +714,14 @@ function buildGround() {
   waterTex.wrapS = waterTex.wrapT = T.RepeatWrapping;
   // L'eau brille au soleil (reflets)
   // L'eau est un peu transparente : on devine le fond, plus sombre là où c'est profond
-  const wm = new T.MeshPhongMaterial({ map: waterTex, color: 0xffffff, emissive: colorL(0x0a3a55), emissiveIntensity: 0.25, specular: 0x9ab8cc, shininess: 70, transparent: true, opacity: 0.86 });
+  // Petites vagues en relief : la lumière du soleil scintille dessus
+  const wN = (() => { const N = 128, cv = document.createElement('canvas'); cv.width = cv.height = N; const g2 = cv.getContext('2d'), im = g2.createImageData(N, N), hgt = new Float32Array(N * N), TAU = 6.2832;
+    const W = [[1, 2, 0.3], [3, -1, 1.7], [-2, 3, 4.1], [5, 4, 2.2], [-6, 5, 0.9], [7, -6, 3.3]];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let h = 0; for (const [a, b, ph] of W) h += Math.sin((a * x + b * y) / N * TAU + ph) / Math.hypot(a, b); hgt[y * N + x] = h; }
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const dx = hgt[y * N + (x + 1) % N] - hgt[y * N + (x + N - 1) % N], dy = hgt[((y + 1) % N) * N + x] - hgt[((y + N - 1) % N) * N + x], i = (y * N + x) * 4, l = Math.hypot(dx * 4, dy * 4, 1);
+      im.data[i] = (-dx * 4 / l * 0.5 + 0.5) * 255; im.data[i + 1] = (-dy * 4 / l * 0.5 + 0.5) * 255; im.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; im.data[i + 3] = 255; }
+    g2.putImageData(im, 0, 0); const t = new T.CanvasTexture(cv); t.wrapS = t.wrapT = T.RepeatWrapping; return t; })();
+  const wm = new T.MeshPhongMaterial({ map: waterTex, normalMap: wN, normalScale: new T.Vector2(0.35, 0.35), color: 0xffffff, emissive: colorL(0x0a3a55), emissiveIntensity: 0.25, specular: 0xb8d4e4, shininess: 90, transparent: true, opacity: 0.86 });
   const lake = new T.Mesh(new T.CircleGeometry(1, 72), wm);
   lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx * 1.06, LAKE.rz * 1.06, 1); lake.position.set(LAKE.x, WATER_Y, LAKE.z);
   lake.receiveShadow = true; scene.add(lake);
@@ -815,13 +857,13 @@ function buildPlants() {
   const mergeVC = list => { const parts = list.map(g => g.index ? g.toNonIndexed() : g); let n = 0; for (const g of parts) n += g.attributes.position.count; const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), cl = new Float32Array(n * 3); let o = 0; for (const g of parts) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); cl.set(g.attributes.color.array, o * 3); o += g.attributes.position.count; } const r = new T.BufferGeometry(); r.setAttribute('position', new T.BufferAttribute(pos, 3)); r.setAttribute('normal', new T.BufferAttribute(nor, 3)); r.setAttribute('color', new T.BufferAttribute(cl, 3)); return r; };
   const folGeo = mergeVC(fol), capGeo = mergeGeos(caps);
   const trunkGeo = new T.CylinderGeometry(0.22, 0.32, 2.4, 6); trunkGeo.translate(0, 1.2, 0);
-  const roundGeo = new T.IcosahedronGeometry(2.4, 1); roundGeo.translate(0, 4.4, 0);
+  const roundGeo = aoGeo(new T.IcosahedronGeometry(2.4, 1).translate(0, 4.4, 0), 0.6);
   // Séquoia géant de la grande forêt
   const sq = [[new T.CylinderGeometry(0.8, 1.4, 14, 8).translate(0, 7, 0), 0x9a3f3a]];
   for (let i = 0; i < 5; i++) sq.push([new T.ConeGeometry(4.4 - i * 0.7, 3.6, 10).rotateY(i).translate(0, 10 + i * 2.4, 0), [0x2a6a44, 0x2f7448, 0x2a6a44, 0x347a4c, 0x2f7448][i]]);
-  const seqGeo = mergeCol(sq);
+  const seqGeo = aoGeo(mergeCol(sq), 0.7);
   // Bouleau : tronc blanc et feuillage clair
-  const birchGeo = mergeCol([[new T.CylinderGeometry(0.16, 0.24, 5, 6).translate(0, 2.5, 0), 0xf2eee6], [new T.CylinderGeometry(0.245, 0.245, 0.18, 6).translate(0, 1.6, 0), 0x2c2630], [new T.CylinderGeometry(0.2, 0.2, 0.15, 6).translate(0, 3.1, 0), 0x2c2630], [new T.IcosahedronGeometry(1.7, 1).translate(0.3, 5.6, 0), 0x9ccf5a], [new T.IcosahedronGeometry(1.3, 1).translate(-0.7, 6.5, 0.4), 0xb2d866]]);
+  const birchGeo = aoGeo(mergeCol([[new T.CylinderGeometry(0.16, 0.24, 5, 6).translate(0, 2.5, 0), 0xf2eee6], [new T.CylinderGeometry(0.245, 0.245, 0.18, 6).translate(0, 1.6, 0), 0x2c2630], [new T.CylinderGeometry(0.2, 0.2, 0.15, 6).translate(0, 3.1, 0), 0x2c2630], [new T.IcosahedronGeometry(1.7, 1).translate(0.3, 5.6, 0), 0x9ccf5a], [new T.IcosahedronGeometry(1.3, 1).translate(-0.7, 6.5, 0.4), 0xb2d866]]), 0.72);
   const pines = [], rounds = [], snowP = [], seqs = [], birches = [];
   for (let t = 0; t < 420000 && pines.length + rounds.length + seqs.length + birches.length < 21000; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
@@ -840,13 +882,13 @@ function buildPlants() {
   tiledInst(capGeo, addWind(lam(0xf4f8ff), 0.006), snowP, { h: 6, sy: e => e[3] * (0.9 + (e[5] % 7) * 0.04) * 1.01 });
   tiledInst(trunkGeo, M.trunk, pines.concat(rounds), { h: 2 });
   const roundCols = [0x4f9e57, 0x5aa865, 0x6bb25f, 0x8fbf4f];
-  tiledInst(roundGeo, windLam(0.004), rounds, { h: 5, col: (c, i) => c.set(roundCols[i % 4]).convertSRGBToLinear() });
+  tiledInst(roundGeo, windLam(0.004, { vertexColors: true }), rounds, { h: 5, col: (c, i) => c.set(roundCols[i % 4]).convertSRGBToLinear() });
   tiledInst(seqGeo, windLam(0.0006, { vertexColors: true }), seqs, { h: 14, sy: e => e[3] });
   tiledInst(birchGeo, windLam(0.004, { vertexColors: true }), birches, { h: 5 });
   // Buissons pour se cacher, et buissons à baies
   const bushGeo = new T.IcosahedronGeometry(1, 1);
   { const p = bushGeo.attributes.position; for (let v = 0; v < p.count; v++) { const x = p.getX(v), y = p.getY(v), z = p.getZ(v); const k = hash2(Math.round(x * 50) + 7, Math.round(y * 50) * 31 + Math.round(z * 50)) > 0.5 ? 1.16 : 0.94; p.setXYZ(v, x * k, y * k, z * k); } bushGeo.computeVertexNormals(); }
-  const bush2 = mergeGeos([bushGeo.clone(), bushGeo.clone().scale(0.7, 0.7, 0.7).translate(0.75, -0.2, 0.35), bushGeo.clone().scale(0.6, 0.6, 0.6).translate(-0.7, -0.25, -0.3)]);
+  const bush2 = aoGeo(mergeGeos([bushGeo.clone(), bushGeo.clone().scale(0.7, 0.7, 0.7).translate(0.75, -0.2, 0.35), bushGeo.clone().scale(0.6, 0.6, 0.6).translate(-0.7, -0.25, -0.3)]), 0.6), bushA = aoGeo(bushGeo.clone(), 0.6);
   const bl = [];
   for (let t = 0; t < 40000 && bl.length < 820; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
@@ -870,8 +912,8 @@ function buildPlants() {
   }
   const bushCol = (c, i, e) => isSnowy(e[0], e[2], e[1]) ? c.set([0x3f8a62, 0x4a9468][i % 2]).convertSRGBToLinear() : c.set([0x4aa35a, 0x56ad60, 0x3f9852][i % 3]).convertSRGBToLinear();
   const blA = bl.filter((e, i) => i % 3 !== 1), blB = bl.filter((e, i) => i % 3 === 1);
-  tiledInst(bushGeo, windLam(0.035), blA, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i, e) });
-  tiledInst(bush2, windLam(0.035), blB, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i + 1, e) });
+  tiledInst(bushA, windLam(0.035, { vertexColors: true }), blA, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i, e) });
+  tiledInst(bush2, windLam(0.035, { vertexColors: true }), blB, { h: 1, sy: e => e[3] * 0.82, col: (c, i, e) => bushCol(c, i + 1, e) });
   const m4 = new T.Matrix4();
   const berryPos = [];
   bl.forEach((e, i) => {
@@ -897,14 +939,19 @@ function buildPlants() {
     if (s > 0.9) addCircle(x, z, s * 0.8);
   }
   tiledInst(rockGeo, lam(0xffffff), rocks, { h: 2, col: (c, i, e) => c.set(REG.canyon(e[0], e[2]) > 0.5 ? 0xc0704a : isSnowy(e[0], e[2], e[1]) ? 0xb8bccc : 0x9d93b5).convertSRGBToLinear() });
-  const flGeo = new T.IcosahedronGeometry(0.14, 0);
+  // Fleurs : une tige, une corolle à 5 pétales et un cœur jaune, en petits massifs de la même couleur
+  const pet = new T.CircleGeometry(0.17, 10); { const pp = pet.attributes.position; for (let v = 1; v < pp.count; v++) { const k = (v - 1) % 2 ? 0.42 : 1; pp.setXYZ(v, pp.getX(v) * k, pp.getY(v) * k, k > 0.5 ? 0.05 : 0.01); } }
+  pet.rotateX(-Math.PI / 2); pet.translate(0, 0.46, 0); pet.computeVertexNormals();
+  const flGeo = mergeCol([[new T.CylinderGeometry(0.018, 0.024, 0.46, 3, 1, true).translate(0, 0.23, 0), 0x6a9a50], [pet, 0xffffff], [new T.OctahedronGeometry(0.05, 0).translate(0, 0.49, 0), 0xffd040]]);
+  const FLC = [0xffd84d, 0xffffff, 0xf59ac0, 0xffb347, 0xb89cf0, 0xff7a7a, 0x8ec0ff];
   const fl = [];
-  for (let t = 0; t < 16000 && fl.length < 2600; t++) {
+  for (let t = 0; t < 30000 && fl.length < 3200; t++) {
     const x = srange(-HALF, HALF), z = srange(-HALF, HALF);
-    if (!isFree(x, z, 1.2) || forestK(x, z) > 0.5 || isSnowy(x, z, groundY(x, z))) continue;
-    fl.push([x, groundY(x, z) + 0.15, z, 1, 0]);
+    if (fbm(x * 0.035 + 40, z * 0.035, 2) < 0.5 && srand() > 0.18) continue;
+    if (!isFree(x, z, 1.2) || forestK(x, z) > 0.5 || isSnowy(x, z, groundY(x, z)) || pathDist(x, z) < 0.8) continue;
+    fl.push([x, groundY(x, z) - 0.02, z, srange(0.8, 1.35), srand() * 6]);
   }
-  tiledInst(flGeo, lam(0xffffff), fl, { h: 1, shadow: false, sy: () => 1, col: (cc, i) => cc.set([0xffd84d, 0xffffff, 0xf59ac0, 0xffb347][i % 4]).convertSRGBToLinear() });
+  tiledInst(flGeo, windLam(0.3, { vertexColors: true }), fl, { h: 1, shadow: false, sy: e => e[3], col: (cc, i, e) => cc.set(FLC[Math.floor(fbm(e[0] * 0.06 - 13, e[2] * 0.06 + 5, 2) * 13 + (i % 9 === 0 ? 3 : 0)) % FLC.length]).convertSRGBToLinear() });
   // Petites touffes d'herbe (dorées dans la prairie)
   const blades = [];
   for (let k = 0; k < 3; k++) { const b = new T.ConeGeometry(0.09, 0.55, 3); b.translate(0, 0.27, 0); b.rotateZ((k - 1) * 0.45); b.rotateY(k * 1.2); blades.push(b); }
@@ -4841,7 +4888,7 @@ function buildForest() {
     c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }
   gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.computeVertexNormals();
-  fGroundMat = new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad });
+  fGroundMat = groundMat();
   const gm = new T.Mesh(gg, fGroundMat); gm.receiveShadow = true; scene.add(gm);
   // Eau : rivière et lac des Brumes
   const wm = waterMats[1];
@@ -5904,7 +5951,7 @@ function buildSea() {
     c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }
   gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.computeVertexNormals();
-  const gm = new T.Mesh(gg, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad })); gm.receiveShadow = true; scene.add(gm);
+  const gm = new T.Mesh(gg, groundMat(0.7)); gm.receiveShadow = true; scene.add(gm);
   // Les reflets de lumière qui dansent sur le sable
   const caTex = canvasTex(256, 256, (g2, w, h) => { g2.fillStyle = '#000'; g2.fillRect(0, 0, w, h); g2.strokeStyle = 'rgba(200,240,255,.7)'; g2.lineWidth = 2; for (let k = 0; k < 26; k++) { const x = rand(0, w), y = rand(0, h), r = rand(12, 30); g2.beginPath(); for (let a = 0; a < 6.4; a += 0.5) g2.lineTo(x + Math.cos(a) * r * rand(0.7, 1.2), y + Math.sin(a) * r * rand(0.7, 1.2)); g2.stroke(); } });
   caTex.wrapS = caTex.wrapT = T.RepeatWrapping; caTex.repeat.set(24, 24);
@@ -6497,7 +6544,7 @@ function buildCloud() {
   // On garde seulement le sol des îles (pas de murs qui tombent dans le vide)
   { const idx = gg.index.array, keep = []; const isV = i => p.getY(i) < -20; for (let t = 0; t < idx.length; t += 3) if (!isV(idx[t]) && !isV(idx[t + 1]) && !isV(idx[t + 2])) keep.push(idx[t], idx[t + 1], idx[t + 2]); gg.setIndex(keep); }
   gg.computeVertexNormals();
-  const gm = new T.Mesh(gg, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad })); gm.receiveShadow = true; scene.add(gm);
+  const gm = new T.Mesh(gg, groundMat(0.8)); gm.receiveShadow = true; scene.add(gm);
   // Le dessous rocheux de chaque île, qui suit bien son bord : un gros rocher qui flotte
   { const skirt = (cx, cz, Rf, depth) => { const N = 72, rings = [[-3, 0.25], [0.6, -1.6], [-0.2, -0.35 * depth], [-0.45, -0.7 * depth], [-0.8, -depth]], pos = [], cl = [], idx2 = []; const c2 = new T.Color();
       for (let r = 0; r < rings.length; r++) for (let i = 0; i < N; i++) { const a = i / N * 6.283, R0 = Rf(a), k = rings[r][0], rr = r < 2 ? R0 + k : R0 * (1 + k), jit = r >= 2 && r < rings.length - 1 ? (hash2(i * 7 + r, r * 13) - 0.5) * R0 * 0.12 : 0, x = cx + Math.cos(a) * (rr + jit), z = cz + Math.sin(a) * (rr + jit); const y = r === 0 ? cloudY(cx + Math.cos(a) * (R0 - 3.2), cz + Math.sin(a) * (R0 - 3.2)) - 0.3 : r === 1 ? cloudY(cx + Math.cos(a) * (R0 - 3.2), cz + Math.sin(a) * (R0 - 3.2)) + rings[r][1] : rings[r][1] + (hash2(i, r) - 0.5) * depth * 0.15; pos.push(x, y, z); c2.set(r === 0 ? 0x7ed07a : r === 1 ? 0x8a9a6a : [0xa08a7a, 0x8a7a70, 0x7a6a64][(i + r) % 3]).convertSRGBToLinear(); cl.push(c2.r, c2.g, c2.b); }
@@ -6997,6 +7044,48 @@ function buildSky() {
   }));
   skyDome.renderOrder = -1; skyDome.frustumCulled = false; scene.add(skyDome);
 }
+// ---------- Montagnes lointaines tout autour du parc, bleutées par la distance ----------
+const mountains = [];
+function buildMountains() {
+  const LAY = [[300, 0.62, 3, 0.42], [325, 0.45, 7, 0.6], [350, 0.3, 11, 0.8]];
+  LAY.forEach(([r, haze, sd, hk], li) => {
+    const W = 4096, Hh = 256, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
+    const g = cv.getContext('2d'), img = g.createImageData(W, Hh), d = img.data;
+    const ph = []; for (let k = 0; k < 12; k++) ph.push([1 + k * (k < 3 ? 1 : k < 8 ? 2 : 5) + li, Math.sin(sd * 7.1 + k * 3.3) * 3, k < 8 ? 1 / (1 + k * 0.8) : 0.05]);
+    const hAt = u => { let h = 0; for (const [f, p, a] of ph) h += Math.sin(u * 6.2832 * f + p) * a; h = 0.5 + h * 0.2 + Math.pow(Math.abs(Math.sin(u * 6.2832 * (3 + li) + sd)), 5) * 0.22; return clamp(h, 0.1, 0.95) * hk; };
+    for (let x = 0; x < W; x++) {
+      const u = x / W, h = hAt(u), sl = (hAt(u + 16 / W) - hAt(u - 16 / W)) * W * 0.0075, top = Hh * (1 - h), sLine = (h - 0.74 * hk) * Hh * 0.6 + Math.sin(x * 0.11) * 2 + Math.sin(x * 0.023) * 3;
+      for (let y = 0; y < Hh; y++) {
+        const i = (y * W + x) * 4, dy = y - top;
+        if (dy < -1) { d[i + 3] = 0; continue; }
+        d[i] = li > 0 && h > 0.74 * hk ? clamp((sLine - dy) * 80, 0, 255) : 0; d[i + 1] = clamp(128 + clamp(sl, -1, 1) * 45, 0, 255); d[i + 2] = clamp(dy / (Hh * h * 0.8 + 1), 0, 1) * 255; d[i + 3] = dy < 0 ? 128 : 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    const tex = new T.CanvasTexture(cv); tex.wrapS = T.RepeatWrapping; tex.minFilter = T.LinearFilter; tex.generateMipmaps = false;
+    const mat = new T.ShaderMaterial({
+      uniforms: { map: { value: tex }, body: { value: new T.Color() }, snowC: { value: new T.Color() }, hazeC: { value: new T.Color() } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform sampler2D map; uniform vec3 body; uniform vec3 snowC; uniform vec3 hazeC; varying vec2 vUv; void main(){ vec4 t = texture2D(map, vUv); if (t.a < 0.5) discard; vec3 c = mix(body * (0.8 + 0.4 * t.g), snowC * (0.9 + 0.16 * t.g), t.r); c = mix(c, hazeC, t.b * 0.75); gl_FragColor = vec4(c, 1.0); }',
+      side: T.BackSide, fog: false,
+    });
+    const H = 100, m = new T.Mesh(new T.CylinderGeometry(r, r, H, 160, 1, true), mat);
+    m.userData = { y0: -18 + H / 2 - li * 4, haze, r, col: [[0.26, 0.44, 0.38], [0.3, 0.44, 0.5], [0.34, 0.46, 0.58]][li] }; m.frustumCulled = false; m.rotation.y = li * 1.7; m.renderOrder = -1 + li * 0;
+    scene.add(m); mountains.push(m);
+  });
+}
+const _mb = new T.Color(), _ms = new T.Color();
+function updateMountains() {
+  const on = skyDome && skyDome.visible && !G.cine && Math.abs(camera.position.x) < 420 && !(G.state === 'play' && (P.x > 700 || P.x < -1500));
+  for (const m of mountains) {
+    m.visible = on; if (!on) continue;
+    m.position.set(camera.position.x, m.userData.y0, camera.position.z);
+    const k = m.userData.haze;
+    _mb.setRGB(...m.userData.col).multiplyScalar(0.25 + 0.75 * (1 - nightK)).lerp(scene.fog.color, 1 - k * 0.75);
+    _ms.set(0xf6f8ff).multiplyScalar(0.3 + 0.7 * (1 - nightK)).lerp(scene.fog.color, 0.55 - k * 0.45);
+    m.material.uniforms.body.value.copy(_mb); m.material.uniforms.snowC.value.copy(_ms); m.material.uniforms.hazeC.value.copy(scene.fog.color);
+  }
+}
 const _sd = new V3();
 // ---------- Feuilles qui tombent, graines qui volent ----------
 function updateGfx(dt) {
@@ -7016,6 +7105,7 @@ function updateGfx(dt) {
       u.night.value = nightK;
     }
   }
+  updateMountains();
   if (G.state !== 'play' || P.inHome || P.x > 1500 || G.cine) return;
   const fo = P.x < -1500, fk = fo ? 0.85 : forestK(P.x, P.z), pr = fo ? 0 : REG.prairie(P.x, P.z), snowy = !fo && P.z < -214, rain = (typeof WX !== 'undefined' && WX.k > 0.3);
   if (!snowy && !rain && fk > 0.45 && Math.random() < dt * 4 * fk) {
@@ -7791,7 +7881,7 @@ function frame(now) {
 buildGround();
 buildPlants();
 buildClouds();
-buildSky();
+buildSky(); buildMountains();
 buildWeather();
 buildPlaces();
 buildSki();
@@ -7823,7 +7913,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, ptMesh, pts, mountains, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>

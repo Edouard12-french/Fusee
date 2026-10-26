@@ -16,7 +16,7 @@
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 83, 84, 85, 87, 86, 88, 89, 75, 76, 77, 79, 80, 81, 78, 82, 73, 68, 74, 65, 69, 70, 59, 67, 71, 72, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 91, 90, 92, 93, 83, 84, 85, 87, 86, 88, 89, 75, 76, 77, 79, 80, 81, 78, 82, 73, 68, 74, 65, 69, 70, 59, 67, 71, 72, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `skiing`, `open-world`, `family-friendly`, `space`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
@@ -53,7 +53,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Chapitre 4 : le Royaume sous la Mer !** Max transforme le camping-car en sous-marin. Plonge au fond de la mer, rencontre Splash le dauphin, Nacre la tortue, Octavie la pieuvre et Galet le phoque, rallume le village des Coquillages et découvre pourquoi Crabos le grand crabe a pris la Grande Perle… 15 nouvelles missions !
 - **Oscar pense tout haut** : il fonce dans les arbres (et il insiste !), rêve de miel, se croit le plus malin et dit des bêtises qui font rire.
 - **Une nature pleine de vie** : écureuils qui grimpent aux arbres, oiseaux qui s'envolent, oies en V, cygnes, canetons, feuilles mortes, lys et nénuphars, rivières qui coulent, barques, canoë et tas de bûches.
-- **De beaux graphismes** : l'herbe et les fleurs bougent avec le vent, un vrai ciel avec un soleil et des étoiles, de l'eau qui brille et des feuilles qui tombent.
+- **De beaux graphismes** : l'herbe et les fleurs bougent avec le vent, un vrai ciel avec un soleil et des étoiles, des montagnes enneigées à l'horizon, de vraies petites fleurs, de l'eau qui scintille au soleil et des feuilles qui tombent.
 - **Chaque ami a sa maison** : en facteur, dépose les lettres dans leurs boîtes aux lettres.
 - **De nouveaux amis** : joue à cache-cache avec Praline la carline, fais la course de luge contre Roquette le raton laveur et réponds aux devinettes de Filou le renard !
 - **6 aventures du Grand Nord** : ramène le louveteau perdu, attrape les poules de Josette, nettoie le marais de Gaspard le héron, trouve les cristaux de glace…
@@ -92,7 +92,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Chapter 4: the Kingdom under the Sea!** Max turns the camper into a submarine. Dive to the seabed, meet Splash the dolphin, Nacre the turtle, Octavie the octopus and Galet the seal, light up the Shell Village again and find out why Crabos the giant crab took the Great Pearl… 15 new missions!
 - **Oscar thinks out loud**: he bumps into trees (and keeps pushing!), dreams of honey, thinks he's the smartest and says silly things that make you laugh.
 - **Nature full of life**: squirrels climbing trees, birds flying off, geese in V formation, swans, ducklings, fallen leaves, lilies and water lilies, flowing rivers, rowboats, a canoe and woodpiles.
-- **Beautiful graphics**: grass and flowers sway in the wind, a real sky with a glowing sun and stars, shiny water and falling leaves.
+- **Beautiful graphics**: grass and flowers sway in the wind, a real sky with a glowing sun and stars, snowy mountains on the horizon, real little flowers, water sparkling in the sun and falling leaves.
 - **Every friend has a house**: as the mail carrier, drop letters in their mailboxes.
 - **New friends**: play hide-and-seek with Praline the pug, race Roquette the raccoon on a sled and solve Filou the fox's riddles!
 - **6 Great North adventures**: bring back the lost wolf cub, catch Josette's runaway hens, clean Gaspard the heron's marsh, find the ice crystals…
