@@ -332,6 +332,8 @@ function setTimeOfDay(h, focus) {
 
 // ================= Le parc des Pins =================
 const HALF = 320;
+// Le Royaume sous la Mer (chapitre 4), tout à l'est, après la Lune
+const SEA_X = 4000;
 // La Forêt Immense (chapitre 3) est une région à part, loin à l'ouest
 const FOREST_X = -2000;
 const LAKE = { x: 40, z: 72, rx: 46, rz: 36 };
@@ -453,6 +455,7 @@ const REG = {
 };
 const MESAS = [[252, 206, 13, 12], [292, 246, 10, 17], [244, 280, 12, 9], [302, 184, 8, 11], [270, 300, 9, 14]];
 function groundY(x, z) {
+  if (x > 3000) return seaY(x, z);
   if (x > 1500) return moonY(x, z);
   if (x < -1500) return forestY(x, z);
   if (x > 700) return 0;
@@ -507,11 +510,11 @@ function inZone(x, z) {
 }
 
 // ================= Collisions =================
-const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [];
-for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); }
+const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [], gridS = [];
+for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); gridS.push([]); }
 const cellOf = v => clamp(Math.floor((v + HALF + 8) / CELL), 0, NC - 1);
 // La forêt a sa propre grille, centrée sur elle
-const gridOf = x => x < -1500 ? gridF : grid, gridOx = x => x < -1500 ? FOREST_X : 0;
+const gridOf = x => x < -1500 ? gridF : x > 3000 ? gridS : grid, gridOx = x => x < -1500 ? FOREST_X : x > 3000 ? SEA_X : 0;
 function addCol(c) {
   const r = c.r || Math.hypot(c.hw, c.hd), gr = gridOf(c.x), ox = gridOx(c.x);
   for (let i = cellOf(c.x - ox - r); i <= cellOf(c.x - ox + r); i++) for (let j = cellOf(c.z - r); j <= cellOf(c.z + r); j++) gr[j * NC + i].push(c);
@@ -547,6 +550,7 @@ function collide(p, r) {
   }
   if (p.x < -1500) { const dx = p.x - FOREST_X, d = Math.hypot(dx, p.z), m = FOREST.r - 4; if (d > m) { p.x = FOREST_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x < 700) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
+  else if (p.x > 3000) { const dx = p.x - SEA_X, d = Math.hypot(dx, p.z), m = SEA.r - 4; if (d > m) { p.x = SEA_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x > 1500) { const dx = p.x - MOON.x, dz = p.z - MOON.z, d = Math.hypot(dx, dz), m = MOON.r - 4; if (d > m) { p.x = MOON.x + dx / d * m; p.z = MOON.z + dz / d * m; } }
 }
 
@@ -1745,7 +1749,7 @@ const ITEMS = {
   brochet: { n: 'Brochet', e: '🐟', sell: 16, fish: 1 }, anguille: { n: 'Anguille', e: '🐍', sell: 18, fish: 1 }, saumon: { n: 'Saumon', e: '🐠', sell: 22, fish: 1 },
   silure: { n: 'Poisson-chat', e: '🐡', sell: 26, fish: 1 }, dore: { n: 'Poisson doré', e: '🐠', sell: 60, fish: 1 },
   lait: { n: 'Lait', e: '🥛', en: 20, sell: 4 }, luge: { n: 'Luge', e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: 'Champignon', e: '🍄', en: 15, sell: 5 },
-  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 }, graineM: { n: 'Graine de l\'Arbre-Mère', e: '🌰', key: 1 },
+  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 }, graineM: { n: 'Graine de l\'Arbre-Mère', e: '🌰', key: 1 }, dent: { n: 'Dent de dinosaure', e: '🦷', key: 1 }, hublot: { n: 'Hublot', e: '🪟', key: 1 }, helice: { n: 'Hélice', e: '🌀', key: 1 }, joints: { n: 'Joints étanches', e: '🍯', key: 1 }, champiL: { n: 'Champignon lumineux', e: '🍄', key: 1 }, lanterneM: { n: 'Lanterne d\'Octavie', e: '🏮', key: 1 }, grandePerle: { n: 'Grande Perle', e: '⚪', key: 1 },
   p_chassis: { n: 'Vieux châssis', e: '🛻', key: 1 }, p_roues: { n: 'Quatre roues', e: '🛞', key: 1 }, p_carrosserie: { n: 'Carrosserie', e: '🚐', key: 1 }, p_volant: { n: 'Volant et sièges', e: '🪑', key: 1 }, p_moteur: { n: 'Moteur de camion', e: '⚙️', key: 1 }, p_phares: { n: 'Phares', e: '💡', key: 1 },
   coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, cristal: { n: 'Cristal bleu', e: '💎', sell: 80 }, fossile: { n: 'Fossile', e: '🦴', sell: 60 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
   chapeau: { n: 'Chapeau', e: '🎩', key: 1 }, manteau: { n: 'Manteau', e: '🧥', key: 1 }, canne: { n: 'Canne à pêche', e: '🎣', key: 1 }, pelle: { n: 'Pelle', e: '⛏️', key: 1 },
@@ -1892,7 +1896,7 @@ function updatePlayer(dt) {
   if (P.spd > 0.3) P.rot += angDiff(P.rot, Math.atan2(P.vx, P.vz)) * (1 - Math.exp(-dt * 12));
   P.y = P.swim ? WATER_Y - 1.35 + Math.sin(G.t * 3) * 0.05 : walkY(P.x, P.z);
   // Sur la Lune, Oscar fait de grands bonds
-  if (P.x > 1500) { P.y += Math.abs(Math.sin(P.phase * 0.55)) * 1.1 * clamp(P.spd / 4, 0, 1); if (P.spd > 1 && Math.random() < dt * 3) puff(P.x, walkY(P.x, P.z) + 0.1, P.z, 3, [0.75, 0.75, 0.8], 1); }
+  if (P.x > 1500) { P.y += Math.abs(Math.sin(P.phase * 0.55)) * 1.1 * clamp(P.spd / 4, 0, 1); if (P.spd > 1 && Math.random() < dt * 3) puff(P.x, walkY(P.x, P.z) + 0.1, P.z, 3, P.x > 3000 ? [0.9, 0.85, 0.7] : [0.75, 0.75, 0.8], 1); }
   // Énergie
   S.energy = Math.max(0, S.energy - dt * (running ? 0.5 : P.spd > 0.5 ? 0.05 : 0.02));
   if (S.energy <= 0 && !G.tiredSaid) { G.tiredSaid = true; toast('Oscar a faim… Mange quelque chose (sac) !'); }
@@ -2242,7 +2246,7 @@ function fishAction() {
     S.fish[id] = (S.fish[id] || 0) + 1;
     sfx.catchFish();
     endFishing('Tu as pêché : ' + ITEMS[id].e + ' ' + ITEMS[id].n + ' !');
-    questEvent('fish');
+    questEvent('fish'); seaEvent('fish');
     if (FISH_IDS.every(f => S.fish[f])) toast('Bravo ! Tu as pêché toutes les espèces !');
   } else endFishing('');
 }
@@ -2558,6 +2562,7 @@ function advance() {
 }
 function talkTo(id) {
   if (cpartTalk(id)) return;
+  if (seaTalk(id)) return;
   const st = curStep();
   if (st && st.talk === id) {
     const miss = st.need && st.need();
@@ -4356,7 +4361,7 @@ function cpartTalk(id) {
 // Tous les amis montent dans le camping-car spatial. Le décollage prend son temps pour admirer le parc,
 // puis sur la Lune, les héros découvrent par hasard des extraterrestres à aider : les Zoublis.
 const MOON = { x: 2000, z: 0, r: 165 };
-const onMoon = () => P.x > 1500;
+const onMoon = () => P.x > 1500 && P.x < 3000;
 const MCAMP = [MOON.x - 20, MOON.z + 40];
 const SHIP = [MOON.x + 62, MOON.z - 52];
 const MCRATERS = [[62, -52, 30, 6], [-90, -80, 22, 7], [40, 72, 12, 2], [-62, 34, 10, 2], [104, 40, 16, 3], [-118, 6, 14, 3], [18, -112, 15, 3], [-32, -36, 8, 1.5], [122, -108, 12, 2], [-128, 100, 14, 2], [70, 120, 9, 1.5]];
@@ -4508,6 +4513,7 @@ function startLaunch() {
 function updateLaunch(dt) {
   if (G.cine.kind === 'crash') return updateCrash(dt);
   if (G.cine.kind === 'home') return updateHome(dt);
+  if (G.cine.kind === 'dive') return updateDive(dt);
   const L = G.cine; L.t += dt; const t = L.t;
   $('quest').style.visibility = 'hidden';
   while (L.cap < CAPTIONS.length && t >= CAPTIONS[L.cap][0]) { status(CAPTIONS[L.cap][1], 'info', 4.5); if (CAPTIONS[L.cap][0] === 10) sfx.takeoff(); L.cap++; }
@@ -4652,7 +4658,7 @@ function refreshMoon() {
 }
 function updateMoon(dt) {
   const on = onMoon() || (G.cine && G.cine.space);
-  if (P.helmets) for (const h of P.helmets) h.visible = onMoon();
+  if (P.helmets) for (const h of P.helmets) h.visible = onMoon() || P.x > 3000;
   // Étoiles et Terre visibles dans l'espace et sur la Lune
   const sk = on ? 1 : (G.spaceK || 0);
   starPts.material.opacity = sk; starPts.visible = sk > 0.01;
@@ -5130,6 +5136,7 @@ function forestAdvance() {
   refreshForest(); updateQuestUI(); saveGame();
 }
 function talkBrume() {
+  if (seaTalk('brume')) return;
   const st = fStep();
   if (st && st.talk === 'brume') return talk(st.lines, () => { if (st.done) st.done(); forestAdvance(); });
   const L = !S.flags.fmist ? ['La brume est épaisse aujourd\'hui… Reste sur les sentiers, petit ours.', 'Les champignons brillent la nuit pour guider ceux qui se sont perdus.', 'La rivière traverse toute la forêt. Les ponts en troncs t\'aideront à passer.'] : ['Regarde comme la forêt est belle, maintenant que le soleil y entre.', 'L\'Arbre-Mère chante doucement. Tu l\'entends ?', 'Mes cerfs et mes lapins sont si heureux de revoir la lumière.'];
@@ -5354,6 +5361,7 @@ function endHome() {
 function skipCine() {
   const L = G.cine; if (!L || L.done || L.t < 3) return;
   if (L.kind === 'crash') { L.done = true; fadeTo(() => { if (L.ph === 1) crashPhase2(); endCrash(); }); }
+  else if (L.kind === 'dive') skipDive();
   else if (L.kind === 'home') { L.done = true; fadeTo(() => { if (L.ph === 1) homePhase2(); endHome(); }); }
 }
 function forestTravel(toForest) {
@@ -5655,6 +5663,682 @@ function updateNature(dt) {
   }
 }
 
+// ================= Chapitre 4 : le Royaume sous la Mer =================
+// Madame Plume a vu des lumières sous la mer. Max transforme le camping-car en sous-marin (4 pièces à trouver
+// chez les amis du parc), puis tout le monde plonge. Au fond de la mer vit le peuple des Coquillages :
+// Splash le dauphin, Nacre la vieille tortue, Octavie la pieuvre, Galet le phoque… et Crabos, le grand crabe qui a peur du noir.
+const SEA = { x: SEA_X, z: 0, r: 190 };
+const onSea = () => P.x > 3000;
+const SL = (dx, dz) => [SEA.x + dx, SEA.z + dz];
+const SCAMP = SL(0, 132), SVILLAGE = SL(0, 0), SKELP = SL(-108, 40), SCORAL = SL(100, 58), SWRECK = SL(118, -82), STRENCH = { x: SEA.x - 62, z: -126, rx: 56, rz: 30 }, SCAVE = SL(-80, -140);
+const SCEIL = 42;
+const SPEARLS = [[-40, 70], [52, 92], [-130, 90], [140, 10], [-20, -60], [70, -30]];
+const SWRECKP = [['rouage', 'le gros rouage', 108, -96], ['chaine', 'la chaîne de l\'ancre', 134, -70], ['cornet', 'le cornet en cuivre', 102, -66]];
+const STRASH = [[-60, 110], [30, 120], [-90, 60], [80, 100], [130, 40], [-150, 20], [20, -40], [-120, -40], [150, -40], [-30, 30]];
+const SBALL = [-128, 58];
+const STRAIL = [[-14, -34], [-26, -58], [-40, -82], [-56, -106], [-70, -126]];
+const DENT_SPOT = () => [POI.grotteFossile[0] - 3, POI.grotteFossile[1] + 5];
+let SRESIN = [];
+function seaY(x, z) {
+  const dx = x - SEA.x, dz = z - SEA.z, d = Math.hypot(dx, dz);
+  let y = (fbm(dx * 0.02 + 90, dz * 0.02, 3) - 0.5) * 5 + Math.sin(dx * 0.55 + dz * 0.2) * 0.12;
+  // Grandes falaises de rochers tout autour
+  y += sstep(SEA.r - 40, SEA.r + 50, d) * 32;
+  // Plateau du village, clairière du sous-marin
+  y = lerp(y, 1.2, sstep(36, 22, Math.hypot(x - SVILLAGE[0], z - SVILLAGE[1])));
+  y = lerp(y, 0.4, sstep(24, 12, Math.hypot(x - SCAMP[0], z - SCAMP[1])));
+  // La fosse sombre, tout au fond
+  const e = ((x - STRENCH.x) / STRENCH.rx) ** 2 + ((z - STRENCH.z) / STRENCH.rz) ** 2;
+  if (e < 1.3) y = lerp(y, -14, sstep(1.3, 0.55, e));
+  return y;
+}
+// ---------- Modèles ----------
+const SGLOW = { value: 0.3 };
+function seaGlowLam() { const m = lam(0xffffff); m.onBeforeCompile = sh => { sh.uniforms.uGlow = SGLOW; sh.fragmentShader = 'uniform float uGlow;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )\n totalEmissiveRadiance += vColor * uGlow;\n#endif'); }; m.customProgramCacheKey = () => 'sglow'; return m; }
+const finRig = (body) => { const a = new T.Group(), b = new T.Group(); body.add(a); body.add(b); return { armL: a, armR: b }; };
+function makeDolphin() {
+  const g = new T.Group(), f = lam(0x6a8cb0, { flatShading: false }), w = lam(0xdce8f0, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.5, 0, 0, 0, 0.9, 0.85, 2.3); ball(body, w, 0.4, 0, -0.18, 0.15, 0.85, 0.6, 2.0);
+  const head = new T.Group(); head.position.set(0, 0.1, 1.0); body.add(head);
+  ball(head, f, 0.36, 0, 0, 0, 1, 0.95, 1.1);
+  const beak = ball(head, f, 0.14, 0, -0.08, 0.42, 1, 0.75, 1.9); ball(head, w, 0.11, 0, -0.14, 0.4, 0.95, 0.5, 1.8);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.05, s * 0.24, 0.06, 0.2); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.015, s * 0.26, 0.09, 0.23); }
+  const smile = new T.Mesh(new T.TorusGeometry(0.12, 0.012, 3, 10, Math.PI), M.dark); smile.position.set(0, -0.1, 0.42); smile.rotation.set(-1.2, 0, Math.PI); head.add(smile);
+  void beak;
+  const fin = new T.Mesh(new T.ConeGeometry(0.22, 0.6, 6), f); fin.scale.z = 0.3; fin.position.set(0, 0.55, -0.1); fin.rotation.x = -0.5; body.add(fin);
+  for (const s of [-1, 1]) { const fl = ball(body, f, 0.18, s * 0.42, -0.2, 0.45, 1.6, 0.25, 0.8); fl.rotation.z = s * 0.5; }
+  const tail = new T.Group(); tail.position.set(0, 0, -1.1); body.add(tail);
+  ball(tail, f, 0.22, 0, 0, -0.2, 0.7, 0.6, 1.6);
+  for (const s of [-1, 1]) { const fk = ball(tail, f, 0.24, s * 0.3, 0, -0.55, 1.4, 0.18, 0.8); fk.rotation.y = s * 0.5; }
+  g.userData = { rig: Object.assign({ body, head, tail }, finRig(body)), swim: tail };
+  return g;
+}
+function makeTurtle(old) {
+  const g = new T.Group(), sk = lam(0x8aa86a, { flatShading: false }), sh = lam(old ? 0x6a7a4a : 0x5a8a4a, { flatShading: false }), pl = lam(0xe8d8a0, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  const shell = new T.Mesh(new T.SphereGeometry(0.9, 18, 10, 0, 6.283, 0, Math.PI / 2), sh); shell.scale.set(1, 0.55, 1.2); shell.position.y = 0.45; shell.castShadow = true; body.add(shell);
+  // Écailles de la carapace
+  for (let k = 0; k < 7; k++) { const a = k / 6 * 6.283, r = k === 6 ? 0 : 0.5, p = ball(body, lam(old ? 0x7a8a5a : 0x6a9a5a), 0.24, Math.cos(a) * r, 0.86 - r * 0.25, Math.sin(a) * r * 1.2, 1, 0.3, 1); p.rotation.x = Math.sin(a) * r * 0.5; }
+  ball(body, pl, 0.85, 0, 0.42, 0, 1, 0.18, 1.15);
+  const head = new T.Group(); head.position.set(0, 0.55, 1.15); body.add(head);
+  ball(head, sk, 0.24, 0, 0, 0, 0.95, 0.85, 1.25); ball(head, lam(0x5a6a4a), 0.08, 0, -0.06, 0.28, 1.2, 0.5, 0.6);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.05, s * 0.14, 0.07, 0.15); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.014, s * 0.15, 0.1, 0.19); }
+  if (old) { for (const s of [-1, 1]) { const gl = new T.Mesh(new T.TorusGeometry(0.06, 0.012, 4, 12), M.metal); gl.position.set(s * 0.1, 0.08, 0.22); head.add(gl); } for (let k = 0; k < 9; k++) ball(body, new T.MeshBasicMaterial({ color: 0xfff8f0 }), 0.04, Math.cos(k * 0.35 - 1.4) * 0.3, 0.38 - Math.abs(k - 4) * 0.012, 0.95 + Math.sin(k * 0.35 - 1.4) * 0.05); }
+  const fl = (x, z, s) => { const p = new T.Group(); p.position.set(x, 0.42, z); body.add(p); const m = ball(p, sk, 0.22, x > 0 ? 0.35 : -0.35, 0, 0, 1.8, 0.22, 0.8); m.rotation.y = s; return p; };
+  const rig = { body, head, armL: fl(-0.7, 0.55, 0.4), armR: fl(0.7, 0.55, -0.4), legL: fl(-0.6, -0.65, -0.4), legR: fl(0.6, -0.65, 0.4) };
+  g.userData = { rig };
+  if (old) g.scale.setScalar(1.6);
+  return g;
+}
+function makeOctopus() {
+  const g = new T.Group(), f = lam(0xd06a9a, { flatShading: false }), lt = lam(0xf0b0d0, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  const head = new T.Group(); head.position.set(0, 1.25, 0); body.add(head);
+  ball(head, f, 0.55, 0, 0.25, -0.12, 1, 1.15, 1.05);
+  for (const s of [-1, 1]) { ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.13, s * 0.2, 0.05, 0.4, 1, 1.1, 0.6); ball(head, eyeMat, 0.08, s * 0.2, 0.04, 0.47); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.02, s * 0.2 + 0.03, 0.08, 0.53); }
+  // Lunettes d'inventrice sur le front
+  for (const s of [-1, 1]) { const gl = new T.Mesh(new T.TorusGeometry(0.1, 0.03, 6, 14), lam(0xc89a3a)); gl.position.set(s * 0.17, 0.42, 0.38); gl.rotation.x = -0.4; head.add(gl); const gg = new T.Mesh(new T.CircleGeometry(0.09, 12), new T.MeshPhongMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.6 })); gg.position.set(s * 0.17, 0.42, 0.39); gg.rotation.x = -0.4; head.add(gg); }
+  const sm = new T.Mesh(new T.TorusGeometry(0.08, 0.015, 3, 10, Math.PI), M.dark); sm.position.set(0, -0.18, 0.45); sm.rotation.z = Math.PI; head.add(sm);
+  const arms = [];
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8 * 6.283 + 0.2, c = Math.cos(a), s = Math.sin(a);
+    const curve = new T.CatmullRomCurve3([new V3(c * 0.25, 1.0, s * 0.25), new V3(c * 0.6, 0.45, s * 0.6), new V3(c * 0.95, 0.12, s * 0.95), new V3(c * 1.25, 0.18, s * 1.25), new V3(c * 1.35, 0.4, s * 1.35)]);
+    const arm = new T.Mesh(new T.TubeGeometry(curve, 14, 0.09, 6, false), f); arm.castShadow = true; body.add(arm); arms.push(arm);
+    for (let j = 1; j < 4; j++) { const p = curve.getPoint(j / 4.5); ball(body, lt, 0.035, p.x, p.y - 0.07, p.z); }
+  }
+  g.userData = { rig: Object.assign({ body, head }, finRig(body)), arms };
+  return g;
+}
+function makeSeal() {
+  const g = new T.Group(), f = lam(0x8a8e98, { flatShading: false }), d = lam(0x6a6e78, { flatShading: false }), w = lam(0xc8ccd4, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.45, 0, 0.42, 0, 0.95, 0.85, 1.8); ball(body, w, 0.36, 0, 0.32, 0.2, 0.9, 0.7, 1.4);
+  for (let k = 0; k < 6; k++) ball(body, d, 0.05, Math.cos(k * 2.1) * 0.3, 0.7, -0.5 + k * 0.2);
+  const head = new T.Group(); head.position.set(0, 0.85, 0.65); body.add(head);
+  ball(head, f, 0.3, 0, 0, 0, 1, 0.95, 1.05); ball(head, w, 0.15, 0, -0.08, 0.24, 1.2, 0.85, 0.8); ball(head, M.dark, 0.05, 0, -0.02, 0.36, 1.3, 0.8, 0.8);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.075, s * 0.13, 0.08, 0.22); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.02, s * 0.13 + 0.03, 0.12, 0.28); }
+  whiskers(head, 0, -0.08, 0.3, 0.3, 0xf0f0f0);
+  const tail = new T.Group(); tail.position.set(0, 0.3, -0.85); body.add(tail);
+  for (const s of [-1, 1]) { const fk = ball(tail, d, 0.2, s * 0.18, 0, -0.2, 1, 0.25, 1.4); fk.rotation.y = s * 0.4; }
+  const fl = s => { const p = new T.Group(); p.position.set(s * 0.38, 0.3, 0.35); body.add(p); const m = ball(p, d, 0.16, s * 0.12, -0.1, 0.05, 0.6, 0.25, 1.3); m.rotation.z = s * 0.7; return p; };
+  g.userData = { rig: { body, head, tail, armL: fl(-1), armR: fl(1) } };
+  return g;
+}
+function makeCrab(col, big) {
+  const g = new T.Group(), f = lam(col, { flatShading: false }), lt = lam(0xf8e0c8, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.45, 0, 0.5, 0, 1.3, 0.55, 1.0); ball(body, lt, 0.38, 0, 0.4, 0, 1.25, 0.35, 0.95);
+  const head = new T.Group(); head.position.set(0, 0.7, 0.3); body.add(head);
+  for (const s of [-1, 1]) {
+    const st = new T.Mesh(new T.CylinderGeometry(0.03, 0.04, 0.3, 5), f); st.position.set(s * 0.14, 0.12, 0); head.add(st);
+    ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.08, s * 0.14, 0.3, 0); ball(head, eyeMat, 0.045, s * 0.14, 0.3, 0.05);
+    if (big) { const br = new T.Mesh(new T.BoxGeometry(0.16, 0.035, 0.04), M.dark); br.position.set(s * 0.14, 0.42, 0.03); br.rotation.z = s * 0.4; head.add(br); }
+  }
+  const sm = new T.Mesh(new T.TorusGeometry(0.07, 0.012, 3, 10, Math.PI), M.dark); sm.position.set(0, -0.02, 0.18); if (!big) sm.rotation.z = Math.PI; head.add(sm);
+  const claw = s => { const p = new T.Group(); p.position.set(s * 0.52, 0.5, 0.35); body.add(p); const arm = new T.Mesh(new T.CylinderGeometry(0.06, 0.07, 0.4, 6), f); arm.rotation.z = s * 1.0; arm.position.set(s * 0.12, 0.05, 0.08); p.add(arm); const pz = ball(p, f, 0.18, s * 0.32, 0.2, 0.25, 1, 0.75, 1.2); const pz2 = ball(p, f, 0.08, s * 0.3, 0.15, 0.48, 0.8, 0.6, 1.5); pz2.rotation.x = -0.4; void pz; return p; };
+  const rig = { body, head, armL: claw(-1), armR: claw(1) };
+  const legs = [];
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { const p = new T.Group(); p.position.set(s * 0.5, 0.45, -0.2 + k * 0.22); body.add(p); const l = new T.Mesh(new T.CylinderGeometry(0.035, 0.03, 0.6, 5), f); l.rotation.z = s * 0.9; l.position.set(s * 0.24, -0.2, 0); p.add(l); legs.push(p); }
+  rig.legL = legs[0]; rig.legR = legs[3];
+  g.userData = { rig, legs };
+  if (big) g.scale.setScalar(2.6);
+  return g;
+}
+function makeSeahorse(col) {
+  const g = new T.Group(), f = lam(col, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  const pts = [[0, 0.3, -0.1], [0, 0.55, -0.02], [0, 0.85, 0.05], [0, 1.1, 0.02]]; pts.forEach((p, i) => ball(body, f, 0.17 - i * 0.015, p[0], p[1], p[2], 1, 1.1, 0.9));
+  const tail = new T.Mesh(new T.TorusGeometry(0.12, 0.05, 6, 12, 4.5), f); tail.position.set(0, 0.15, -0.1); tail.rotation.y = Math.PI / 2; body.add(tail);
+  const head = new T.Group(); head.position.set(0, 1.28, 0.08); body.add(head);
+  ball(head, f, 0.14, 0, 0, 0, 1, 0.95, 1.1);
+  const sn = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.25, 6), f); sn.rotation.x = Math.PI / 2 - 0.3; sn.position.set(0, -0.04, 0.2); head.add(sn);
+  for (const s of [-1, 1]) ball(head, eyeMat, 0.035, s * 0.09, 0.03, 0.06);
+  const fin = new T.Mesh(new T.CircleGeometry(0.14, 8, 0, Math.PI), lam(0xffffff, { side: T.DoubleSide, transparent: true, opacity: 0.6 })); fin.position.set(0, 0.7, -0.15); fin.rotation.y = Math.PI / 2; body.add(fin);
+  g.userData = { rig: Object.assign({ body, head }, finRig(body)) };
+  g.scale.setScalar(1.4);
+  return g;
+}
+function makeFishM(col) {
+  const g = new T.Group(), f = lam(col, { flatShading: false });
+  ball(g, f, 0.22, 0, 0, 0, 0.55, 0.9, 1.4);
+  const t = new T.Mesh(new T.ConeGeometry(0.16, 0.28, 4), f); t.scale.x = 0.25; t.rotation.x = -Math.PI / 2; t.position.z = -0.38; g.add(t);
+  for (const s of [-1, 1]) ball(g, eyeMat, 0.03, s * 0.1, 0.05, 0.18);
+  g.userData = { tail: t };
+  return g;
+}
+function makeJelly(col) {
+  const g = new T.Group(), m = new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false });
+  const d = new T.Mesh(new T.SphereGeometry(0.5, 14, 8, 0, 6.283, 0, Math.PI / 2), m); d.scale.y = 0.75; g.add(d);
+  for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283, t = new T.Mesh(new T.CylinderGeometry(0.02, 0.01, 1.2, 3), m); t.position.set(Math.cos(a) * 0.28, -0.6, Math.sin(a) * 0.28); g.add(t); }
+  return g;
+}
+function makeRay() {
+  const g = new T.Group(), f = lam(0x5a6a8a, { flatShading: false });
+  const b = ball(g, f, 1, 0, 0, 0, 1.6, 0.15, 1); b.rotation.y = Math.PI / 4;
+  const t = new T.Mesh(new T.CylinderGeometry(0.03, 0.01, 2.2, 4), f); t.rotation.x = Math.PI / 2; t.position.z = -1.8; g.add(t);
+  for (const s of [-1, 1]) ball(g, eyeMat, 0.05, s * 0.25, 0.12, 0.5);
+  return g;
+}
+function makeWhale() {
+  const g = new T.Group(), f = lam(0x2f4a6a, { flatShading: false }), w = lam(0xc8d0d8, { flatShading: false });
+  ball(g, f, 3, 0, 0, 0, 1, 0.85, 2.6); ball(g, w, 2.4, 0, -0.9, 0.8, 0.95, 0.55, 2.2);
+  const tl = new T.Group(); tl.position.z = -7.5; g.add(tl);
+  for (const s of [-1, 1]) { const k = ball(tl, f, 1.2, s * 1.4, 0, -0.6, 1.4, 0.15, 0.8); k.rotation.y = s * 0.5; }
+  for (const s of [-1, 1]) { const fl = ball(g, f, 0.9, s * 2.6, -0.8, 2, 1.8, 0.15, 0.8); fl.rotation.z = s * 0.4; ball(g, eyeMat, 0.18, s * 2.1, 0.2, 4.6); }
+  g.userData = { tail: tl };
+  return g;
+}
+function makeShellHouse(col) {
+  const g = new T.Group(), f = lam(col, { flatShading: false }), lt = lam(0xfff0e0, { flatShading: false });
+  for (let k = 0; k < 6; k++) { const r = 2.8 - k * 0.42, t = new T.Mesh(new T.TorusGeometry(r, 0.9 - k * 0.12, 10, 22), k % 2 ? f : lt); t.rotation.x = Math.PI / 2; t.position.y = 0.6 + k * 0.85; t.castShadow = true; g.add(t); }
+  mesh(new T.ConeGeometry(0.5, 1.2, 10), f, 0, 6.0, 0, g);
+  mesh(new T.CylinderGeometry(2.4, 2.6, 1.4, 16), lt, 0, 0.7, 0, g);
+  mesh(new T.CircleGeometry(0.75, 14), lam(0x2a1a2a), 0, 1.0, 2.62, g);
+  const wm = new T.MeshBasicMaterial({ color: 0xffe8a0 }); for (const [x, y] of [[-1.4, 2.4], [1.3, 3.4]]) { const w = mesh(new T.CircleGeometry(0.32, 10), wm, x, y, 2.1 - y * 0.18, g); w.rotation.x = -0.25; }
+  return g;
+}
+function makeLantern() {
+  const g = new T.Group();
+  mesh(new T.CylinderGeometry(0.1, 0.16, 2.6, 6), lam(0xe07a6a), 0, 1.3, 0, g);
+  for (const s of [-1, 1]) { const b = mesh(new T.CylinderGeometry(0.05, 0.07, 0.8, 5), lam(0xe07a6a), s * 0.25, 2.0, 0, g); b.rotation.z = -s * 0.6; }
+  const glass = mesh(new T.SphereGeometry(0.38, 12, 10), new T.MeshPhongMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.5, shininess: 90 }), 0, 2.9, 0, g);
+  const core = mesh(new T.SphereGeometry(0.22, 10, 8), new T.MeshBasicMaterial({ color: 0xfff4c0 }), 0, 2.9, 0, g);
+  const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xfff0b0, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 })); gl.position.y = 2.9; gl.scale.set(5, 5, 1); g.add(gl);
+  g.userData = { core, gl, glass };
+  return g;
+}
+// ---------- Construction ----------
+let sCeil = null, sCaust = null, sSchools = [], sJellies = [], sRays = [], sWhale = null, sTurtles = [], sLanterns = [], sPearlM = [], sWreckM = [], sTrashM = [], sBallM = null, sTrailM = [], sBigPearl = null, sCavePearl = null, sFriends = [], sResinM = [], sDentM = null, sVents = [];
+function buildSea() {
+  const R = SEA.r + 120, SZ = R * 2;
+  // Fond de sable avec des rochers
+  const gg = new T.PlaneGeometry(SZ, SZ, 200, 200); gg.rotateX(-Math.PI / 2);
+  const p = gg.attributes.position, col = new Float32Array(p.count * 3), c = new T.Color();
+  const SA = new T.Color(0xd8c89c), SD = new T.Color(0xb8a47e), RK = new T.Color(0x6a7a8a), DP = new T.Color(0x2a3a4a), GR = new T.Color(0x8aa870);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + SEA.x, z = p.getZ(i) + SEA.z, y = seaY(x, z); p.setX(i, x); p.setZ(i, z); p.setY(i, y);
+    c.copy(SA); const n = fbm(x * 0.04 + 3, z * 0.04, 3); if (n > 0.55) c.lerp(SD, 0.6);
+    if (fbm(x * 0.03, z * 0.03 + 11, 2) > 0.6) c.lerp(GR, 0.35);
+    if (y > 6) c.lerp(RK, sstep(6, 14, y)); if (y < -3) c.lerp(DP, sstep(-3, -12, y));
+    c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.computeVertexNormals();
+  const gm = new T.Mesh(gg, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad })); gm.receiveShadow = true; scene.add(gm);
+  // Les reflets de lumière qui dansent sur le sable
+  const caTex = canvasTex(256, 256, (g2, w, h) => { g2.fillStyle = '#000'; g2.fillRect(0, 0, w, h); g2.strokeStyle = 'rgba(200,240,255,.7)'; g2.lineWidth = 2; for (let k = 0; k < 26; k++) { const x = rand(0, w), y = rand(0, h), r = rand(12, 30); g2.beginPath(); for (let a = 0; a < 6.4; a += 0.5) g2.lineTo(x + Math.cos(a) * r * rand(0.7, 1.2), y + Math.sin(a) * r * rand(0.7, 1.2)); g2.stroke(); } });
+  caTex.wrapS = caTex.wrapT = T.RepeatWrapping; caTex.repeat.set(24, 24);
+  sCaust = new T.Mesh(gg, new T.MeshBasicMaterial({ map: caTex, transparent: true, opacity: 0.12, blending: T.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); scene.add(sCaust);
+  // La surface de la mer, vue d'en dessous
+  const st = waterTex.clone(); st.needsUpdate = true; st.repeat.set(30, 30);
+  sCeil = new T.Mesh(new T.PlaneGeometry(SZ * 1.5, SZ * 1.5), new T.MeshBasicMaterial({ map: st, color: 0xbff4ff, transparent: true, opacity: 0.75, side: T.DoubleSide, depthWrite: false })); sCeil.rotation.x = Math.PI / 2; sCeil.position.set(SEA.x, SCEIL, SEA.z); scene.add(sCeil);
+  const free = (x, z, m) => {
+    if (Math.hypot(x - SCAMP[0], z - SCAMP[1]) < 22 + m || Math.hypot(x - SVILLAGE[0], z - SVILLAGE[1]) < 34 + m || Math.hypot(x - SWRECK[0], z - SWRECK[1]) < 20 + m || Math.hypot(x - SCAVE[0], z - SCAVE[1]) < 12 + m) return false;
+    for (const q of SPEARLS.concat(STRASH, [SBALL], STRAIL, SWRECKP.map(w => [w[2], w[3]]))) if (Math.hypot(x - SEA.x - q[0], z - SEA.z - q[1]) < 4 + m) return false;
+    return true;
+  };
+  seed = 7171;
+  // Algues géantes qui ondulent
+  const kelp = []; const kp = [];
+  for (let k = 0; k < 2; k++) { const pl = new T.PlaneGeometry(0.7, 11, 1, 10); pl.translate(0, 5.5, 0); pl.rotateY(k * Math.PI / 2); const pp = pl.attributes.position; for (let v = 0; v < pp.count; v++) { const y = pp.getY(v); pp.setX(v, pp.getX(v) * (1 - y / 14)); } kp.push(pl); }
+  const kelpGeo = mergeGeos(kp);
+  for (let t = 0; t < 30000 && kelp.length < 1300; t++) {
+    const inK = kelp.length < 900, x = inK ? SKELP[0] + srange(-60, 60) : SEA.x + srange(-SEA.r, SEA.r), z = inK ? SKELP[1] + srange(-55, 55) : SEA.z + srange(-SEA.r, SEA.r);
+    if (Math.hypot(x - SEA.x, z - SEA.z) > SEA.r - 10 || !free(x, z, 0) || (inK && Math.hypot(x - SKELP[0], z - SKELP[1]) > 60)) continue;
+    kelp.push([x, seaY(x, z), z, srange(0.7, 1.4), srand() * 6]);
+  }
+  tiledInst(kelpGeo, addWind(lam(0xffffff, { side: T.DoubleSide }), 0.018), kelp, { h: 8, shadow: false, col: (cc, i) => cc.set([0x4a8a3a, 0x6a9a3a, 0x3a7a4a, 0x8a9a40][i % 4]).convertSRGBToLinear() });
+  // Herbes de mer
+  const blades = []; for (let k = 0; k < 4; k++) { const b = new T.ConeGeometry(0.08, 1.1, 3); b.translate(0, 0.55, 0); b.rotateZ((k - 1.5) * 0.3); b.rotateY(k * 1.3); blades.push(b); }
+  const grassGeo = mergeGeos(blades), grass = [];
+  for (let t = 0; t < 20000 && grass.length < 3500; t++) { const x = SEA.x + srange(-SEA.r, SEA.r), z = SEA.z + srange(-SEA.r, SEA.r); if (Math.hypot(x - SEA.x, z - SEA.z) > SEA.r || fbm((x - SEA.x) * 0.03, z * 0.03 + 11, 2) < 0.5 || !free(x, z, -2)) continue; grass.push([x, seaY(x, z), z, srange(0.8, 1.6), srand() * 6]); }
+  tiledInst(grassGeo, addWind(lam(0xffffff), 0.12), grass, { h: 1, shadow: false, col: (cc, i) => cc.set([0x5a9a4a, 0x7aaa50, 0x4a8a5a][i % 3]).convertSRGBToLinear() });
+  // Coraux de toutes les couleurs
+  const branch = []; branch.push(new T.CylinderGeometry(0.12, 0.16, 1.2, 6).translate(0, 0.6, 0)); for (let k = 0; k < 5; k++) { const a = k * 1.26, b = new T.CylinderGeometry(0.07, 0.1, 0.9, 5); b.translate(0, 0.45, 0); b.rotateZ(0.6); b.rotateY(a); b.translate(0, 0.9 + (k % 2) * 0.2, 0); branch.push(b); const tip = new T.SphereGeometry(0.1, 6, 4); tip.translate(Math.cos(-a) * 0.75, 1.55 + (k % 2) * 0.2, Math.sin(-a) * 0.75); branch.push(tip); }
+  const branchGeo = mergeGeos(branch);
+  const brainGeo = new T.IcosahedronGeometry(0.9, 2); { const pp = brainGeo.attributes.position; for (let v = 0; v < pp.count; v++) { const x = pp.getX(v), y = pp.getY(v), z = pp.getZ(v), k = 1 + Math.sin(x * 9) * Math.sin(z * 9) * 0.06; pp.setXYZ(v, x * k, Math.max(y, -0.2) * k * 0.7, z * k); } brainGeo.computeVertexNormals(); }
+  const fanGeo = new T.CircleGeometry(1.1, 10, 0, Math.PI); fanGeo.translate(0, 0.1, 0);
+  const tubes = []; for (let k = 0; k < 6; k++) { const a = k * 1.05, r = k ? 0.32 : 0, h = 0.9 + (k % 3) * 0.4; tubes.push(new T.CylinderGeometry(0.12, 0.14, h, 7, 1, true).translate(Math.cos(a) * r, h / 2, Math.sin(a) * r)); }
+  const tubeGeo = mergeGeos(tubes);
+  const cb = [], cbr = [], cf = [], ct = [];
+  for (let t = 0; t < 40000 && cb.length + cbr.length + cf.length + ct.length < 1300; t++) {
+    const inC = t % 3 !== 0, x = inC ? SCORAL[0] + srange(-50, 50) : SEA.x + srange(-SEA.r, SEA.r), z = inC ? SCORAL[1] + srange(-45, 45) : SEA.z + srange(-SEA.r, SEA.r);
+    if (Math.hypot(x - SEA.x, z - SEA.z) > SEA.r - 15 || !free(x, z, 0.5) || (inC && Math.hypot(x - SCORAL[0], z - SCORAL[1]) > 50)) continue;
+    const e = [x, seaY(x, z) - 0.05, z, srange(0.7, 1.6), srand() * 6], r = srand();
+    (r < 0.35 ? cb : r < 0.6 ? cbr : r < 0.8 ? cf : ct).push(e); if (e[3] > 1.2) addCircle(x, z, 0.6 * e[3]);
+  }
+  const ccol = [0xff7a8a, 0xffa04a, 0xb07aff, 0xffd84d, 0x4ad0c0, 0xff5a6a, 0xf0a0d0];
+  tiledInst(branchGeo, seaGlowLam(), cb, { h: 2, col: (cc, i) => cc.set(ccol[i % 7]).convertSRGBToLinear() });
+  tiledInst(brainGeo, seaGlowLam(), cbr, { h: 1, sy: e => e[3], col: (cc, i) => cc.set(ccol[(i + 2) % 7]).convertSRGBToLinear() });
+  tiledInst(fanGeo, addWind(seaGlowLam(), 0.05), cf, { h: 1, shadow: false, col: (cc, i) => cc.set(ccol[(i + 4) % 7]).convertSRGBToLinear() });
+  { const m = seaGlowLam(); m.side = T.DoubleSide; tiledInst(tubeGeo, m, ct, { h: 1, col: (cc, i) => cc.set(ccol[(i + 1) % 7]).convertSRGBToLinear() }); }
+  fanGeo.userData = {};
+  // Rochers, coquillages et étoiles de mer
+  const rocks = [], stars = [], shells = [];
+  for (let t = 0; t < 20000 && rocks.length < 380; t++) { const x = SEA.x + srange(-SEA.r - 30, SEA.r + 30), z = SEA.z + srange(-SEA.r - 30, SEA.r + 30); if (!free(x, z, 2)) continue; const s = srange(0.6, 2.4) * (Math.hypot(x - SEA.x, z - SEA.z) > SEA.r - 30 ? 2.2 : 1); rocks.push([x, seaY(x, z) + s * 0.15, z, s, srand() * 6]); if (s > 1.2) addCircle(x, z, s * 0.75); }
+  tiledInst(new T.DodecahedronGeometry(1, 1), lam(0xffffff), rocks, { h: 2, sy: e => e[3] * 0.7, col: (cc, i) => cc.set([0x6a7a8a, 0x7a8a96, 0x5a6a7a, 0x8a8a9a][i % 4]).convertSRGBToLinear() });
+  const starGeo = mergeGeos([0, 1, 2, 3, 4].map(k => new T.ConeGeometry(0.08, 0.42, 4).scale(1, 1, 0.4).rotateZ(-Math.PI / 2).translate(0.2, 0.03, 0).rotateY(k * 1.2566)));
+  const shellGeo = new T.SphereGeometry(0.18, 8, 4, 0, 6.283, 0, Math.PI / 2); shellGeo.scale(1, 0.5, 1.2);
+  for (let t = 0; t < 20000 && stars.length + shells.length < 900; t++) { const x = SEA.x + srange(-SEA.r, SEA.r), z = SEA.z + srange(-SEA.r, SEA.r); if (Math.hypot(x - SEA.x, z - SEA.z) > SEA.r || !free(x, z, -2)) continue; (srand() < 0.45 ? stars : shells).push([x, seaY(x, z) + 0.03, z, srange(0.8, 1.6), srand() * 6]); }
+  tiledInst(starGeo, lam(0xffffff), stars, { h: 0, shadow: false, sy: () => 1, col: (cc, i) => cc.set([0xff7a3a, 0xe04a5a, 0xb05ad0, 0xffc04a][i % 4]).convertSRGBToLinear() });
+  tiledInst(shellGeo, lam(0xffffff), shells, { h: 0, shadow: false, col: (cc, i) => cc.set([0xfff0e0, 0xffd8c0, 0xf8e8ff, 0xffe8a0][i % 4]).convertSRGBToLinear() });
+  // Rayons de lumière bleutés
+  { const sm = new T.ShaderMaterial({ uniforms: { uK: { value: 1 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }', fragmentShader: 'uniform float uK; varying vec2 vUv; void main(){ float a = smoothstep(0.0, 0.5, vUv.y) * (0.6 + 0.4 * sin(vUv.x * 18.85)); gl_FragColor = vec4(0.75, 0.95, 1.0, a * 0.13 * uK); }', transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, fog: false });
+    const pos = [], uv = [], m4 = new T.Matrix4(), q = new T.Quaternion(), e3 = new T.Euler();
+    for (let n = 0; n < 60; n++) { const x = SEA.x + srange(-SEA.r, SEA.r), z = SEA.z + srange(-SEA.r, SEA.r), y = seaY(x, z), h = SCEIL - y; const cg = new T.CylinderGeometry(4, 1.2, h, 10, 1, true).translate(0, h / 2, 0); e3.set(-0.25, 0, 0.2); q.setFromEuler(e3); m4.compose(new V3(x, y, z), q, new V3(1, 1, 1)); cg.applyMatrix4(m4); const ng = cg.toNonIndexed(); pos.push(...ng.attributes.position.array); uv.push(...ng.attributes.uv.array); }
+    const sg = new T.BufferGeometry(); sg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); sg.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); const ms = new T.Mesh(sg, sm); ms.frustumCulled = false; ms.renderOrder = 2; scene.add(ms); sm.userData.mesh = ms; sCeil.userData.shafts = sm; }
+  // Le village des Coquillages
+  const houseCols = [0xf0a0b0, 0xf8c890, 0xc0a0e0, 0xa0d0e0, 0xf0d0a0, 0xe0a0c0, 0xa8e0c0];
+  for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + 0.3, x = SVILLAGE[0] + Math.cos(a) * 24, z = SVILLAGE[1] + Math.sin(a) * 24, h = makeShellHouse(houseCols[k]); h.position.set(x, seaY(x, z), z); h.rotation.y = Math.atan2(SVILLAGE[0] - x, SVILLAGE[1] - z); h.scale.setScalar(k === 2 ? 1.25 : 1); scene.add(h); addCircle(x, z, 3.2); }
+  // La place et le socle de la Grande Perle
+  { const [x, z] = SVILLAGE, y = seaY(x, z); mesh(new T.CylinderGeometry(9, 9.4, 0.3, 28), lam(0xf8ecd8), x, y + 0.1, z); const ped = mesh(new T.CylinderGeometry(1.1, 1.5, 2, 12), lam(0xf0b0c0), x, y + 1, z); void ped; mesh(new T.TorusGeometry(1.15, 0.2, 8, 18), lam(0xfff0e0), x, y + 2, z).rotation.x = Math.PI / 2; addCircle(x, z, 1.6);
+    sBigPearl = mesh(new T.SphereGeometry(0.85, 20, 16), new T.MeshPhongMaterial({ color: 0xfff8f0, emissive: colorL(0xffe8d0), emissiveIntensity: 0.6, shininess: 120, specular: 0xffffff }), x, y + 2.9, z);
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xfff4e0, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 })); gl.scale.set(12, 12, 1); sBigPearl.add(gl); sBigPearl.visible = false;
+    sign('VILLAGE DES COQUILLAGES', x + 2, z + 34, 0, 2.2, 1, '#3a7a9a'); }
+  // Lanternes du village (elles s'allument avec les perles de lumière)
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283, x = SVILLAGE[0] + Math.cos(a) * 14, z = SVILLAGE[1] + Math.sin(a) * 14, L = makeLantern(); L.position.set(x, seaY(x, z), z); scene.add(L); sLanterns.push(L); addCircle(x, z, 0.4); }
+  // Perles de lumière à ramasser
+  SPEARLS.forEach(([dx, dz], i) => { const [x, z] = SL(dx, dz), y = seaY(x, z), g = new T.Group(); g.position.set(x, y, z); scene.add(g);
+    const sh = new T.Mesh(new T.SphereGeometry(0.7, 12, 6, 0, 6.283, 0, Math.PI / 2), lam(0xf0d8e8, { side: T.DoubleSide })); sh.scale.y = 0.4; g.add(sh);
+    const top = new T.Mesh(new T.SphereGeometry(0.7, 12, 6, 0, 6.283, 0, Math.PI / 2), lam(0xf0d8e8, { side: T.DoubleSide })); top.scale.y = 0.4; top.position.set(0, 0.1, -0.5); top.rotation.x = -1.1; g.add(top);
+    const pe = mesh(new T.SphereGeometry(0.24, 12, 10), new T.MeshBasicMaterial({ color: 0xfff8ec }), 0, 0.22, 0, g);
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xfff0e0, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 })); gl.position.y = 0.3; gl.scale.set(3.5, 3.5, 1); g.add(gl); void pe;
+    g.visible = false; sPearlM.push(g);
+    addInter({ x, z, r: 2.6, icon: '🦪', label: () => 'Ramasser la perle de lumière', can: () => g.visible, act: () => { S.cpearl = S.cpearl || []; S.cpearl.push(i); g.visible = false; sparkle(x, y + 1, z); sfx.cone(); toast('🦪 Perle de lumière ! Une lanterne du village s\'allume.'); refreshSea(); seaEvent('pearl'); } }); });
+  // L'épave du vieux bateau
+  { const [x, z] = SWRECK, y = seaY(x, z), g = new T.Group(); g.position.set(x, y - 0.4, z); g.rotation.set(0.12, 0.7, 0.28); scene.add(g);
+    const wood = lam(0x6a4a34), woodD = lam(0x4a3428);
+    const hull = mesh(new T.SphereGeometry(1, 16, 8, 0, 6.283, Math.PI / 2, Math.PI / 2), lam(0x5a4030, { side: T.DoubleSide }), 0, 2.2, 0, g); hull.scale.set(3.4, 2.4, 9);
+    mesh(new T.BoxGeometry(6.2, 0.25, 14), wood, 0, 2.2, 0, g);
+    mesh(new T.BoxGeometry(3, 2, 3), woodD, 0, 3.3, -4, g);
+    const mast = mesh(new T.CylinderGeometry(0.25, 0.3, 11, 7), woodD, 0, 7, 1, g); mast.rotation.z = 0.5;
+    const sail = mesh(new T.PlaneGeometry(4, 3.4), new T.MeshLambertMaterial({ color: 0xd8c8a8, side: T.DoubleSide, transparent: true, opacity: 0.85 }), 1.6, 8, 1.2, g); sail.rotation.set(0, 0.2, 0.5);
+    for (let k = 0; k < 4; k++) mesh(new T.BoxGeometry(0.3, 1.6, 2), wood, rand(-2.5, 2.5), 1.2, rand(-6, 6), g).rotation.set(rand(-1, 1), rand(0, 3), rand(-1, 1));
+    const chest = new T.Group(); chest.position.set(-2, 2.5, 3); g.add(chest); mesh(new T.BoxGeometry(1.2, 0.8, 0.8), lam(0x8a5a2a), 0, 0, 0, chest); mesh(new T.BoxGeometry(1.25, 0.12, 0.85), lam(0xd8b040), 0, 0.2, 0, chest);
+    addBox(x, z, 4, 9.5, -0.7); sign('ÉPAVE DU VIEUX BATEAU', x - 12, z + 14, 0.4, 2, 0.8, '#5a4030'); }
+  SWRECKP.forEach(([k, nm, dx, dz], i) => { const [x, z] = SL(dx, dz), g = new T.Group(); g.position.set(x, seaY(x, z), z); scene.add(g); const br = lam(0xd8a040);
+    if (k === 'rouage') { const t = mesh(new T.TorusGeometry(0.6, 0.18, 6, 12), br, 0, 0.3, 0, g); t.rotation.x = Math.PI / 2 - 0.3; for (let j = 0; j < 8; j++) { const a = j * 0.785, tt = mesh(new T.BoxGeometry(0.2, 0.25, 0.3), br, Math.cos(a) * 0.8, 0.3, Math.sin(a) * 0.8, g); tt.rotation.y = -a; } }
+    else if (k === 'chaine') { for (let j = 0; j < 6; j++) { const l = mesh(new T.TorusGeometry(0.22, 0.06, 6, 10), M.metal, j * 0.34 - 0.9, 0.15, Math.sin(j) * 0.2, g); l.rotation.set(j % 2 ? Math.PI / 2 : 0, 0, 0); } }
+    else { const h = mesh(new T.ConeGeometry(0.4, 1.4, 12, 1, true), lam(0xd8a040, { side: T.DoubleSide }), 0, 0.4, 0, g); h.rotation.z = Math.PI / 2 + 0.2; }
+    g.visible = false; sWreckM.push(g);
+    addInter({ x, z, r: 2.8, icon: '⚙️', label: () => 'Ramasser ' + nm, can: () => g.visible, act: () => { S.cwreck = S.cwreck || []; S.cwreck.push(k); g.visible = false; sparkle(x, g.position.y + 1, z); sfx.pickup(); toast('⚙️ Tu as trouvé ' + nm + ' !'); seaEvent('wreck'); } }); });
+  // Déchets au fond de la mer
+  STRASH.forEach(([dx, dz], i) => { const [x, z] = SL(dx, dz), g = new T.Group(); g.position.set(x, seaY(x, z), z); g.rotation.set(0, i, Math.PI / 2 - 0.2); scene.add(g);
+    if (i % 2) { mesh(new T.CylinderGeometry(0.18, 0.2, 0.7, 8), new T.MeshPhongMaterial({ color: 0x4a9a5a, transparent: true, opacity: 0.8 }), 0, 0.2, 0, g); mesh(new T.CylinderGeometry(0.07, 0.1, 0.25, 6), new T.MeshPhongMaterial({ color: 0x4a9a5a, transparent: true, opacity: 0.8 }), 0, 0.65, 0, g); }
+    else { mesh(new T.CylinderGeometry(0.16, 0.16, 0.45, 10), lam(0xd84a3a), 0, 0.2, 0, g); mesh(new T.CylinderGeometry(0.165, 0.165, 0.1, 10), M.metal, 0, 0.42, 0, g); }
+    g.visible = false; sTrashM.push(g);
+    addInter({ x, z, r: 2.4, icon: '🗑️', label: () => 'Ramasser le déchet', can: () => g.visible, act: () => { S.ctrash = S.ctrash || []; S.ctrash.push(i); g.visible = false; puff(x, g.position.y + 0.5, z, 6, [0.8, 0.95, 1], 1); sfx.pickup(); seaEvent('strash'); } }); });
+  // Le ballon de Galet
+  { const [x, z] = SL(SBALL[0], SBALL[1]); const bt = canvasTex(64, 32, (g2, w, h) => { const cs = ['#ff5a5a', '#ffffff', '#4a8ad0', '#ffd84d', '#ffffff', '#5ad08a']; for (let k = 0; k < 6; k++) { g2.fillStyle = cs[k]; g2.fillRect(k * w / 6, 0, w / 6 + 1, h); } });
+    sBallM = mesh(new T.SphereGeometry(0.5, 16, 12), lam(0xffffff, { map: bt }), x, seaY(x, z) + 0.5, z); sBallM.visible = false;
+    addInter({ x, z, r: 2.6, icon: '⚽', label: () => 'Prendre le ballon de Galet', can: () => sBallM.visible, act: () => { sBallM.visible = false; S.flags.cball = 1; sparkle(x, sBallM.position.y, z); sfx.pickup(); toast('⚽ Le ballon de Galet !'); seaEvent('ball'); } }); }
+  // Les bulles dorées qui mènent à la fosse
+  STRAIL.forEach(([dx, dz], i) => { const [x, z] = SL(dx, dz), g = new T.Group(); g.position.set(x, seaY(x, z), z); scene.add(g);
+    for (let k = 0; k < 5; k++) mesh(new T.SphereGeometry(0.15 + k * 0.05, 8, 6), new T.MeshBasicMaterial({ color: 0xffd860, transparent: true, opacity: 0.85 }), Math.sin(k) * 0.3, 0.6 + k * 0.6, Math.cos(k) * 0.3, g);
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xffd860, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); gl.position.y = 1.6; gl.scale.set(4, 6, 1); g.add(gl);
+    g.visible = false; sTrailM.push(g);
+    addInter({ x, z, r: 3, icon: '🫧', label: () => 'Suivre les bulles dorées', can: () => g.visible, act: () => { S.ctrail = S.ctrail || []; S.ctrail.push(i); g.visible = false; sparkle(x, g.position.y + 1, z); sfx.ring(); toast(i < STRAIL.length - 1 ? '🫧 Les bulles continuent plus loin, vers la fosse…' : '🫧 Les bulles sortent d\'une grotte, tout au fond !'); seaEvent('trail'); } }); });
+  // La grotte de Crabos, au fond de la fosse
+  { const [x, z] = SCAVE, y = seaY(x, z), st = lam(0x4a5a6a);
+    for (let k = 0; k < 9; k++) { const a = Math.PI * 0.15 + k / 8 * Math.PI * 0.7, r = 7; const b = mesh(new T.DodecahedronGeometry(2.4, 1), st, x + Math.cos(a) * r, y + Math.sin(a) * 5.5, z - 4); b.scale.set(1, 1.1, 1.6); }
+    for (const s of [-1, 1]) addCircle(x + s * 6.5, z - 4, 2.5);
+    sCavePearl = mesh(new T.SphereGeometry(0.85, 20, 16), new T.MeshPhongMaterial({ color: 0xfff8f0, emissive: colorL(0xffe8d0), emissiveIntensity: 0.6, shininess: 120 }), x + 3, y + 0.9, z - 3);
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xfff4e0, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); gl.scale.set(9, 9, 1); sCavePearl.add(gl); }
+  // Volcans de bulles
+  for (const [dx, dz] of [[60, 120], [-150, -10], [40, -110], [150, 120], [-40, 160]]) { const [x, z] = SL(dx, dz); mesh(new T.ConeGeometry(1.4, 1.4, 9, 1, true), lam(0x5a6a7a, { side: T.DoubleSide }), x, seaY(x, z) + 0.6, z); sVents.push([x, z]); }
+  // Créatures de la mer : bancs de poissons, méduses, raies, tortues, une baleine
+  const fcols = [[0xffa040, 0xffffff], [0x4ab0ff, 0xffd84d], [0xff5a8a, 0xffd0e0], [0x5ae0a0, 0x3a9a7a], [0xffd84d, 0x3a6ab0], [0xb07aff, 0xf0d0ff], [0xff7a3a, 0x3a3a4a]];
+  for (let k = 0; k < 9; k++) { const cx = SEA.x + rand(-140, 140), cz = SEA.z + rand(-140, 140), fs = []; const fc = fcols[k % fcols.length]; for (let i = 0; i < 14; i++) { const m = makeFishM(fc[i % 2]); scene.add(m); fs.push({ m, o: [rand(-3, 3), rand(-1.5, 1.5), rand(-3, 3)], ph: rand(0, 6) }); } sSchools.push({ cx, cz, r: rand(12, 30), h: rand(3, 14), sp: rand(0.15, 0.35) * (k % 2 ? 1 : -1), fs }); }
+  for (let k = 0; k < 34; k++) { const inT = k < 14, a = rand(0, 6.283), m = makeJelly(pick([0xff9ad0, 0x9adcff, 0xd0a0ff, 0xa0ffd0])); let x, z; if (inT) { x = STRENCH.x + Math.cos(a) * rand(0, STRENCH.rx * 0.8); z = STRENCH.z + Math.sin(a) * rand(0, STRENCH.rz * 0.8); } else { x = SEA.x + rand(-160, 160); z = SEA.z + rand(-160, 160); } scene.add(m); sJellies.push({ m, x, z, h: rand(3, 16), ph: rand(0, 6) }); }
+  for (let k = 0; k < 4; k++) { const m = makeRay(); scene.add(m); sRays.push({ m, a: rand(0, 6.283), r: rand(40, 120), h: rand(4, 10), sp: rand(0.05, 0.1) }); }
+  for (let k = 0; k < 3; k++) { const m = makeTurtle(false); scene.add(m); sTurtles.push({ m, a: rand(0, 6.283), r: rand(30, 100), h: rand(6, 18), sp: rand(0.04, 0.07) }); }
+  sWhale = { m: makeWhale(), a: 0 }; scene.add(sWhale.m);
+  // Les habitants
+  addNPC('splash', { name: 'Splash le dauphin', col: '#3a7ab0', model: makeDolphin(), x: SCAMP[0] - 10, z: SCAMP[1] - 14, rot: 0, head: 1.6, dy: 2 });
+  addNPC('nacre', { name: 'Nacre la tortue', col: '#5a8a4a', model: makeTurtle(true), x: SVILLAGE[0] + 4, z: SVILLAGE[1] + 6, rot: Math.PI, head: 2.2 });
+  addNPC('octavie', { name: 'Octavie la pieuvre', col: '#b04a7a', model: makeOctopus(), x: SVILLAGE[0] + 30, z: SVILLAGE[1] + 12, rot: -1.2, head: 2.4 });
+  addNPC('galet', { name: 'Galet le phoque', col: '#6a6e78', model: makeSeal(), x: SCORAL[0] - 22, z: SCORAL[1] - 10, rot: -2, head: 1.4 });
+  addNPC('crabos', { name: 'Crabos, le grand crabe', col: '#b03a2a', model: makeCrab(0xc8402a, true), x: SCAVE[0], z: SCAVE[1] + 1, rot: 0, head: 2.6 });
+  // L'atelier d'Octavie : un gros coquillage avec des tuyaux
+  { const [x, z] = [SVILLAGE[0] + 34, SVILLAGE[1] + 16], h = makeShellHouse(0xd07aa0); h.position.set(x, seaY(x, z), z); h.rotation.y = -1.6; h.scale.setScalar(0.9); scene.add(h); addCircle(x, z, 3);
+    for (let k = 0; k < 3; k++) { const pp = mesh(new T.CylinderGeometry(0.18, 0.18, 4, 8), lam(0xd8a040), x - 3 + k * 0.6, seaY(x, z) + 2, z + 3.5); pp.rotation.z = 0.3 * (k - 1); } }
+  const vill = [['hippo1', 'Bulle l\'hippocampe', makeSeahorse(0xffb040), -8, 10], ['hippo2', 'Corail l\'hippocampe', makeSeahorse(0xff7ab0), 10, -8], ['hippo3', 'Vaguelette l\'hippocampe', makeSeahorse(0x7ad0ff), -14, -4], ['crabe1', 'Pince le crabe', makeCrab(0xff6a4a), 6, 14], ['crabe2', 'Pinçon le crabe', makeCrab(0xff9a4a), -4, -14], ['hippo4', 'Écume l\'hippocampe', makeSeahorse(0xc0a0ff), 16, 4]];
+  for (const [id, nm, m, dx, dz] of vill) addNPC(id, { name: nm, col: '#3a7a9a', model: m, x: SVILLAGE[0] + dx, z: SVILLAGE[1] + dz, rot: rand(0, 6), head: 1.8, dy: id.startsWith('hippo') ? 0.8 : 0 });
+  for (const id of ['splash', 'nacre', 'octavie', 'galet', 'crabos'].concat(vill.map(v => v[0]))) { const n = NPCS[id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: id === 'crabos' ? 5 : 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(',')[0], can: () => !n.hidden, act: () => talkSea(id) }); }
+  // Les amis, avec leur casque de plongée
+  MOON_FRIENDS.forEach(([id, name, colr, mk], i) => { const m = mk(), a = 2.8 + i / MOON_FRIENDS.length * 3.0, x = SCAMP[0] + Math.cos(a) * 12, z = SCAMP[1] + Math.sin(a) * 9; addNPC('ls_' + id, { name, col: colr, model: m, x, z, rot: Math.atan2(SCAMP[0] - x, SCAMP[1] - z), head: 2.2 }); addHelmet(m, m.userData.rig.head); const n = NPCS['ls_' + id]; sFriends.push(n); addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3, icon: '💬', label: () => 'Parler à ' + name.split(' (')[0], can: () => !n.hidden, act: () => talkSeaFriend(id) }); });
+  // Dans le parc : la dent de dinosaure et la résine dorée des grands sapins
+  { const [x, z] = DENT_SPOT(); sDentM = mesh(new T.ConeGeometry(0.22, 0.9, 7), lam(0xf4ecd8), x, groundY(x, z) + 0.45, z); sDentM.rotation.z = 0.6; sDentM.visible = false;
+    addInter({ x, z, r: 2.4, icon: '🦷', label: () => 'Prendre la dent de dinosaure', can: () => sDentM.visible, act: () => { sDentM.visible = false; give('dent'); sparkle(x, sDentM.position.y, z); seaEvent('dent'); } }); }
+  seed = 3131;
+  for (let t = 0; t < 4000 && SRESIN.length < 5; t++) {
+    const x = srange(-250, 0), z = srange(-200, 60); if (forestK(x, z) < 0.6 || isSnowy(x, z, groundY(x, z)) || pathDist(x, z) > 8 || pathDist(x, z) < 2) continue;
+    const tr = nearTree(x, z, 4); if (!tr || SRESIN.some(r => Math.hypot(r[0] - tr.x, r[1] - tr.z) < 40)) continue;
+    SRESIN.push([tr.x + 0.55, tr.z + 0.2]);
+  }
+  SRESIN.forEach(([x, z], i) => { const g = new T.Group(); g.position.set(x, groundY(x, z) + 1.5, z); scene.add(g); mesh(new T.SphereGeometry(0.2, 10, 8), new T.MeshPhongMaterial({ color: 0xffb030, emissive: colorL(0x8a4a00), shininess: 100, transparent: true, opacity: 0.9 }), 0, 0, 0, g).scale.set(1, 1.3, 0.8); const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xffc040, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.7 })); gl.scale.set(2, 2, 1); g.add(gl); g.visible = false; sResinM.push(g);
+    addInter({ x, z, r: 2.4, icon: '🍯', label: () => 'Récolter la résine dorée', can: () => g.visible, act: () => { S.cresin = S.cresin || []; S.cresin.push(i); g.visible = false; sparkle(x, g.position.y, z); sfx.pickup(); seaEvent('resin'); } }); });
+  // Le camping-car devient un sous-marin : hublots, hélice et périscope
+  { const u = C.model.userData, sub = new T.Group(); u.body.add(sub); u.sub = sub; const glass = new T.MeshPhongMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.7, shininess: 100 }), br = lam(0xd8a040);
+    for (const s of [-1, 1]) for (const z of [-0.8, 0.9]) { const r = mesh(new T.TorusGeometry(0.42, 0.09, 6, 16), br, s * 1.32, 1.9, z, sub); r.rotation.y = Math.PI / 2; const gg2 = mesh(new T.CircleGeometry(0.4, 14), glass, s * 1.34, 1.9, z, sub); gg2.rotation.y = s * Math.PI / 2; }
+    const pr = new T.Group(); pr.position.set(0, 1.3, -3.1); sub.add(pr); for (let k = 0; k < 3; k++) { const b = mesh(new T.BoxGeometry(0.2, 0.9, 0.06), br, 0, 0, 0, pr); b.rotation.z = k * 2.09; b.geometry.translate(0, 0.45, 0); } mesh(new T.SphereGeometry(0.18, 8, 6), br, 0, 1.3, -3.1, sub); u.subProp = pr;
+    const per = mesh(new T.CylinderGeometry(0.08, 0.08, 1.4, 6), M.metal, 0.6, 3.6, 0.8, sub); void per; const ph = mesh(new T.BoxGeometry(0.15, 0.15, 0.4), M.metal, 0.6, 4.3, 0.95, sub); void ph;
+    sub.visible = false; }
+  // Voyages
+  addInter({ x: POI.base[0] + 9, z: POI.base[1] + 9, r: 5, icon: '🌊', label: () => 'Plonger au Royaume sous la Mer', can: () => !!S.flags.ch4 && P.x > -1500 && P.x < 700, act: () => seaTravel(true) });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 6, icon: '🏡', label: () => 'Remonter au parc des Pins', can: () => onSea() && !!S.flags.ch4, act: () => seaTravel(false) });
+}
+// ---------- Les missions du chapitre 4 ----------
+const cCount = k => () => (S[k] || []).length;
+const CQ = [
+  { title: 'Le secret de Madame Plume', steps: [
+    { t: 'Madame Plume veut te parler, au grand arbre', talk: 'plume', at: () => POI.owl, lines: [
+      ['plume', 'Hou hou, Oscar ! Tu te souviens des lumières que j\'ai vues sous la mer, du haut de l\'Arbre-Mère ?'],
+      ['plume', 'Je les ai revues cette nuit. Elles clignotaient, de plus en plus faiblement… comme si quelqu\'un appelait à l\'aide.'],
+      ['oscar', 'Un peuple sous la mer qui a besoin d\'aide ?! On y va ! … Euh. Je ne sais pas respirer sous l\'eau.'],
+      ['plume', 'Hou hou ! Max, lui, aura sûrement une idée. Va le voir à son atelier.'],
+    ] }] },
+  { title: 'Un camping-car sous-marin ?!', steps: [
+    { t: 'Va voir Max à son atelier', talk: 'max', at: () => POI.max, lines: [
+      ['max', 'Sous la mer ? Avec le camping-car ? … C\'est la meilleure idée de ta vie, Oscar !'],
+      ['oscar', 'Je sais. J\'ai beaucoup d\'idées géniales. Surtout quand j\'ai faim.'],
+      ['max', 'Il me faut quatre choses pour en faire un sous-marin : un hublot, une hélice, des joints bien étanches… et une lumière pour voir au fond.'],
+      ['max', 'Raflex a un vieux hublot dans son musée. Lulu connaît une hélice au fond du lac. Papi Blaireau sait faire des joints. Et pour la lumière… demande à Brume !'],
+      ['oscar', 'Quatre choses ? Facile ! Je pars tout de suite. Juste après une petite sieste. Non, je rigole. J\'y vais !'],
+    ] }] },
+  { title: 'Le hublot de Raflex', steps: [
+    { t: 'Demande le hublot à Raflex, au musée', talk: 'raflex', at: () => POI.musee, lines: [
+      ['raflex', 'Yo, Oscar ! Mon hublot de bateau ? C\'est la plus belle pièce du musée…'],
+      ['raflex', 'Je te l\'échange contre une dent de dinosaure ! J\'en ai vu une dans la grotte du fossile, mais j\'ai trop peur du noir pour y aller.'],
+      ['oscar', 'Moi, je n\'ai peur de rien. Sauf des abeilles fâchées. Et du noir. Bon, j\'y vais quand même.'],
+    ] },
+    { t: 'Trouve la dent de dinosaure dans la grotte du fossile', ev: 'dent', at: DENT_SPOT },
+    { t: 'Rapporte la dent de dinosaure à Raflex', talk: 'raflex', at: () => POI.musee, lines: [
+      ['raflex', 'UNE VRAIE DENT DE DINOSAURE ! Mon musée est le plus beau du monde ! Tiens, le hublot est à toi.'],
+    ], done: () => { take('dent'); give('hublot'); } }] },
+  { title: 'L\'hélice de Lulu', steps: [
+    { t: 'Demande l\'hélice à Lulu, près du ponton', talk: 'lulu', at: () => POI.lulu, lines: [
+      ['lulu', 'L\'hélice du vieux bateau, au fond du lac ? Je peux plonger la chercher !'],
+      ['lulu', 'Mais plonger, ça donne faim… Pêche-moi trois poissons, et je te la rapporte.'],
+      ['oscar', 'Trois poissons ? Pour toi ? … D\'accord. Mais si j\'en pêche un quatrième, il est pour moi.'],
+    ] },
+    { t: 'Pêche 3 poissons pour Lulu (au bout d\'un ponton)', ev: 'fish', n: 3 },
+    { t: 'Rapporte les poissons à Lulu', talk: 'lulu', at: () => POI.lulu, lines: [
+      ['lulu', 'Miam ! Merci Oscar ! Attends-moi… *plouf* … Et voilà l\'hélice, toute propre !'],
+    ], done: () => { give('helice'); } }] },
+  { title: 'La résine de Papi Blaireau', steps: [
+    { t: 'Demande des joints à Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Des joints étanches, petit ? Il faut de la résine dorée. Les grands sapins de la forêt en pleurent quelques gouttes.'],
+      ['blaireau', 'Rapporte-m\'en cinq gouttes, et je te fabrique les meilleurs joints du parc.'],
+      ['oscar', 'De la résine ? Ça se mange ? … Non ? Dommage.'],
+    ] },
+    { t: 'Récolte 5 gouttes de résine dorée sur les grands sapins (regarde la carte)', ev: 'resin', n: 5, count: cCount('cresin'), at: () => { const i = SRESIN.findIndex((r, k) => !(S.cresin || []).includes(k)); return i >= 0 ? SRESIN[i] : POI.blaireau; } },
+    { t: 'Rapporte la résine à Papi Blaireau', talk: 'blaireau', at: () => POI.blaireau, lines: [
+      ['blaireau', 'Parfait. Je fais chauffer, je mélange… Voilà des joints qui ne laisseront pas passer une seule goutte d\'eau.'],
+    ], done: () => { give('joints'); } }] },
+  { title: 'La lumière de Brume', steps: [
+    { t: 'Va dans la Forêt Immense (base de lancement) et parle à Brume', talk: 'brume', at: () => onForest() ? [NPCS.brume.x, NPCS.brume.z] : [POI.base[0] - 10, POI.base[1] + 9], lines: [
+      ['brume', 'Petit ours ! Je sens l\'odeur de la mer sur ton pelage… Tu pars pour un nouveau voyage ?'],
+      ['oscar', 'Oui ! Sous la mer ! Il me faut une lumière qui ne s\'éteint jamais.'],
+      ['brume', 'Prends ce champignon lumineux. Il a poussé au pied de l\'Arbre-Mère : sa lumière ne s\'éteint jamais, même au fond de l\'eau.'],
+    ], done: () => { give('champiL'); } }] },
+  { title: 'Le grand plongeon', steps: [
+    { t: 'Rapporte tout à Max, à son atelier', talk: 'max', at: () => POI.max, lines: [
+      ['max', 'Le hublot, l\'hélice, les joints et le champignon lumineux ! Tu as tout trouvé !'],
+      ['max', 'Un coup de clé par-ci, un coup de queue par-là… Le camping-car sous-marin est prêt !'],
+      ['oscar', 'Tout le monde à bord ! Direction : le fond de la mer !'],
+    ], done: () => { for (const k of ['hublot', 'helice', 'joints', 'champiL']) take(k); S.flags.sub = 1; refreshSea(); startDive(); } }] },
+  { title: 'Un monde sous la mer', steps: [
+    { t: 'Explore le fond de la mer… Quelque chose fait des bulles près du sous-marin !', ev: 'splash', at: () => [NPCS.splash.x, NPCS.splash.z] },
+    { t: 'Parle au dauphin', talk: 'splash', at: () => [NPCS.splash.x, NPCS.splash.z], lines: [
+      ['splash', 'Hiii hiii ! Un ours ?! Sous la mer ?! Avec un casque ?! C\'est la chose la plus rigolote que j\'aie jamais vue !'],
+      ['oscar', 'Je suis Oscar. Un ours très malin. Et je nage très bien. Enfin… je marche très bien, au fond.'],
+      ['splash', 'Moi, c\'est Splash ! Vous avez vu nos lumières ? Notre village est en danger. Venez, je vous emmène voir Nacre !'],
+    ] }] },
+  { title: 'Le village des Coquillages', steps: [
+    { t: 'Suis Splash au village des Coquillages et parle à Nacre, la vieille tortue', talk: 'nacre', at: () => SVILLAGE, lines: [
+      ['nacre', 'Bienvenue, voyageurs de la terre. Je suis Nacre. J\'ai trois cents ans, et je n\'avais jamais vu d\'ours au fond de la mer.'],
+      ['nacre', 'Depuis que la Grande Perle a disparu, notre village s\'éteint. Les lanternes n\'ont plus de lumière.'],
+      ['nacre', 'Les courants ont emporté six perles de lumière un peu partout. Si tu les retrouves, nos lanternes se rallumeront.'],
+      ['oscar', 'Six perles ? Je vais les trouver. Je suis le meilleur chercheur de perles. Depuis cinq minutes.'],
+    ] },
+    { t: 'Ramasse les 6 perles de lumière (dans des coquillages, partout au fond de la mer)', ev: 'pearl', n: 6, count: cCount('cpearl'), at: () => { const i = SPEARLS.findIndex((p, k) => !(S.cpearl || []).includes(k)); return i >= 0 ? SL(SPEARLS[i][0], SPEARLS[i][1]) : SVILLAGE; } },
+    { t: 'Retourne voir Nacre au village', talk: 'nacre', at: () => SVILLAGE, lines: [
+      ['nacre', 'Regarde nos lanternes… Elles brillent de nouveau ! Les petits hippocampes dansent de joie.'],
+      ['nacre', 'Mais sans la Grande Perle, leur lumière ne durera pas. Octavie, notre inventrice, a peut-être une idée.'],
+    ] }] },
+  { title: 'L\'atelier d\'Octavie', steps: [
+    { t: 'Va voir Octavie la pieuvre, dans son atelier à l\'est du village', talk: 'octavie', at: () => [NPCS.octavie.x, NPCS.octavie.z], lines: [
+      ['octavie', 'Un ours ! Huit bras, deux yeux, et je n\'en crois aucun ! Bonjour, bonjour !'],
+      ['octavie', 'Ma machine à lumière peut garder les lanternes allumées. Mais il lui manque trois pièces.'],
+      ['octavie', 'Un gros rouage, une chaîne et un cornet en cuivre. Tout ça est dans l\'épave du vieux bateau, au sud-est.'],
+      ['oscar', 'Une épave ? Avec un trésor ? … Non, des pièces. D\'accord. Mais s\'il y a un trésor, je le prends aussi.'],
+    ] },
+    { t: 'Trouve 3 pièces autour de l\'épave du vieux bateau', ev: 'wreck', n: 3, count: cCount('cwreck'), at: () => { const w = SWRECKP.find(p => !(S.cwreck || []).includes(p[0])); return w ? SL(w[2], w[3]) : [NPCS.octavie.x, NPCS.octavie.z]; } },
+    { t: 'Rapporte les pièces à Octavie', talk: 'octavie', at: () => [NPCS.octavie.x, NPCS.octavie.z], lines: [
+      ['octavie', 'Le rouage ici, la chaîne là, le cornet par là… Avec huit bras, ça va très vite ! Tchac tchac tchac !'],
+      ['octavie', 'Et voilà ! La machine tourne. Les lanternes tiendront jusqu\'au retour de la Grande Perle.'],
+    ], done: () => { S.flags.smachine = 1; refreshSea(); } }] },
+  { title: 'La mer toute propre', steps: [
+    { t: 'Galet le phoque a l\'air triste, près du jardin de coraux', talk: 'galet', at: () => [NPCS.galet.x, NPCS.galet.z], lines: [
+      ['galet', 'Snif… Bonjour. Je suis Galet. Des humains ont jeté des bouteilles et des canettes dans la mer.'],
+      ['galet', 'Mes amis les poissons se coincent dedans. Tu veux bien m\'aider à tout ramasser ?'],
+      ['oscar', 'Bien sûr ! Ramasser des déchets, je connais. J\'ai déjà nettoyé tout mon parc. Presque tout seul.'],
+    ] },
+    { t: 'Ramasse les 10 déchets au fond de la mer', ev: 'strash', n: 10, count: cCount('ctrash'), at: () => { const i = STRASH.findIndex((p, k) => !(S.ctrash || []).includes(k)); return i >= 0 ? SL(STRASH[i][0], STRASH[i][1]) : [NPCS.galet.x, NPCS.galet.z]; } },
+    { t: 'Retourne voir Galet', talk: 'galet', at: () => [NPCS.galet.x, NPCS.galet.z], lines: [
+      ['galet', 'La mer est toute propre ! Regarde comme les poissons sont contents ! Merci, merci, merci !'],
+    ] }] },
+  { title: 'Le ballon de Galet', steps: [
+    { t: 'Galet a perdu son ballon dans la forêt d\'algues, à l\'ouest', talk: 'galet', at: () => [NPCS.galet.x, NPCS.galet.z], lines: [
+      ['galet', 'Dis, Oscar… J\'ai encore un petit problème. Mon ballon s\'est envolé dans la forêt d\'algues.'],
+      ['oscar', 'Un ballon ? Sous l\'eau ? Il ne devrait pas flotter tout en haut ? … Bon, je vais voir.'],
+    ] },
+    { t: 'Retrouve le ballon de Galet dans la forêt d\'algues', ev: 'ball', at: () => SL(SBALL[0], SBALL[1]) },
+    { t: 'Rends son ballon à Galet', talk: 'galet', at: () => [NPCS.galet.x, NPCS.galet.z], lines: [
+      ['galet', 'Mon ballon ! Hop, hop, sur le nez ! Tu es le meilleur ours du monde, Oscar.'],
+      ['oscar', 'Je sais. Enfin, merci.'],
+    ] }] },
+  { title: 'Les bulles dorées', steps: [
+    { t: 'Retourne voir Nacre : elle a découvert quelque chose', talk: 'nacre', at: () => SVILLAGE, lines: [
+      ['nacre', 'Oscar, ce matin, j\'ai vu des bulles dorées près du socle de la Grande Perle. Quelqu\'un l\'a emportée…'],
+      ['splash', 'Les bulles dorées partent vers la fosse sombre ! Personne n\'ose aller là-bas…'],
+      ['oscar', 'Moi, j\'ose. Enfin, je crois. Je vais suivre les bulles. Doucement. Très doucement.'],
+    ] },
+    { t: 'Suis les 5 bulles dorées jusqu\'à la fosse sombre', ev: 'trail', n: 5, count: cCount('ctrail'), at: () => { const i = STRAIL.findIndex((p, k) => !(S.ctrail || []).includes(k)); return i >= 0 ? SL(STRAIL[i][0], STRAIL[i][1]) : SCAVE; } }] },
+  { title: 'Crabos a peur du noir', steps: [
+    { t: 'Entre dans la grotte au fond de la fosse', talk: 'crabos', at: () => SCAVE, lines: [
+      ['crabos', 'QUI EST LÀ ?! Va-t\'en ! C\'est MA perle ! Clac clac !'],
+      ['oscar', 'Bonjour… Je m\'appelle Oscar. Pourquoi tu as pris la Grande Perle du village ?'],
+      ['crabos', '… Parce que ma grotte est toute noire. Et moi… j\'ai peur du noir. Voilà. Tu peux rire.'],
+      ['oscar', 'Je ne ris pas. Moi aussi, j\'ai un peu peur du noir. Attends-moi : je vais te trouver une lumière rien que pour toi.'],
+    ] },
+    { t: 'Demande à Octavie une lanterne pour Crabos', talk: 'octavie', at: () => [NPCS.octavie.x, NPCS.octavie.z], lines: [
+      ['octavie', 'Crabos a peur du noir ? Le pauvre ! Je lui fais ma plus belle lanterne. Tchac tchac tchac… Voilà !'],
+    ], done: () => { give('lanterneM'); } },
+    { t: 'Apporte la lanterne à Crabos, dans la fosse', talk: 'crabos', at: () => SCAVE, lines: [
+      ['crabos', 'Une lanterne… pour moi ? Personne ne m\'a jamais fait de cadeau.'],
+      ['crabos', 'Ma grotte est toute jolie, maintenant. Je n\'ai plus peur ! Tiens, rends la Grande Perle au village. Et dis-leur… pardon.'],
+      ['oscar', 'Tu sais quoi, Crabos ? Viens avec moi. Tu le diras toi-même. Et il y aura sûrement une fête !'],
+    ], done: () => { take('lanterneM'); give('grandePerle'); S.flags.crabosHappy = 1; refreshSea(); } }] },
+  { title: 'La fête de la mer', steps: [
+    { t: 'Rapporte la Grande Perle à Nacre, au village', talk: 'nacre', at: () => SVILLAGE, lines: [
+      ['nacre', 'La Grande Perle ! Oscar, tu as sauvé notre village.'],
+      ['crabos', 'C\'est moi qui l\'avais prise… Pardon, tout le monde. J\'avais juste peur du noir.'],
+      ['nacre', 'Tout le monde a peur de quelque chose, Crabos. Tu es le bienvenu au village, maintenant.'],
+      ['splash', 'Hiii hiii ! C\'EST LA FÊTE DE LA MER !'],
+      ['oscar', 'Une fête ? Avec un buffet ? … Des algues ? … Bon. Je danse quand même !'],
+    ], done: () => { take('grandePerle'); S.flags.bigPearl = 1; refreshSea(); G.party = 12; confetti(P.x, P.y + 3, P.z); sfx.fanfare(); setTimeout(() => talk([['splash', 'Hiii ! Au fait, Oscar… Mon cousin le dauphin voyageur a vu une île qui flotte dans les nuages, très loin d\'ici.'], ['oscar', 'Une île volante ?! Ce sera notre prochaine aventure !']]), 9000); } }] },
+];
+const cStep = () => { const q = CQ[S.cq]; return q ? q.steps[S.cstep] : null; };
+function seaEvent(ev) {
+  if (!S.flags.ch3done || S.flags.ch4done || S.cq === undefined) return;
+  const st = cStep(); if (!st || st.ev !== ev) { updateQuestUI(); saveGame(); return; }
+  const n = st.count ? st.count() : (S.ccnt = (S.ccnt || 0) + 1);
+  if (st.n && n < st.n) { toast(CQ[S.cq].title + ' : ' + n + ' / ' + st.n); updateQuestUI(); saveGame(); return; }
+  seaAdvance();
+}
+function seaAdvance() {
+  S.cstep++; S.ccnt = 0;
+  if (S.cstep >= CQ[S.cq].steps.length) {
+    S.cq++; S.cstep = 0;
+    if (CQ[S.cq]) { banner('Chapitre 4', CQ[S.cq].title); sfx.quest(); }
+    else { S.flags.ch4done = 1; banner('Chapitre 4 terminé !', 'Le Royaume sous la Mer brille de nouveau 🐚'); sfx.fanfare(); S.coins += 500; updateHUD(); }
+  } else sfx.step();
+  const st = cStep(); if (st && st.ev && st.count && st.count() >= st.n) return seaAdvance();
+  refreshSea(); updateQuestUI(); saveGame();
+}
+// Les amis du parc répondent aux missions du chapitre 4 (appelé depuis talkTo et talkBrume)
+function seaTalk(id) {
+  if (!S || !S.flags.ch3done || S.flags.ch4done) return false;
+  if (S.cq === undefined) { S.cq = 0; S.cstep = 0; S.ccnt = 0; }
+  const st = cStep(); if (!st || st.talk !== id) return false;
+  talk(st.lines, () => { if (st.done) st.done(); seaAdvance(); });
+  return true;
+}
+function talkSea(id) {
+  if (seaTalk(id)) return;
+  const party = !!S.flags.bigPearl, L = {
+    splash: party ? ['Hiii hiii ! On fait la course jusqu\'à la baleine ?', 'Je saute plus haut que toi ! Bon, normal, je suis un dauphin.'] : ['Hiii ! Tu marches au fond de l\'eau comme un crabe poilu !', 'Tu veux voir une galipette ? Hop !'],
+    nacre: party ? ['Trois cents ans, et c\'est la plus belle fête de ma vie.', 'Reviens nous voir quand tu veux, Oscar.'] : ['Prends ton temps, petit ours. La mer est patiente.', 'Mes lunettes ? Je les ai depuis deux cents ans.'],
+    octavie: ['Huit bras, c\'est pratique : je peux tenir quatre outils et me gratter la tête en même temps !', 'Ma prochaine invention ? Un parapluie sous-marin. Pour rien. Juste parce que c\'est rigolo.'],
+    galet: S.flags.cball ? ['Regarde ! Le ballon sur le nez ! Et sur la queue ! Et… ah, il est parti.', 'Tu veux jouer ? Je lance, tu attrapes. Avec ta tête, d\'accord ?'] : ['Snif… Je m\'ennuie un peu sans mon ballon.', 'La mer est plus belle quand elle est propre.'],
+    crabos: S.flags.crabosHappy ? ['Ma lanterne est la plus belle de toute la mer ! Clac clac !', 'Je n\'ai plus peur du noir. Enfin… un tout petit peu, la nuit.'] : ['Clac clac ! Va-t\'en ! … Non, attends. Reste un peu.'],
+    hippo1: ['Bloup ! On dirait un rocher poilu qui marche !'], hippo2: ['Chez les hippocampes, ce sont les papas qui portent les bébés ! C\'est vrai, demande à Nacre.'], hippo3: ['Je fais la course avec les crevettes. Je perds toujours.'], hippo4: ['Tu sais danser la danse des algues ? Comme ça : on ondule !'],
+    crabe1: ['Je marche de côté. Toi, tu marches tout droit. C\'est bizarre.'], crabe2: ['Pince pince ! C\'est comme ça qu\'on dit bonjour, chez les crabes.'],
+  };
+  talk([[id, pick(L[id] || ['Bloup !'])]]);
+}
+function talkSeaFriend(id) {
+  const L = { max: 'Mon sous-marin marche du tonnerre ! Bon, c\'est un peu humide à l\'intérieur.', lulu: 'C\'est le plus beau jour de ma vie de loutre ! La mer, partout !', raflex: 'Yo ! Un vieux bateau coulé ? Il y a sûrement des trésors pour mon musée.', donovan: 'Coin… Je flotte tout le temps vers le haut. C\'est fatigant.', noisette: 'Il n\'y a pas de noisettes au fond de la mer. Je vérifie quand même.', blaireau: 'Mes joints tiennent bon, petit. Pas une goutte n\'est entrée.', plume: 'Hou hou ! Ce sont ces lumières que j\'avais vues !', maurice: 'Wouf ! Praline essaie d\'attraper les poissons avec sa langue.', praline: 'Ouaf ! Un poisson m\'a fait un bisou sur le casque !', roquette: 'On fait la course de sous-marins ? Non ? Dommage.', filou: 'Devinette : je suis blanche, ronde et je brille au fond de la mer… Une perle !' };
+  talk([['ls_' + id, L[id]]]);
+}
+function refreshSea() {
+  if (!S) return;
+  const st = cStep(), q = S.cq;
+  const at = (k, s) => q === k && S.cstep === s;
+  if (sDentM) sDentM.visible = at(2, 1) && !has('dent');
+  sResinM.forEach((g, i) => { g.visible = at(4, 1) && !(S.cresin || []).includes(i); });
+  sPearlM.forEach((g, i) => { g.visible = q === 8 && S.cstep === 1 && !(S.cpearl || []).includes(i); });
+  sWreckM.forEach((g, i) => { g.visible = at(9, 1) && !(S.cwreck || []).includes(SWRECKP[i][0]); });
+  sTrashM.forEach((g, i) => { g.visible = at(10, 1) && !(S.ctrash || []).includes(i); });
+  if (sBallM) sBallM.visible = at(11, 1) && !S.flags.cball;
+  sTrailM.forEach((g, i) => { g.visible = at(12, 1) && !(S.ctrail || []).includes(i); });
+  const lit = S.flags.bigPearl ? 6 : (S.cpearl || []).length;
+  sLanterns.forEach((L, i) => { const on = i < lit; L.userData.core.visible = on; L.userData.gl.visible = on; });
+  if (sBigPearl) sBigPearl.visible = !!S.flags.bigPearl;
+  if (sCavePearl) sCavePearl.visible = !S.flags.crabosHappy && !!S.flags.ch4;
+  const cr = NPCS.crabos; if (cr) { if (S.flags.bigPearl) { cr.x = SVILLAGE[0] - 6; cr.z = SVILLAGE[1] + 9; } else { cr.x = SCAVE[0]; cr.z = SCAVE[1] + 1; } }
+  const sp = NPCS.splash; if (sp && q >= 8) { sp.x = SVILLAGE[0] - 8; sp.z = SVILLAGE[1] + 12; }
+  for (const n of sFriends) { n.hidden = !S.flags.ch4; n.model.visible = !!S.flags.ch4; }
+  if (C.model && C.model.userData.sub) C.model.userData.sub.visible = !!S.flags.sub;
+  void st;
+}
+// ---------- Ambiance sous la mer ----------
+function seaFog() {
+  const deep = sstep(-2, -12, seaY(P.x, P.z));
+  scene.fog.color.set(0x1a7aa8).lerp(_c1.set(0x0a2a40), deep * 0.85).multiplyScalar(1 - nightK * 0.45);
+  scene.background.copy(scene.fog.color);
+  hemi.color.set(0x6ab8e0); hemi.groundColor.set(0x1f4a5a); hemi.intensity = 0.58 - deep * 0.25; sun.color.setRGB(0.55, 0.82, 1); sun.intensity = 0.7 - deep * 0.4;
+  if (G.cine) return [6, 140, 300];
+  return [lerp(2, 1, deep), lerp(78, 55, deep), 220];
+}
+function updateSea(dt) {
+  const on = onSea() && G.state === 'play';
+  SGLOW.value = 0.22 + nightK * 0.3;
+  if (sCeil) { sCeil.visible = on; sCaust.visible = on; sCeil.material.map.offset.x += dt * 0.01; sCeil.material.map.offset.y += dt * 0.008; sCaust.material.map.offset.x = Math.sin(G.t * 0.3) * 0.02 + G.t * 0.004; sCaust.material.map.offset.y = Math.cos(G.t * 0.25) * 0.02; sCaust.material.opacity = 0.12 * (1 - nightK * 0.7); const sm = sCeil.userData.shafts; sm.userData.mesh.visible = on; sm.uniforms.uK.value = 1 - nightK * 0.8; }
+  if (!on) { for (const s of sSchools) for (const f of s.fs) f.m.visible = false; for (const j of sJellies) j.m.visible = false; for (const r of sRays.concat(sTurtles)) r.m.visible = false; if (sWhale) sWhale.m.visible = false; return; }
+  // Bulles d'Oscar et des volcans
+  if (Math.random() < dt * 3 && P.mode === 'walk') emit(P.x + rand(-0.3, 0.3), P.y + 2.6, P.z + rand(-0.3, 0.3), rand(-0.2, 0.2), rand(1.5, 2.5), rand(-0.2, 0.2), 2.5, 0.2, 0.85, 0.95, 1, 0);
+  for (const [x, z] of sVents) if (Math.hypot(x - P.x, z - P.z) < 90 && Math.random() < dt * 8) emit(x + rand(-0.4, 0.4), seaY(x, z) + 1.2, z + rand(-0.4, 0.4), rand(-0.2, 0.2), rand(2, 4), rand(-0.2, 0.2), 4, rand(0.2, 0.45), 0.85, 0.95, 1, 0);
+  if (Math.random() < dt * 10) { const x = P.x + rand(-25, 25), z = P.z + rand(-25, 15); emit(x, seaY(x, z) + rand(1, 12), z, rand(-0.2, 0.2), rand(-0.1, 0.1), rand(-0.2, 0.2), 4, 0.12, 0.9, 0.95, 0.85, 0); }
+  // Bancs de poissons
+  for (const s of sSchools) { const near = Math.hypot(s.cx - P.x, s.cz - P.z) < 120; const t = G.t * s.sp, cx = s.cx + Math.cos(t) * s.r, cz = s.cz + Math.sin(t) * s.r, rot = Math.atan2(-Math.sin(t) * Math.sign(s.sp), Math.cos(t) * Math.sign(s.sp));
+    for (const f of s.fs) { f.m.visible = near; if (!near) continue; const y = seaY(cx, cz) + s.h + f.o[1] + Math.sin(G.t * 1.3 + f.ph) * 0.3; f.m.position.set(cx + f.o[0] + Math.sin(G.t + f.ph) * 0.4, y, cz + f.o[2]); f.m.rotation.y = rot + Math.sin(G.t * 6 + f.ph) * 0.12; f.m.userData.tail.rotation.y = Math.sin(G.t * 14 + f.ph) * 0.5; } }
+  for (const j of sJellies) { const near = Math.hypot(j.x - P.x, j.z - P.z) < 100; j.m.visible = near; if (!near) continue; const pulse = Math.sin(G.t * 1.8 + j.ph); j.m.position.set(j.x + Math.sin(G.t * 0.2 + j.ph) * 2, seaY(j.x, j.z) + j.h + pulse * 0.6, j.z); j.m.scale.set(1 + pulse * 0.08, 1 - pulse * 0.1, 1 + pulse * 0.08); }
+  for (const r of sRays) { r.a += dt * r.sp; const x = SEA.x + Math.cos(r.a) * r.r, z = SEA.z + Math.sin(r.a) * r.r; r.m.visible = true; r.m.position.set(x, seaY(x, z) + r.h, z); r.m.rotation.set(0, r.a + Math.PI, Math.sin(G.t * 1.5 + r.r) * 0.25); }
+  for (const r of sTurtles) { r.a += dt * r.sp; const x = SEA.x + Math.cos(r.a) * r.r, z = SEA.z + Math.sin(r.a) * r.r; r.m.visible = true; r.m.position.set(x, seaY(x, z) + r.h, z); r.m.rotation.y = r.a + Math.PI; const rg = r.m.userData.rig; rg.armL.rotation.x = Math.sin(G.t * 2) * 0.6; rg.armR.rotation.x = Math.sin(G.t * 2) * 0.6; }
+  if (sWhale) { sWhale.a += dt * 0.025; const x = SEA.x + Math.cos(sWhale.a) * 150, z = SEA.z + Math.sin(sWhale.a) * 150; sWhale.m.visible = true; sWhale.m.position.set(x, 30, z); sWhale.m.rotation.y = sWhale.a + Math.PI; sWhale.m.userData.tail.rotation.x = Math.sin(G.t * 0.8) * 0.3; }
+  // Splash joue autour du sous-marin avant qu'on le rencontre
+  const sp = NPCS.splash; if (sp) { if (S.cq === 7 && S.cstep === 0) { const a = G.t * 0.5; sp.x = SCAMP[0] - 12 + Math.cos(a) * 8; sp.z = SCAMP[1] - 16 + Math.sin(a) * 6; sp.rot = a + Math.PI; if (Math.hypot(sp.x - P.x, sp.z - P.z) < 12 && !G.talking) seaEvent('splash'); } sp.dy = 1.6 + Math.sin(G.t * 2) * 0.4; sp.model.userData.swim.rotation.x = Math.sin(G.t * 5) * 0.3; }
+  for (const id of ['hippo1', 'hippo2', 'hippo3', 'hippo4']) { const n = NPCS[id]; if (n) n.dy = 0.8 + Math.sin(G.t * 1.5 + n.x) * 0.25 + (G.party > 0 ? Math.abs(Math.sin(G.t * 6)) * 0.6 : 0); }
+  const oc = NPCS.octavie; if (oc) oc.model.userData.arms.forEach((a, k) => { a.rotation.y = Math.sin(G.t * 1.5 + k) * 0.08; });
+  const cr = NPCS.crabos; if (cr) cr.model.userData.legs.forEach((l, k) => { l.rotation.x = Math.sin(G.t * 3 + k) * 0.2; });
+  // La fête de la mer
+  if (G.party > 0) { G.party -= dt; if (Math.random() < dt * 6) { const [x, z] = SVILLAGE; confetti(x + rand(-10, 10), seaY(x, z) + 4, z + rand(-10, 10)); } }
+  if (sBigPearl && sBigPearl.visible) sBigPearl.position.y = seaY(SVILLAGE[0], SVILLAGE[1]) + 2.9 + Math.sin(G.t * 1.2) * 0.15;
+}
+// ---------- Cinématique : le grand plongeon ----------
+const DIVE_CAP = [[0.5, 'Max : Moteurs sous-marins… prêts ! Tout le monde à bord !'], [4, 'Le camping-car s\'envole vers la mer…'], [7.5, 'Cap sur l\'océan !']];
+const DIVE_CAP2 = [[0.5, '🌊 PLOUF ! On plonge !'], [4, 'Regarde, des poissons de toutes les couleurs !'], [8.5, 'Des lumières, tout au fond… Nous y sommes !']];
+function startDive() {
+  fadeTo(() => {
+    G.cine = { kind: 'dive', t: 0, cap: 0, ph: 1 };
+    P.mode = 'cine'; P.model.visible = false; G.wanted = 0; if (P.disguise) setDisguise(false);
+    C.x = POI.workshop[0] - 2; C.z = POI.workshop[1] + 14; C.rot = 0.4; C.y = groundY(C.x, C.z); C.model.rotation.set(0, C.rot, 0);
+  });
+}
+function updateDive(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  const caps = L.ph === 1 ? DIVE_CAP : DIVE_CAP2;
+  while (L.cap < caps.length && t >= caps[L.cap][0]) { status(caps[L.cap][1], 'info', 4); L.cap++; }
+  const u = C.model.userData;
+  if (L.ph === 1) {
+    const k = clamp((t - 1.5) / 8, 0, 1), e = k * k, bx = POI.workshop[0] - 2, bz = POI.workshop[1] + 14;
+    C.x = bx + e * 160; C.z = bz + e * 60; C.y = groundY(bx, bz) + 70 * Math.pow(k, 0.8);
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(-0.15 * k, Math.atan2(160, 60), 0);
+    if (u.subProp) u.subProp.rotation.z += dt * 20; if (u.prop) u.prop.rotation.z += dt * 30;
+    if (k > 0 && Math.random() < dt * 25) emit(C.x, C.y, C.z, rand(-1, 1), -3, rand(-1, 1), 1, 1, 1, 1, 1, 0);
+    camera.position.set(C.x - 18, C.y + 9, C.z + 20); camera.lookAt(C.x, C.y + 1, C.z);
+    if (t > 9.5 && !L.faded) { L.faded = true; fadeTo(() => divePhase2()); }
+  } else {
+    const k = clamp(t / 11, 0, 1), e = 1 - (1 - k) * (1 - k), ex = SCAMP[0] + 14, ez = SCAMP[1] - 2;
+    C.x = lerp(ex - 30, ex, e); C.z = lerp(ez + 20, ez, e); C.y = lerp(SCEIL - 2, seaY(ex, ez) + 0.5, e);
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0.3 * (1 - k), -1, Math.sin(t) * 0.05);
+    if (u.subProp) u.subProp.rotation.z += dt * 12;
+    if (Math.random() < dt * 30) emit(C.x + rand(-1.5, 1.5), C.y + 2, C.z + rand(-1.5, 1.5), rand(-0.5, 0.5), rand(1, 3), rand(-0.5, 0.5), 2.5, rand(0.2, 0.5), 0.85, 0.95, 1, 0);
+    camera.position.set(C.x + 14, C.y + 6, C.z + 18); camera.lookAt(C.x, C.y - 1, C.z);
+    if (k >= 1 && t > 12 && !L.done) { L.done = true; puff(C.x, C.y, C.z, 30, [0.9, 0.85, 0.7], 3); fadeTo(endDive); }
+  }
+}
+function divePhase2() { const L = G.cine; L.ph = 2; L.t = 0; L.cap = 0; P.x = SCAMP[0]; P.z = SCAMP[1]; S.flags.ch4 = 1; refreshSea(); }
+function endDive() {
+  G.cine = null; $('quest').style.visibility = '';
+  C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; C.y = seaY(C.x, C.z); C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
+  P.mode = 'walk'; P.model.visible = true; P.x = SCAMP[0] + 3; P.z = SCAMP[1] + 4; P.y = seaY(P.x, P.z); snapCamera();
+  S.flags.ch4 = 1; refreshSea(); updateQuestUI(); saveGame();
+  banner('Chapitre 4', 'Le Royaume sous la Mer 🐚');
+  setTimeout(() => talk([['ls_max', 'On y est ! Le fond de la mer ! Tout le monde a bien son casque ?'], ['ls_praline', 'Ouaf ! Je vois des poissons partout !'], ['oscar', 'Je marche au fond de la mer… Je suis un ours-poisson ! Un poissours !'], ['ls_plume', 'Hou hou… Regardez, là-bas, quelque chose fait des bulles !']]), 2400);
+}
+function skipDive() { const L = G.cine; if (!L || L.done || L.t < 3) return; L.done = true; fadeTo(() => { if (L.ph === 1) divePhase2(); endDive(); }); }
+function seaTravel(toSea) {
+  fadeTo(() => {
+    G.wanted = 0; if (P.disguise) setDisguise(false);
+    if (toSea) { C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; P.x = SCAMP[0] + 3; P.z = SCAMP[1] + 4; status('🌊 Le sous-marin plonge au Royaume sous la Mer…', 'info', 4); }
+    else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status('🏡 Retour au parc des Pins !', 'info', 4); }
+    C.y = groundY(C.x, C.z); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
+    P.mode = 'walk'; P.y = walkY(P.x, P.z); snapCamera(); refreshSea(); refreshForest(); updateQuestUI(); saveGame();
+  });
+}
+function drawSeaMap() {
+  const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, R = SEA.r + 12, k = Wm / (R * 2);
+  const X = x => (x - SEA.x + R) * k, Z = z => (z - SEA.z + R) * k;
+  g.fillStyle = '#0a3a5a'; g.fillRect(0, 0, Wm, Wm);
+  g.fillStyle = '#e8d6a8'; g.beginPath(); g.arc(Wm / 2, Wm / 2, SEA.r * k, 0, 6.283); g.fill();
+  g.fillStyle = 'rgba(70,140,60,.55)'; g.beginPath(); g.arc(X(SKELP[0]), Z(SKELP[1]), 58 * k, 0, 6.283); g.fill();
+  g.fillStyle = 'rgba(255,120,140,.45)'; g.beginPath(); g.arc(X(SCORAL[0]), Z(SCORAL[1]), 48 * k, 0, 6.283); g.fill();
+  g.fillStyle = 'rgba(20,40,70,.85)'; g.beginPath(); g.ellipse(X(STRENCH.x), Z(STRENCH.z), STRENCH.rx * k, STRENCH.rz * k, 0, 0, 6.283); g.fill();
+  g.fillStyle = '#f0c0d0'; g.beginPath(); g.arc(X(SVILLAGE[0]), Z(SVILLAGE[1]), 26 * k, 0, 6.283); g.fill();
+  g.font = '700 18px Nunito, sans-serif'; g.textAlign = 'center';
+  for (const [t, p] of [['Sous-marin', [SCAMP[0], SCAMP[1] + 16]], ['Village des Coquillages', [SVILLAGE[0], SVILLAGE[1] - 30]], ['Forêt d\'algues', SKELP], ['Jardin de coraux', SCORAL], ['Épave', [SWRECK[0], SWRECK[1] - 16]], ['Fosse sombre', [STRENCH.x, STRENCH.z + 4]], ['Atelier d\'Octavie', [SVILLAGE[0] + 34, SVILLAGE[1] + 26]]]) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#1a2a3a'; g.fillText(t, X(p[0]), Z(p[1])); }
+  const st = S.flags.ch4done ? null : cStep(), tgt = st && st.at && st.at();
+  if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
+  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
+  g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+  g.restore();
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -5855,6 +6539,7 @@ const OSCAR_RUN = ['Je suis le plus rapide du monde ! … Ouf, pause.', 'Attenti
 const OSCAR_NIGHT = ['Il fait noir… Je n\'ai pas peur. C\'est le noir qui a peur de moi.', 'La lune est ronde comme une crêpe. J\'ai faim.', 'Chut… Les campeurs dorment. Et leurs pique-niques aussi.'];
 const OSCAR_EAT = ['Miam ! Encore ! ENCORE !', 'Les baies, c\'est presque aussi bon que le miel.', 'Je n\'avais pas faim. Mais maintenant, j\'ai encore plus faim.', 'Une baie pour moi, une baie pour moi, une baie pour moi…'];
 const OSCAR_FOREST = ['Ces arbres sont trop grands. C\'est de la triche.', 'Je ne suis pas perdu. Je visite. Très longtemps.', 'Un champignon qui brille ! Je ne le mange pas. … Peut-être un tout petit bout ?', 'Ohé ! Les amis ! … Il n\'y a que l\'écho qui répond. Il est poli, l\'écho.'];
+const OSCAR_SEA = ['Je suis un ours-poisson ! Un poissours !', 'Un poisson m\'a regardé bizarrement. Je l\'ai regardé bizarrement aussi.', 'Est-ce que les algues, ça se mange ? … Beurk. Non.', 'Si je reste ici trop longtemps, je vais avoir des nageoires ?', 'Je ne suis pas mouillé. C\'est le casque. Je suis un génie.'];
 const OSCAR_MOON = ['Je saute haut comme un kangourou ! Un kangourou poilu.', 'Il n\'y a pas de miel, sur la Lune. Quelle drôle de planète.', 'Je vais planter un drapeau ! … J\'ai oublié le drapeau.'];
 function oscarSay(t, dur) { if (G.talking || G.cine) return; OSAY.txt = t; OSAY.t = dur || 4; OSAY.cd = rand(16, 26); }
 function updateOscar(dt) {
@@ -5870,9 +6555,10 @@ function updateOscar(dt) {
   if (OSAY.bump > 1.2) { oscarSay(pick(OSCAR_BUMP)); OSAY.bump = 0; }
   else if (swimNow) oscarSay(pick(OSCAR_SWIM));
   else if (OSAY.run > 6) { oscarSay(pick(OSCAR_RUN)); OSAY.run = 0; }
-  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
+  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 3000 ? OSCAR_SEA : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
   else if (P.x < -1500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_FOREST), 4.5);
-  else if (P.x > 1500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_MOON), 4.5);
+  else if (P.x > 3000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_SEA), 4.5);
+  else if (P.x > 1500 && P.x < 3000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_MOON), 4.5);
 }
 // La bulle de pensée, dessinée par-dessus la 3D
 function drawOscarThought() {
@@ -6089,6 +6775,7 @@ function updateHUD() {
   $('starN').textContent = (S.stars || 0) + ' / ' + STARS_MAX;
 }
 function updateQuestUI() {
+  if (S.flags.ch3done && !S.flags.ch4done && (P.x > 3000 || !QUESTS[S.q])) { if (S.cq === undefined) { S.cq = 0; S.cstep = 0; S.ccnt = 0; } const cq = CQ[S.cq], cs = cStep(); if (cq && cs) { $('qTitle').textContent = 'Chapitre 4 · ' + cq.title; $('qText').textContent = cs.t + (cs.n ? ' (' + (cs.count ? cs.count() : S.ccnt || 0) + ' / ' + cs.n + ')' : ''); return; } }
   if (S.flags.ch3 && !S.flags.ch3done && (P.x < -1500 || !QUESTS[S.q])) { const fq = FQ[S.fq], fs = fStep(); if (fq && fs) { $('qTitle').textContent = 'Chapitre 3 · ' + fq.title; $('qText').textContent = fs.t + (fs.n ? ' (' + (fs.count ? fs.count() : S.fcnt || 0) + ' / ' + fs.n + ')' : ''); return; } }
   if (S.flags.ch2done && !S.flags.ch3 && (P.x > 1500 || !QUESTS[S.q])) { $('qTitle').textContent = 'Chapitre 3 · Un nouveau voyage'; $('qText').textContent = P.x > 1500 ? 'Rentre sur Terre avec le camping-car spatial : tous les amis montent à bord !' : 'Va à la base de lancement du canyon rouge : un nouveau voyage t\'attend avec tous les amis !'; return; }
   if (S.flags.moon && !S.flags.ch2done && (P.x > 1500 || !QUESTS[S.q])) { const mq = MQ[S.mq], ms = mStep(); if (mq && ms) { $('qTitle').textContent = 'Chapitre 2 · ' + mq.title; $('qText').textContent = ms.t + (ms.n ? ' (' + (S.mcnt || 0) + ' / ' + ms.n + ')' : ''); return; } }
@@ -6244,6 +6931,7 @@ function openJournal() {
     [S.flags.carnetDone, '📖 Carnet sauvage d\'Elliot : ' + nw + ' / ' + WILD.length, S.flags.carnet ? 'Approche-toi des animaux sauvages pour les noter.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.'],
   ];
   if (S.flags.moon) { const hm = document.createElement('div'); hm.innerHTML = '<b>🌙 Chapitre 2 : les Zoublis</b><p></p>'; hm.querySelector('p').textContent = S.flags.ch2done ? 'Terminé ! Les Zoublis sont rentrés chez eux.' : (MQ[S.mq] ? MQ[S.mq].title + ' — ' + mStep().t : ''); L.appendChild(hm); }
+  if (S.flags.ch3done) { const h4 = document.createElement('div'); h4.innerHTML = '<b>🐚 Chapitre 4 : le Royaume sous la Mer</b><p></p>'; h4.querySelector('p').textContent = S.flags.ch4done ? 'Terminé ! La Grande Perle brille de nouveau au village des Coquillages.' : CQ[S.cq || 0] ? CQ[S.cq || 0].title + ' — ' + CQ[S.cq || 0].steps[S.cq === undefined ? 0 : S.cstep].t : ''; L.appendChild(h4); }
   if (S.flags.ch2done) { const h3 = document.createElement('div'); h3.innerHTML = '<b>🌳 Chapitre 3 : la Forêt Immense</b><p></p>'; h3.querySelector('p').textContent = S.flags.ch3done ? 'Terminé ! Tous les amis sont rentrés, et la graine de l\'Arbre-Mère pousse près de ta grotte.' : S.flags.ch3 ? (FQ[S.fq] ? FQ[S.fq].title + ' — ' + fStep().t : '') : 'Un nouveau voyage t\'attend à la base de lancement (ou en rentrant de la Lune).'; L.appendChild(h3); }
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
   for (const q of SIDEQ) { if (q.friend && !L.querySelector('.amis')) { const h3 = document.createElement('div'); h3.className = 'amis'; h3.innerHTML = '<b>🐾 Jeux avec les amis</b><p>Maurice, Praline, Roquette et Filou t\'attendent !</p>'; L.appendChild(h3); } const s = sqState(q.id), d = document.createElement('div'); if (s === 'done') d.className = 'done'; d.innerHTML = '<b></b><p></p>'; d.querySelector('b').textContent = (s === 'done' ? '✔ ' : s === undefined ? '❔ ' : '⭐ ') + q.title; d.querySelector('p').textContent = s === 'done' ? 'Réussie !' : s === undefined ? 'Va voir ' + q.who + '.' : q.steps[s].t; L.appendChild(d); }
@@ -6269,6 +6957,7 @@ function drawMoonMap() {
 }
 function openMap() { drawMap(); openPanel('pMap'); }
 function drawMap() {
+  if (P.x > 3000) { drawSeaMap(); return; }
   if (P.x > 1500) { drawMoonMap(); return; }
   if (P.x < -1500) { drawForestMap(); return; }
   const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, k = Wm / (HALF * 2);
@@ -6296,7 +6985,7 @@ function drawMap() {
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
-  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : mapTarget();
+  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), cs4 = S.flags.ch3done && !S.flags.ch4done && S.cq !== undefined && cStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : cs4 && cs4.at ? cs4.at() : mapTarget();
   const stg = sideTarget(); if (stg && stg !== tgt) { g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(stg[0]), Z(stg[1]), 9, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
@@ -6343,7 +7032,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500 && P.x < 3000) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (P.x > 3000) { C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); refreshSea(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -6374,7 +7063,7 @@ $('bNew').addEventListener('click', () => { try { localStorage.removeItem(SAVE_K
 // ================= Caméra =================
 const camPos = new V3(0, 30, 30), camLook = new V3();
 // Après un voyage, la caméra se place tout de suite derrière Oscar
-function snapCamera() { const lo = P.x < -1500; camPos.set(P.x, P.y + (lo ? 13.2 : 34.2), P.z + 17); camLook.set(P.x, P.y + 1.2, P.z); }
+function snapCamera() { const lo = P.x < -1500, sea = P.x > 3000; camPos.set(P.x, P.y + (lo ? 13.2 : sea ? 15.2 : 34.2), P.z + (sea ? 19 : 17)); camLook.set(P.x, P.y + 1.2, P.z); }
 function updateCamera(dt) {
   if (G.camOverride || G.cine) return;
   if (G.state === 'title') {
@@ -6391,6 +7080,8 @@ function updateCamera(dt) {
   if (P.mode === 'lift') off = [0, 26, 22];
   // Dans la Forêt Immense, la caméra passe sous les grands arbres
   if (P.x < -1500 && P.mode === 'walk') off = [0, 12, 17];
+  // Sous la mer aussi, la caméra descend près du fond
+  if (P.x > 3000 && P.mode === 'walk') off = [0, 14, 19];
   if (G.talking && G.talkWho && G.talkWho !== 'oscar' && NPCS[G.talkWho]) {
     const n = NPCS[G.talkWho];
     target.set((P.x + n.x) / 2, Math.max(P.y + 1.5, n.id === 'plume' ? n.y - 2 : P.y + 1.5), (P.z + n.z) / 2);
@@ -6513,7 +7204,7 @@ function step(dt) {
     else if (P.mode === 'cine') updateLaunch(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateSea(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -6542,10 +7233,10 @@ function step(dt) {
   setTimeOfDay(G.state === 'title' ? 18.7 : S.time, G.state === 'title' ? new V3(-30, 0, 60) : new V3(P.x, 0, P.z));
   updateWeather(dt);
   // Ciel de l'espace et de la Lune
-  const space = G.state === 'play' && (P.x > 1500 || (G.cine && G.cine.space));
+  const space = G.state === 'play' && ((P.x > 1500 && P.x < 3000) || (G.cine && G.cine.space));
   if (space) { scene.background.set(0x05060c); scene.fog.color.set(0x05060c); hemi.intensity = 0.42; hemi.color.set(0xcfd8ff); hemi.groundColor.set(0x404050); sun.intensity = 0.95; sun.color.setRGB(1, 1, 1); winMat.emissiveIntensity = 0.6; }
   else if (G.spaceK > 0) { _c1.set(0x05060c); scene.background.lerp(_c1, G.spaceK); scene.fog.color.lerp(_c1, G.spaceK); }
-  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : null;
+  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : G.state === 'play' && !space && P.x > 3000 ? seaFog() : null;
   const fogN = space ? 260 : ff ? ff[0] : G.cine ? 2500 : 140, fogF = space ? 900 : ff ? ff[1] : G.cine ? 6000 : 340, far = space ? 6000 : ff ? ff[2] : G.cine ? 6000 : 380;
   scene.fog.near = fogN; scene.fog.far = fogF; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   if (G.state === 'play' && P.x > 700 && P.x < 1500) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
@@ -6594,6 +7285,7 @@ buildCamperParts();
 buildMoon();
 buildForest();
 buildNature();
+buildSea();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -6603,7 +7295,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>

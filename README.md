@@ -47,7 +47,7 @@ Pour y jouer en local, ouvre `escadron/index.html`.
 
 ## Jeu : Ours Malin
 
-Aventure 3D tout en douceur dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
+Aventure 3D en 4 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
 
 - 14 missions qui se suivent, avec Max le castor, Lulu la loutre, Raflex le raton laveur (son musée), Donovan le canard (course contre la montre), Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau.
 - Une ligne blanche au sol guide vers l'objectif pendant les deux premières missions.
@@ -83,6 +83,18 @@ Aventure 3D tout en douceur dans le parc des Pins, avec Oscar, un ours un peu b�
   5. réveiller l'Arbre-Mère, qui se couvre de fleurs lumineuses et donne une graine ;
   6. rentrer au parc et planter la graine près de la grotte d'Oscar.
   À la fin, Madame Plume voit la mer du haut de l'Arbre-Mère, avec des lumières sous l'eau : un peuple des mers, pour une prochaine aventure ?
+- Chapitre 4, le Royaume sous la Mer (15 missions) : Madame Plume revoit les lumières sous la mer. Pour y aller, Max transforme le camping-car en sous-marin, mais il lui faut 4 choses :
+  - le hublot de Raflex, en échange d'une dent de dinosaure trouvée dans la grotte du fossile ;
+  - l'hélice de Lulu, contre 3 poissons pêchés ;
+  - les joints de Papi Blaireau, faits avec 5 gouttes de résine dorée récoltées sur les grands sapins ;
+  - le champignon lumineux de Brume, dans la Forêt Immense.
+  Ensuite, grand plongeon ! Au fond de la mer, il y a une forêt d'algues, un jardin de coraux, une épave, une fosse sombre, des bancs de poissons, des méduses, des raies, des tortues et une baleine. On y rencontre le peuple du village des Coquillages : Splash le dauphin, Nacre la vieille tortue (300 ans), Octavie la pieuvre inventrice, Galet le phoque, des hippocampes et des crabes. Les missions :
+  1. ramasser 6 perles de lumière pour rallumer les lanternes ;
+  2. trouver 3 pièces dans l'épave pour la machine d'Octavie ;
+  3. ramasser 10 déchets ;
+  4. retrouver le ballon de Galet ;
+  5. suivre les bulles dorées jusqu'à la grotte de Crabos, le grand crabe qui avait pris la Grande Perle parce qu'il avait peur du noir ;
+  6. lui apporter une lanterne, puis rendre la perle au village pour la grande fête de la mer.
 - La Forêt Immense : arbres géants et séquoias de plus de 30 mètres, lianes, racines, rivière avec des ponts en troncs, lac des Brumes, ruines anciennes, champignons géants et petits champignons qui brillent la nuit, arbres à lanternes, rayons de soleil entre les arbres, brume qui flotte, lucioles, cerfs et lapins. La caméra passe sous les grands arbres.
 - Oscar a du caractère : c'est un ours un peu bête, très drôle et têtu. Il est gourmand, il se croit le plus malin et il ne veut jamais avoir tort. Il pense tout haut dans une petite bulle : quand il reste sans bouger, quand il fonce dans un arbre (il insiste !), quand il nage, court, mange des baies, se promène la nuit, dans la forêt ou sur la Lune.
 - Encore plus de nature :
