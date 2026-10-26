@@ -5375,7 +5375,9 @@ function makeSwan() {
   ball(g, w, 0.45, 0, 0.3, 0, 0.9, 0.62, 1.4);
   for (const s of [-1, 1]) { const wing = ball(g, w, 0.3, s * 0.28, 0.48, -0.1, 0.5, 0.45, 1.3); wing.rotation.z = s * 0.3; }
   ball(g, w, 0.16, 0, 0.5, -0.62, 1, 0.8, 1.2);
-  const neck = [[0, 0.65, 0.48, 0.12], [0, 0.88, 0.56, 0.1], [0, 1.1, 0.54, 0.09], [0, 1.3, 0.46, 0.09]]; neck.forEach(p => ball(g, w, p[3], p[0], p[1], p[2]));
+  // Long cou en forme de S
+  const curve = new T.CatmullRomCurve3([new V3(0, 0.45, 0.42), new V3(0, 0.75, 0.6), new V3(0, 1.05, 0.5), new V3(0, 1.3, 0.42), new V3(0, 1.42, 0.5)]);
+  const neck = new T.Mesh(new T.TubeGeometry(curve, 16, 0.085, 8, false), w); neck.castShadow = true; g.add(neck);
   const head = ball(g, w, 0.13, 0, 1.42, 0.52, 1, 0.9, 1.3);
   const beak = new T.Mesh(new T.ConeGeometry(0.06, 0.24, 6), lam(0xf08a2a)); beak.rotation.x = Math.PI / 2 + 0.3; beak.position.set(0, 1.38, 0.72); g.add(beak);
   for (const s of [-1, 1]) ball(g, eyeMat, 0.025, s * 0.09, 1.45, 0.6);
@@ -6571,7 +6573,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, OSAY, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>
