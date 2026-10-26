@@ -213,6 +213,8 @@ body { background: #2f6a3c; color: var(--ink); font-family: var(--ui); overflow:
   <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Bruitages</span><button class="btn small" id="oSfx"></button></div>
   <button class="btn small" id="oVoice" hidden></button>
   <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Qualité graphique</span><button class="btn small" id="oQual"></button></div>
+  <div class="row" style="margin-top:10px"><span style="flex:1;font-weight:800">Tout recommencer depuis le début</span><button class="btn small" id="oReset">Recommencer</button></div>
+  <p style="margin:8px 0 0;font-size:13px;opacity:.75">💾 Ta partie se sauvegarde toute seule pendant que tu joues.</p>
   <button class="btn" data-close style="margin-top:14px">Fermer</button>
 </div></div>
 
@@ -271,7 +273,29 @@ const SAVE_KEY = 'ours-malin-2';
 const OPT = { music: true, sfx: true, voice: true, quality: 0 };
 try { Object.assign(OPT, JSON.parse(localStorage.getItem(SAVE_KEY + '-opt') || '{}')); } catch (e) {}
 function saveOpts() { try { localStorage.setItem(SAVE_KEY + '-opt', JSON.stringify(OPT)); } catch (e) {} }
-function loadGame() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
+// La partie est gardée dans le navigateur ET dans le compte claude.ai (là, elle ne s'efface jamais).
+// On prend toujours la sauvegarde la plus récente des deux.
+const CLOUD = { ref: null, last: '', lastT: 0, busy: false, pending: null, save: null, loading: true };
+function loadGame() { let a = null; try { a = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) {} const b = CLOUD.save; return b && (!a || (b._t || 0) > (a._t || 0)) ? b : a; }
+function cloudWrite(json, force) {
+  if (!CLOUD.ref || json === CLOUD.last) return;
+  if (CLOUD.busy || (!force && Date.now() - CLOUD.lastT < 20000)) { CLOUD.pending = json; return; }
+  CLOUD.busy = true; CLOUD.lastT = Date.now(); CLOUD.pending = null;
+  CLOUD.ref.set({ json, t: Date.now() }).then(() => { CLOUD.last = json; }).catch(() => {}).finally(() => { CLOUD.busy = false; });
+}
+function cloudClear() { CLOUD.save = null; CLOUD.last = ''; CLOUD.pending = null; if (CLOUD.ref) CLOUD.ref.delete().catch(() => {}); }
+(async () => {
+  try {
+    const cl = window.claude; if (!cl || !cl.use) return;
+    const db = await cl.use('db'), user = await cl.use('user'); if (!db || !user) return;
+    const uid = await user.id(); if (!uid) return;
+    CLOUD.ref = db.doc('data/users/' + uid + '/save');
+    const snap = await CLOUD.ref.get();
+    if (snap.exists) { const d = snap.data(); if (d && d.json) { CLOUD.save = JSON.parse(d.json); CLOUD.last = d.json; } }
+  } catch (e) {} finally { CLOUD.loading = false; try { if (G.state === 'title') refreshTitle(); } catch (e) {} }
+})();
+setTimeout(() => { if (CLOUD.loading) { CLOUD.loading = false; try { if (G.state === 'title') refreshTitle(); } catch (e) {} } }, 6000);
+setInterval(() => { if (CLOUD.pending && !CLOUD.busy) cloudWrite(CLOUD.pending, true); }, 21000);
 // Mets ici l'adresse de ta page itch.io pour afficher le lien de soutien à la fin.
 const SUPPORT_URL = '';
 
@@ -7496,8 +7520,14 @@ function saveGame() {
   if (!S || G.state !== 'play' || G.cine) return;
   S.pos = P.mode === 'boat' ? [PONTOONS[0].x, PONTOONS[0].z + 6] : P.mode === 'plane' ? [AIRPORT.x + 4, AIRPORT.z + 15] : [P.x, P.z]; if (P.mode !== 'fly') S.camper = [C.x, C.z, C.rot];
   S.baskets = baskets.map(b => b.takenDay);
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
+  S._t = Date.now(); const json = JSON.stringify(S);
+  try { localStorage.setItem(SAVE_KEY, json); } catch (e) {}
+  cloudWrite(json);
 }
+// Quand on quitte la page ou qu'on change d'onglet, on sauvegarde tout de suite
+function saveNow() { if (G.state !== 'play') return; saveGame(); if (CLOUD.pending) cloudWrite(CLOUD.pending, true); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+addEventListener('pagehide', saveNow);
 function applyState() {
   P.x = S.pos[0]; P.z = S.pos[1]; P.y = walkY(P.x, P.z); snapCamera(); P.vx = P.vz = 0; P.mode = 'walk'; P.board = null; P.lift = null; G.slalom = null; showGear(); slalomGates.forEach(g => { g.g.visible = false; }); P.model.visible = true; P.inHome = P.x > 700 && P.x < 1500; G.cine = null; G.spaceK = 0; $('quest').style.visibility = '';
   C.x = S.camper[0]; C.z = S.camper[1]; C.rot = S.camper[2]; C.spd = 0;
@@ -7544,9 +7574,18 @@ function toTitle() {
   sfx.engine(false);
   refreshTitle();
 }
-function refreshTitle() { const s = loadGame(); $('bPlay').textContent = s ? 'Continuer' : 'Jouer'; $('bNew').hidden = !s; }
-$('bPlay').addEventListener('click', () => startGame(false));
-$('bNew').addEventListener('click', () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} startGame(true); });
+function refreshTitle() { const s = loadGame(); $('bPlay').textContent = CLOUD.loading ? 'Chargement…' : s ? 'Continuer' : 'Jouer'; $('bPlay').disabled = CLOUD.loading; $('bNew').hidden = !s || CLOUD.loading; }
+$('bPlay').addEventListener('click', () => { if (!CLOUD.loading) startGame(false); });
+$('bNew').addEventListener('click', () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} cloudClear(); startGame(true); });
+// Options : tout recommencer (il faut appuyer deux fois, pour ne pas se tromper)
+let resetT = 0;
+$('oReset').addEventListener('click', () => {
+  const b = $('oReset');
+  if (Date.now() - resetT > 4000) { resetT = Date.now(); b.textContent = 'Sûr ? Appuie encore !'; setTimeout(() => { b.textContent = 'Recommencer'; }, 4000); return; }
+  resetT = 0; b.textContent = 'Recommencer';
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {} cloudClear();
+  closePanels(); $('pOpt').hidden = true; G.cine = null; startGame(true);
+});
 
 // ================= Caméra =================
 const camPos = new V3(0, 30, 30), camLook = new V3();

@@ -120,6 +120,7 @@ Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
 - Discrétion : cônes de vision des campeurs et du garde Gérard, buissons pour se cacher, poursuites.
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.
-- 12 pommes de pin dorées à trouver, sauvegarde automatique, clavier ou écran tactile.
+- 12 pommes de pin dorées à trouver, clavier ou écran tactile.
+- Sauvegarde automatique : la partie est gardée dans le navigateur et, sur claude.ai, dans le compte du joueur (elle ne s'efface pas). Le jeu sauvegarde aussi quand on quitte la page. Dans les Options, « Tout recommencer » efface la partie (il faut appuyer deux fois).
 
 Pour y jouer en local, ouvre `ours/index.html`. Pour itch.io, tout est dans `itch/ours/` (zip, couverture, captures et guide `PAGE-ITCH.md`).
