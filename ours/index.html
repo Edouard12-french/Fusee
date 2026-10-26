@@ -5676,6 +5676,7 @@ const SPEARLS = [[-40, 70], [52, 92], [-130, 90], [140, 10], [-20, -60], [70, -3
 const SWRECKP = [['rouage', 'le gros rouage', 108, -96], ['chaine', 'la chaîne de l\'ancre', 134, -70], ['cornet', 'le cornet en cuivre', 102, -66]];
 const STRASH = [[-60, 110], [30, 120], [-90, 60], [80, 100], [130, 40], [-150, 20], [20, -40], [-120, -40], [150, -40], [-30, 30]];
 const SBALL = [-128, 58];
+const SGALET = SL(40, 50);
 const STRAIL = [[-14, -34], [-26, -58], [-40, -82], [-56, -106], [-70, -126]];
 const DENT_SPOT = () => [POI.grotteFossile[0] - 3, POI.grotteFossile[1] + 5];
 let SRESIN = [];
@@ -5786,17 +5787,22 @@ function makeCrab(col, big) {
   return g;
 }
 function makeSeahorse(col) {
-  const g = new T.Group(), f = lam(col, { flatShading: false });
+  // Un vrai hippocampe : ventre rond, cou courbé, tête penchée avec un long museau, queue enroulée
+  const g = new T.Group(), f = lam(col, { flatShading: false }), lt = lam(new T.Color(col).lerp(new T.Color(0xffffff), 0.45).getHex(), { flatShading: false });
   const body = new T.Group(); g.add(body);
-  const pts = [[0, 0.3, -0.1], [0, 0.55, -0.02], [0, 0.85, 0.05], [0, 1.1, 0.02]]; pts.forEach((p, i) => ball(body, f, 0.17 - i * 0.015, p[0], p[1], p[2], 1, 1.1, 0.9));
-  const tail = new T.Mesh(new T.TorusGeometry(0.12, 0.05, 6, 12, 4.5), f); tail.position.set(0, 0.15, -0.1); tail.rotation.y = Math.PI / 2; body.add(tail);
-  const head = new T.Group(); head.position.set(0, 1.28, 0.08); body.add(head);
-  ball(head, f, 0.14, 0, 0, 0, 1, 0.95, 1.1);
-  const sn = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.25, 6), f); sn.rotation.x = Math.PI / 2 - 0.3; sn.position.set(0, -0.04, 0.2); head.add(sn);
-  for (const s of [-1, 1]) ball(head, eyeMat, 0.035, s * 0.09, 0.03, 0.06);
-  const fin = new T.Mesh(new T.CircleGeometry(0.14, 8, 0, Math.PI), lam(0xffffff, { side: T.DoubleSide, transparent: true, opacity: 0.6 })); fin.position.set(0, 0.7, -0.15); fin.rotation.y = Math.PI / 2; body.add(fin);
-  g.userData = { rig: Object.assign({ body, head }, finRig(body)) };
-  g.scale.setScalar(1.4);
+  ball(body, f, 0.2, 0, 0.62, 0.04, 0.9, 1.25, 1.0); ball(body, lt, 0.15, 0, 0.6, 0.1, 0.8, 1.15, 0.8);
+  ball(body, f, 0.15, 0, 0.88, -0.02, 0.9, 1.1, 0.95); ball(body, f, 0.12, 0, 1.02, -0.07);
+  for (let k = 0; k < 4; k++) { const r = new T.Mesh(new T.TorusGeometry(0.17 - k * 0.01, 0.018, 4, 14), lt); r.rotation.x = Math.PI / 2; r.position.set(0, 0.48 + k * 0.12, 0.04 - k * 0.02); body.add(r); }
+  const curve = new T.CatmullRomCurve3([new V3(0, 0.42, 0.02), new V3(0, 0.25, -0.05), new V3(0, 0.12, 0.02), new V3(0, 0.1, 0.12), new V3(0, 0.18, 0.18), new V3(0, 0.24, 0.12)]);
+  const tail = new T.Mesh(new T.TubeGeometry(curve, 20, 0.055, 6, false), f); tail.castShadow = true; body.add(tail);
+  const head = new T.Group(); head.position.set(0, 1.13, 0.02); body.add(head);
+  ball(head, f, 0.13, 0, 0, 0, 0.9, 1, 1.15);
+  const sn = new T.Mesh(new T.CylinderGeometry(0.035, 0.05, 0.3, 8), f); sn.rotation.x = Math.PI / 2 + 0.35; sn.position.set(0, -0.06, 0.22); head.add(sn);
+  for (const s of [-1, 1]) { ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.045, s * 0.09, 0.03, 0.05); ball(head, eyeMat, 0.028, s * 0.1, 0.03, 0.07); }
+  for (let k = 0; k < 3; k++) { const c = new T.Mesh(new T.ConeGeometry(0.03, 0.1, 5), lt); c.position.set(0, 0.13, -0.04 + k * 0.05); c.rotation.x = -0.3; head.add(c); }
+  const fin = new T.Mesh(new T.CircleGeometry(0.16, 10, 0, Math.PI), lam(0xffffff, { side: T.DoubleSide, transparent: true, opacity: 0.6 })); fin.position.set(0, 0.72, -0.17); fin.rotation.set(0, Math.PI / 2, 0.2); body.add(fin);
+  g.userData = { rig: Object.assign({ body, head, tail: fin }, finRig(body)) };
+  g.scale.setScalar(1.5);
   return g;
 }
 function makeFishM(col) {
@@ -5874,6 +5880,7 @@ function buildSea() {
   sCeil = new T.Mesh(new T.PlaneGeometry(SZ * 1.5, SZ * 1.5), new T.MeshBasicMaterial({ map: st, color: 0xbff4ff, transparent: true, opacity: 0.75, side: T.DoubleSide, depthWrite: false })); sCeil.rotation.x = Math.PI / 2; sCeil.position.set(SEA.x, SCEIL, SEA.z); scene.add(sCeil);
   const free = (x, z, m) => {
     if (Math.hypot(x - SCAMP[0], z - SCAMP[1]) < 22 + m || Math.hypot(x - SVILLAGE[0], z - SVILLAGE[1]) < 34 + m || Math.hypot(x - SWRECK[0], z - SWRECK[1]) < 20 + m || Math.hypot(x - SCAVE[0], z - SCAVE[1]) < 12 + m) return false;
+    if (Math.hypot(x - SGALET[0], z - SGALET[1]) < 7 + m) return false;
     for (const q of SPEARLS.concat(STRASH, [SBALL], STRAIL, SWRECKP.map(w => [w[2], w[3]]))) if (Math.hypot(x - SEA.x - q[0], z - SEA.z - q[1]) < 4 + m) return false;
     return true;
   };
@@ -5997,12 +6004,12 @@ function buildSea() {
   addNPC('splash', { name: 'Splash le dauphin', col: '#3a7ab0', model: makeDolphin(), x: SCAMP[0] - 10, z: SCAMP[1] - 14, rot: 0, head: 1.6, dy: 2 });
   addNPC('nacre', { name: 'Nacre la tortue', col: '#5a8a4a', model: makeTurtle(true), x: SVILLAGE[0] + 4, z: SVILLAGE[1] + 6, rot: Math.PI, head: 2.2 });
   addNPC('octavie', { name: 'Octavie la pieuvre', col: '#b04a7a', model: makeOctopus(), x: SVILLAGE[0] + 30, z: SVILLAGE[1] + 12, rot: -1.2, head: 2.4 });
-  addNPC('galet', { name: 'Galet le phoque', col: '#6a6e78', model: makeSeal(), x: SCORAL[0] - 22, z: SCORAL[1] - 10, rot: -2, head: 1.4 });
+  addNPC('galet', { name: 'Galet le phoque', col: '#6a6e78', model: makeSeal(), x: SGALET[0], z: SGALET[1], rot: -2, head: 1.4 });
   addNPC('crabos', { name: 'Crabos, le grand crabe', col: '#b03a2a', model: makeCrab(0xc8402a, true), x: SCAVE[0], z: SCAVE[1] + 1, rot: 0, head: 2.6 });
   // L'atelier d'Octavie : un gros coquillage avec des tuyaux
   { const [x, z] = [SVILLAGE[0] + 34, SVILLAGE[1] + 16], h = makeShellHouse(0xd07aa0); h.position.set(x, seaY(x, z), z); h.rotation.y = -1.6; h.scale.setScalar(0.9); scene.add(h); addCircle(x, z, 3);
     for (let k = 0; k < 3; k++) { const pp = mesh(new T.CylinderGeometry(0.18, 0.18, 4, 8), lam(0xd8a040), x - 3 + k * 0.6, seaY(x, z) + 2, z + 3.5); pp.rotation.z = 0.3 * (k - 1); } }
-  const vill = [['hippo1', 'Bulle l\'hippocampe', makeSeahorse(0xffb040), -8, 10], ['hippo2', 'Corail l\'hippocampe', makeSeahorse(0xff7ab0), 10, -8], ['hippo3', 'Vaguelette l\'hippocampe', makeSeahorse(0x7ad0ff), -14, -4], ['crabe1', 'Pince le crabe', makeCrab(0xff6a4a), 6, 14], ['crabe2', 'Pinçon le crabe', makeCrab(0xff9a4a), -4, -14], ['hippo4', 'Écume l\'hippocampe', makeSeahorse(0xc0a0ff), 16, 4]];
+  const vill = [['hippo1', 'Bulle l\'hippocampe', makeSeahorse(0xffb040), -5, 6], ['hippo2', 'Corail l\'hippocampe', makeSeahorse(0xff7ab0), 10, -8], ['hippo3', 'Vaguelette l\'hippocampe', makeSeahorse(0x7ad0ff), -14, -4], ['crabe1', 'Pince le crabe', makeCrab(0xff6a4a), 6, 14], ['crabe2', 'Pinçon le crabe', makeCrab(0xff9a4a), -4, -14], ['hippo4', 'Écume l\'hippocampe', makeSeahorse(0xc0a0ff), 16, 4]];
   for (const [id, nm, m, dx, dz] of vill) addNPC(id, { name: nm, col: '#3a7a9a', model: m, x: SVILLAGE[0] + dx, z: SVILLAGE[1] + dz, rot: rand(0, 6), head: 1.8, dy: id.startsWith('hippo') ? 0.8 : 0 });
   for (const id of ['splash', 'nacre', 'octavie', 'galet', 'crabos'].concat(vill.map(v => v[0]))) { const n = NPCS[id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: id === 'crabos' ? 5 : 3.2, icon: '💬', label: () => 'Parler à ' + n.name.split(',')[0], can: () => !n.hidden, act: () => talkSea(id) }); }
   // Les amis, avec leur casque de plongée
@@ -6229,7 +6236,7 @@ function refreshSea() {
   if (sBigPearl) sBigPearl.visible = !!S.flags.bigPearl;
   if (sCavePearl) sCavePearl.visible = !S.flags.crabosHappy && !!S.flags.ch4;
   const cr = NPCS.crabos; if (cr) { if (S.flags.bigPearl) { cr.x = SVILLAGE[0] - 6; cr.z = SVILLAGE[1] + 9; } else { cr.x = SCAVE[0]; cr.z = SCAVE[1] + 1; } }
-  const sp = NPCS.splash; if (sp && q >= 8) { sp.x = SVILLAGE[0] - 8; sp.z = SVILLAGE[1] + 12; }
+  const sp = NPCS.splash; if (sp && q >= 8) { sp.x = SVILLAGE[0] - 12; sp.z = SVILLAGE[1] + 31; }
   for (const n of sFriends) { n.hidden = !S.flags.ch4; n.model.visible = !!S.flags.ch4; }
   if (C.model && C.model.userData.sub) C.model.userData.sub.visible = !!S.flags.sub;
   void st;
@@ -6331,7 +6338,7 @@ function drawSeaMap() {
   g.fillStyle = 'rgba(20,40,70,.85)'; g.beginPath(); g.ellipse(X(STRENCH.x), Z(STRENCH.z), STRENCH.rx * k, STRENCH.rz * k, 0, 0, 6.283); g.fill();
   g.fillStyle = '#f0c0d0'; g.beginPath(); g.arc(X(SVILLAGE[0]), Z(SVILLAGE[1]), 26 * k, 0, 6.283); g.fill();
   g.font = '700 18px Nunito, sans-serif'; g.textAlign = 'center';
-  for (const [t, p] of [['Sous-marin', [SCAMP[0], SCAMP[1] + 16]], ['Village des Coquillages', [SVILLAGE[0], SVILLAGE[1] - 30]], ['Forêt d\'algues', SKELP], ['Jardin de coraux', SCORAL], ['Épave', [SWRECK[0], SWRECK[1] - 16]], ['Fosse sombre', [STRENCH.x, STRENCH.z + 4]], ['Atelier d\'Octavie', [SVILLAGE[0] + 34, SVILLAGE[1] + 26]]]) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#1a2a3a'; g.fillText(t, X(p[0]), Z(p[1])); }
+  for (const [t, p] of [['Sous-marin', [SCAMP[0], SCAMP[1] + 16]], ['Village des Coquillages', [SVILLAGE[0], SVILLAGE[1] - 30]], ['Forêt d\'algues', SKELP], ['Jardin de coraux', SCORAL], ['Galet', [SGALET[0], SGALET[1] + 8]], ['Épave', [SWRECK[0], SWRECK[1] - 16]], ['Fosse sombre', [STRENCH.x, STRENCH.z + 4]], ['Atelier d\'Octavie', [SVILLAGE[0] + 34, SVILLAGE[1] + 26]]]) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#1a2a3a'; g.fillText(t, X(p[0]), Z(p[1])); }
   const st = S.flags.ch4done ? null : cStep(), tgt = st && st.at && st.at();
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
