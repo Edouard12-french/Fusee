@@ -3727,26 +3727,56 @@ function sideYvette() {
 // ================= Nouveaux amis d'Oscar : Maurice et Praline (carlins), Roquette (raton laveur), Filou (renard) =================
 // De vrais animaux : proportions et couleurs naturelles, pas de vêtements
 function makePug(girl) {
-  const g = new T.Group(), f = lam(girl ? 0xe2c192 : 0xd2ad7e, { flatShading: false }), d = lam(0x2a2224, { flatShading: false });
+  // Un vrai carlin : corps trapu avec un petit bidon tout rond, grosse tête ronde, museau écrasé tout noir,
+  // pli au-dessus du nez, bajoues, grands yeux brillants, petites oreilles repliées et queue en tire-bouchon
+  const g = new T.Group(), f = lam(girl ? 0xe8c9a0 : 0xd6b080, { flatShading: false }), bl = lam(girl ? 0xf6e4c8 : 0xefd8b4, { flatShading: false });
+  const d = lam(0x2a2224, { flatShading: false }), dm = lam(0x3e3234, { flatShading: false });
+  const nose = new T.MeshPhongMaterial({ color: 0x121012, shininess: 90, specular: 0x666666 }), shine = new T.MeshBasicMaterial({ color: 0xffffff });
   const body = new T.Group(); g.add(body);
-  ball(body, f, 0.36, 0, 0.55, 0, 0.95, 0.88, 1.35);
-  ball(body, f, 0.3, 0, 0.6, 0.28, 1, 0.95, 0.9);
-  const head = new T.Group(); head.position.set(0, 0.82, 0.52); body.add(head);
-  ball(head, f, 0.27, 0, 0, 0, 1.1, 0.95, 0.95);
-  ball(head, d, 0.15, 0, -0.07, 0.2, 1.3, 0.85, 0.65);
-  ball(head, d, 0.05, 0, -0.01, 0.31, 1.3, 0.8, 0.7);
+  ball(body, f, 0.36, 0, 0.56, 0, 1.02, 0.9, 1.25);
+  ball(body, f, 0.31, 0, 0.6, 0.3, 1.06, 1.0, 0.85);
+  ball(body, f, 0.3, 0, 0.58, -0.28, 1.02, 0.92, 0.9);
+  ball(body, bl, 0.28, 0, 0.42, 0.04, 1.05, 0.82, 1.15); // le petit bidon tout rond
+  ball(body, bl, 0.2, 0, 0.58, 0.44, 1.05, 1.0, 0.7);    // poitrail clair
+  ball(body, f, 0.26, 0, 0.76, 0.42, 1.0, 0.9, 0.85);    // gros cou tout dodu
+  const head = new T.Group(); head.position.set(0, 0.9, 0.58); body.add(head);
+  ball(head, f, 0.3, 0, 0, 0, 1.12, 1.0, 0.95);
+  // Le masque noir et le museau tout plat
+  ball(head, d, 0.17, 0, -0.07, 0.19, 1.38, 0.92, 0.62);
+  for (const s of [-1, 1]) { ball(head, d, 0.095, s * 0.12, -0.14, 0.25, 1, 0.8, 0.8); ball(head, f, 0.12, s * 0.2, -0.08, 0.14, 0.9, 0.9, 0.8); }
+  ball(head, dm, 0.06, 0, 0.0, 0.31, 2.3, 0.62, 0.8); // le pli au-dessus du nez
+  ball(head, nose, 0.052, 0, -0.065, 0.335, 1.45, 0.8, 0.7);
+  for (const s of [-1, 1]) ball(head, d, 0.014, s * 0.03, -0.075, 0.37, 1, 0.8, 0.5);
+  ball(head, shine, 0.012, 0.015, -0.04, 0.37);
+  const mouth = new T.Mesh(new T.TorusGeometry(0.05, 0.008, 3, 10, Math.PI), d); mouth.position.set(0, -0.155, 0.3); mouth.rotation.z = Math.PI; head.add(mouth);
+  ball(head, d, 0.06, 0, -0.2, 0.24, 1.2, 0.7, 0.9);
+  // Grands yeux brillants
   for (const s of [-1, 1]) {
-    ball(head, f, 0.06, s * 0.08, 0.06, 0.24, 1.2, 0.5, 0.5);
-    ball(head, eyeMat, 0.05, s * 0.13, 0.07, 0.21);
-    const e = ball(head, d, 0.1, s * 0.25, 0.17, -0.02, 0.55, 0.9, 0.35); e.rotation.z = s * 0.7;
+    ball(head, d, 0.08, s * 0.135, 0.06, 0.215, 1, 1, 0.6);
+    ball(head, eyeMat, 0.068, s * 0.135, 0.06, 0.24, 1, 1, 0.8);
+    ball(head, shine, 0.02, s * 0.135 + 0.022, 0.09, 0.295); ball(head, shine, 0.009, s * 0.135 - 0.018, 0.04, 0.3);
+    // Petites oreilles repliées vers l'avant
+    const e = ball(head, d, 0.1, s * 0.245, 0.17, 0.06, 0.85, 0.85, 0.3); e.rotation.z = s * 0.95; e.rotation.x = -0.45;
   }
-  // Plis du front, coussinets, et la langue de Praline
-  for (let k = 0; k < 3; k++) { const w = new T.Mesh(new T.TorusGeometry(0.1 - k * 0.015, 0.008, 3, 10, Math.PI), d); w.position.set(0, 0.12 + k * 0.045, 0.23 - k * 0.02); w.rotation.x = -0.3; head.add(w); }
-  whiskers(head, 0, -0.08, 0.3, 0.18, 0x2a2224);
-  if (girl) { const tg = ball(head, M.pink, 0.05, 0.02, -0.16, 0.27, 0.8, 0.3, 1.2); tg.rotation.x = 0.5; }
-  const tail = new T.Mesh(new T.TorusGeometry(0.09, 0.04, 6, 12, 4.8), f); tail.position.set(0, 0.85, -0.45); tail.rotation.y = Math.PI / 2; g.add(tail);
-  const collar = new T.Mesh(new T.TorusGeometry(0.22, 0.035, 6, 14), girl ? M.pink : M.blue); collar.rotation.x = Math.PI / 2 - 0.5; collar.position.set(0, 0.74, 0.38); body.add(collar);
-  g.userData = { rig: Object.assign({ body, head, tail }, legs4(g, f, 0.065, 0.32, 0.17, 0.28, -0.28, 0.32)) };
+  // Plis du front
+  for (let k = 0; k < 3; k++) { const w = new T.Mesh(new T.TorusGeometry(0.1 - k * 0.018, 0.011, 4, 12, Math.PI), dm); w.position.set(0, 0.13 + k * 0.045, 0.24 - k * 0.025); w.rotation.x = -0.35; head.add(w); }
+  whiskers(head, 0, -0.09, 0.31, 0.14, 0x2a2224);
+  if (girl) {
+    const tg = ball(head, M.pink, 0.05, 0.015, -0.18, 0.28, 0.8, 0.3, 1.2); tg.rotation.x = 0.5;
+    // Un nœud rose sur la tête
+    const bow = new T.Group(); bow.position.set(0.13, 0.27, 0.05); bow.rotation.z = -0.35; head.add(bow);
+    for (const s of [-1, 1]) { const c = new T.Mesh(new T.ConeGeometry(0.06, 0.12, 8), M.pink); c.rotation.z = s * Math.PI / 2; c.position.x = s * 0.06; bow.add(c); }
+    ball(bow, M.pink, 0.03, 0, 0, 0);
+  }
+  // Queue en tire-bouchon sur le dos
+  const tail = new T.Group(); tail.position.set(0, 0.88, -0.36); g.add(tail);
+  const t1 = new T.Mesh(new T.TorusGeometry(0.1, 0.045, 8, 16, 5.6), f); t1.rotation.x = Math.PI / 2 - 0.4; tail.add(t1);
+  const t2 = new T.Mesh(new T.TorusGeometry(0.045, 0.035, 6, 12, 5), dm); t2.rotation.x = Math.PI / 2 - 0.4; t2.position.y = 0.03; tail.add(t2);
+  const collar = new T.Mesh(new T.TorusGeometry(0.23, 0.035, 6, 16), girl ? M.pink : M.blue); collar.rotation.x = Math.PI / 2 - 0.5; collar.position.set(0, 0.78, 0.44); body.add(collar);
+  ball(body, lam(0xffd84d), 0.035, 0, 0.62, 0.62);
+  const legs = legs4(g, f, 0.07, 0.3, 0.17, 0.27, -0.27, 0.3);
+  for (const k in legs) ball(legs[k], f, 0.075, 0, -0.3, 0.03, 1, 0.6, 1.25);
+  g.userData = { rig: Object.assign({ body, head, tail }, legs) };
   return g;
 }
 function makeRoquette() { return makeRaccoon(0x8a7466); }
