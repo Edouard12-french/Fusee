@@ -10,20 +10,20 @@
 
 1. Sur itch.io, clique sur **« Upload new project »**.
 2. **Title** : `Ours Malin`
-3. **Short description or tagline** : `Aide Oscar, un ours gourmand et têtu, à sauver son parc, va sur la Lune retrouve tes amis dans la Forêt Immense et plonge au fond de la mer !`
+3. **Short description or tagline** : `Aide Oscar, un ours gourmand et têtu, à sauver son parc, va sur la Lune retrouve tes amis dans la Forêt Immense plonge au fond de la mer et monte jusqu'à l'Île des Nuages !`
 4. **Kind of project** : **HTML**.
 5. **Uploads** : envoie `ours-malin-itch.zip` et coche **« This file will be played in the browser »**.
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
 7. **Pricing** : **« No payment required »** avec un **don suggéré de 2 €**.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : dans cet ordre : 75, 76, 77, 79, 80, 81, 78, 82, 73, 68, 74, 65, 69, 70, 59, 67, 71, 72, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
+9. **Screenshots** : dans cet ordre : 83, 84, 85, 87, 86, 88, 89, 75, 76, 77, 79, 80, 81, 78, 82, 73, 68, 74, 65, 69, 70, 59, 67, 71, 72, 61, 64, 62, 58, 60, 63, 66, 55, 50, 51, 53, 49, 56, 52, 54, 57, 48, 45, 43, 33, 44, 42, 34, 39, 40, 37, 38, 41, 21, 11, 30, 20, 32, 07, 25, 22, 16, 17, 27, 26, 14, 13, 24, 03, 29, 08, 23, 35, 06, 31, 36, 28, 18, 04, 15, 05, 19, 09, 12, 02, 10, 01 (itch.io en accepte beaucoup, garde les plus belles).
 10. **Genre** : Adventure. **Tags** : `cozy`, `cute`, `stealth`, `animals`, `exploration`, `3d`, `skiing`, `open-world`, `family-friendly`, `space`.
 11. **AI disclosure** : réponds **oui** (le code a été écrit avec l'aide d'une IA).
 12. Copie la description plus bas, clique sur **Save**, puis passe la page en **Public**.
 
 ## Important
 
-Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, Zib et les Zoublis, Brume, Splash, Nacre, Octavie, Galet, Crabos, le village des Coquillages, l'Arbre-Mère, la Forêt Immense, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
+Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, Zib et les Zoublis, Brume, Splash, Nacre, Octavie, Galet, Crabos, le village des Coquillages, les Plumeaux, Pompon, Cumulus, Grondin, l'Île des Nuages, l'Arbre-Mère, la Forêt Immense, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
 
 Pour les dons : un parent doit t'aider pour le compte de paiement. Après la publication, tu peux mettre l'adresse de ta page dans `ours/index.html` (ligne `const SUPPORT_URL = '';`).
 
@@ -49,6 +49,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Chapitre 2 : le grand jour !** Tous les amis montent dans le camping-car spatial. On s'envole doucement au-dessus du parc pour admirer le paysage… jusqu'à la **Lune** !
 - **Sur la Lune, surprise : des extraterrestres !** Aide les Zoublis à réparer leur soucoupe (cristaux d'énergie, glace, télescopes) et à retrouver leur planète.
 - **Chapitre 3 : la Forêt Immense !** Une pluie d'étoiles filantes fait tomber le camping-car dans une forêt géante et brumeuse. Avec Brume, le grand cerf blanc, retrouve tes 11 amis perdus, répare le camping-car, rallume les pierres-lanternes et réveille l'Arbre-Mère !
+- **Chapitre 5 : l'Île des Nuages !** Une montgolfière, une île qui flotte dans le ciel, des Plumeaux tout ronds, des nuages-trampolines, des ponts arc-en-ciel, et Grondin l'orage grognon qu'il faut faire rire… 13 nouvelles missions !
 - **Chapitre 4 : le Royaume sous la Mer !** Max transforme le camping-car en sous-marin. Plonge au fond de la mer, rencontre Splash le dauphin, Nacre la tortue, Octavie la pieuvre et Galet le phoque, rallume le village des Coquillages et découvre pourquoi Crabos le grand crabe a pris la Grande Perle… 15 nouvelles missions !
 - **Oscar pense tout haut** : il fonce dans les arbres (et il insiste !), rêve de miel, se croit le plus malin et dit des bêtises qui font rire.
 - **Une nature pleine de vie** : écureuils qui grimpent aux arbres, oiseaux qui s'envolent, oies en V, cygnes, canetons, feuilles mortes, lys et nénuphars, rivières qui coulent, barques, canoë et tas de bûches.
@@ -87,6 +88,7 @@ Nasty Mr Béton wants to bulldoze Pine Park to build a shopping mall. With his f
 - **Chapter 2: the big day!** All the friends climb aboard the space camper. Rise slowly above the park to admire the view… all the way to the **Moon**!
 - **Surprise on the Moon: aliens!** Help the Zoublis fix their flying saucer (energy crystals, ice, telescopes) and find their home planet.
 - **Chapter 3: the Immense Forest!** A meteor shower sends the camper crashing into a giant, misty forest. With Brume the white stag, find your 11 lost friends, fix the camper, relight the lantern stones and wake the Mother Tree!
+- **Chapter 5: the Cloud Island!** A hot-air balloon, an island floating in the sky, round fluffy Plumeaux birds, bouncy cloud trampolines, rainbow bridges, and Grondin the grumpy storm cloud you have to make laugh… 13 new missions!
 - **Chapter 4: the Kingdom under the Sea!** Max turns the camper into a submarine. Dive to the seabed, meet Splash the dolphin, Nacre the turtle, Octavie the octopus and Galet the seal, light up the Shell Village again and find out why Crabos the giant crab took the Great Pearl… 15 new missions!
 - **Oscar thinks out loud**: he bumps into trees (and keeps pushing!), dreams of honey, thinks he's the smartest and says silly things that make you laugh.
 - **Nature full of life**: squirrels climbing trees, birds flying off, geese in V formation, swans, ducklings, fallen leaves, lilies and water lilies, flowing rivers, rowboats, a canoe and woodpiles.

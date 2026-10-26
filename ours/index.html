@@ -334,6 +334,8 @@ function setTimeOfDay(h, focus) {
 const HALF = 320;
 // Le Royaume sous la Mer (chapitre 4), tout à l'est, après la Lune
 const SEA_X = 4000;
+// L'Île des Nuages (chapitre 5), encore plus loin
+const SKY_X = 7000;
 // La Forêt Immense (chapitre 3) est une région à part, loin à l'ouest
 const FOREST_X = -2000;
 const LAKE = { x: 40, z: 72, rx: 46, rz: 36 };
@@ -455,6 +457,7 @@ const REG = {
 };
 const MESAS = [[252, 206, 13, 12], [292, 246, 10, 17], [244, 280, 12, 9], [302, 184, 8, 11], [270, 300, 9, 14]];
 function groundY(x, z) {
+  if (x > 5500) return cloudY(x, z);
   if (x > 3000) return seaY(x, z);
   if (x > 1500) return moonY(x, z);
   if (x < -1500) return forestY(x, z);
@@ -483,6 +486,7 @@ const FROZEN = PONDS.filter(L => L.frozen);
 const onIce = (x, z) => FROZEN.some(L => ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2 < 1.1);
 function deckY(x, z) {
   if (x < -1500) return forestDeck(x, z);
+  if (x > 5500) return cloudDeck(x, z);
   if (PONTOON_DECKS.length && lakeE(x, z) < 1.4) { const pd = pontoonDeck(x, z); if (pd !== null) return pd; }
   if (z < -200 && onIce(x, z)) return WATER_Y + 0.06;
   if (z > 205) for (const b of BOARDWALKS) if (polyDist(x, z, b) < 1.5) return 0.3;
@@ -510,11 +514,11 @@ function inZone(x, z) {
 }
 
 // ================= Collisions =================
-const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [], gridS = [];
-for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); gridS.push([]); }
+const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [], gridS = [], gridK = [];
+for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); gridS.push([]); gridK.push([]); }
 const cellOf = v => clamp(Math.floor((v + HALF + 8) / CELL), 0, NC - 1);
 // La forêt a sa propre grille, centrée sur elle
-const gridOf = x => x < -1500 ? gridF : x > 3000 ? gridS : grid, gridOx = x => x < -1500 ? FOREST_X : x > 3000 ? SEA_X : 0;
+const gridOf = x => x < -1500 ? gridF : x > 5500 ? gridK : x > 3000 ? gridS : grid, gridOx = x => x < -1500 ? FOREST_X : x > 5500 ? SKY_X : x > 3000 ? SEA_X : 0;
 function addCol(c) {
   const r = c.r || Math.hypot(c.hw, c.hd), gr = gridOf(c.x), ox = gridOx(c.x);
   for (let i = cellOf(c.x - ox - r); i <= cellOf(c.x - ox + r); i++) for (let j = cellOf(c.z - r); j <= cellOf(c.z + r); j++) gr[j * NC + i].push(c);
@@ -550,6 +554,7 @@ function collide(p, r) {
   }
   if (p.x < -1500) { const dx = p.x - FOREST_X, d = Math.hypot(dx, p.z), m = FOREST.r - 4; if (d > m) { p.x = FOREST_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x < 700) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
+  else if (p.x > 5500) { const dx = p.x - SKY_X, d = Math.hypot(dx, p.z), m = KSKY.r - 4; if (d > m) { p.x = SKY_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x > 3000) { const dx = p.x - SEA_X, d = Math.hypot(dx, p.z), m = SEA.r - 4; if (d > m) { p.x = SEA_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x > 1500) { const dx = p.x - MOON.x, dz = p.z - MOON.z, d = Math.hypot(dx, dz), m = MOON.r - 4; if (d > m) { p.x = MOON.x + dx / d * m; p.z = MOON.z + dz / d * m; } }
 }
@@ -1749,7 +1754,7 @@ const ITEMS = {
   brochet: { n: 'Brochet', e: '🐟', sell: 16, fish: 1 }, anguille: { n: 'Anguille', e: '🐍', sell: 18, fish: 1 }, saumon: { n: 'Saumon', e: '🐠', sell: 22, fish: 1 },
   silure: { n: 'Poisson-chat', e: '🐡', sell: 26, fish: 1 }, dore: { n: 'Poisson doré', e: '🐠', sell: 60, fish: 1 },
   lait: { n: 'Lait', e: '🥛', en: 20, sell: 4 }, luge: { n: 'Luge', e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: 'Champignon', e: '🍄', en: 15, sell: 5 },
-  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 }, graineM: { n: 'Graine de l\'Arbre-Mère', e: '🌰', key: 1 }, dent: { n: 'Dent de dinosaure', e: '🦷', key: 1 }, hublot: { n: 'Hublot', e: '🪟', key: 1 }, helice: { n: 'Hélice', e: '🌀', key: 1 }, joints: { n: 'Joints étanches', e: '🍯', key: 1 }, champiL: { n: 'Champignon lumineux', e: '🍄', key: 1 }, lanterneM: { n: 'Lanterne d\'Octavie', e: '🏮', key: 1 }, grandePerle: { n: 'Grande Perle', e: '⚪', key: 1 },
+  pierreZ: { n: 'Pierre de Zoubla', e: '💠', key: 1 }, graineM: { n: 'Graine de l\'Arbre-Mère', e: '🌰', key: 1 }, dent: { n: 'Dent de dinosaure', e: '🦷', key: 1 }, hublot: { n: 'Hublot', e: '🪟', key: 1 }, helice: { n: 'Hélice', e: '🌀', key: 1 }, joints: { n: 'Joints étanches', e: '🍯', key: 1 }, toile: { n: 'Toile de chapiteau', e: '🎪', key: 1 }, corde: { n: 'Longue corde', e: '🪢', key: 1 }, panier: { n: 'Grand panier', e: '🧺', key: 1 }, champiL: { n: 'Champignon lumineux', e: '🍄', key: 1 }, lanterneM: { n: 'Lanterne d\'Octavie', e: '🏮', key: 1 }, grandePerle: { n: 'Grande Perle', e: '⚪', key: 1 },
   p_chassis: { n: 'Vieux châssis', e: '🛻', key: 1 }, p_roues: { n: 'Quatre roues', e: '🛞', key: 1 }, p_carrosserie: { n: 'Carrosserie', e: '🚐', key: 1 }, p_volant: { n: 'Volant et sièges', e: '🪑', key: 1 }, p_moteur: { n: 'Moteur de camion', e: '⚙️', key: 1 }, p_phares: { n: 'Phares', e: '💡', key: 1 },
   coffre: { n: 'Petit coffre', e: '💰', sell: 70 }, cristal: { n: 'Cristal bleu', e: '💎', sell: 80 }, fossile: { n: 'Fossile', e: '🦴', sell: 60 }, boussole: { n: 'Vieille boussole', e: '🧭', sell: 45 }, plan: { n: 'Plan d\'avion', e: '📜', key: 1 },
   chapeau: { n: 'Chapeau', e: '🎩', key: 1 }, manteau: { n: 'Manteau', e: '🧥', key: 1 }, canne: { n: 'Canne à pêche', e: '🎣', key: 1 }, pelle: { n: 'Pelle', e: '⛏️', key: 1 },
@@ -1894,9 +1899,9 @@ function updatePlayer(dt) {
   collide(P, 0.7);
   P.spd = Math.hypot(P.vx, P.vz);
   if (P.spd > 0.3) P.rot += angDiff(P.rot, Math.atan2(P.vx, P.vz)) * (1 - Math.exp(-dt * 12));
-  P.y = P.swim ? WATER_Y - 1.35 + Math.sin(G.t * 3) * 0.05 : walkY(P.x, P.z);
+  P.y = (P.swim ? WATER_Y - 1.35 + Math.sin(G.t * 3) * 0.05 : walkY(P.x, P.z)) + (P.hop || 0);
   // Sur la Lune, Oscar fait de grands bonds
-  if (P.x > 1500) { P.y += Math.abs(Math.sin(P.phase * 0.55)) * 1.1 * clamp(P.spd / 4, 0, 1); if (P.spd > 1 && Math.random() < dt * 3) puff(P.x, walkY(P.x, P.z) + 0.1, P.z, 3, P.x > 3000 ? [0.9, 0.85, 0.7] : [0.75, 0.75, 0.8], 1); }
+  if (P.x > 1500 && P.x < 5500) { P.y += Math.abs(Math.sin(P.phase * 0.55)) * 1.1 * clamp(P.spd / 4, 0, 1); if (P.spd > 1 && Math.random() < dt * 3) puff(P.x, walkY(P.x, P.z) + 0.1, P.z, 3, P.x > 3000 ? [0.9, 0.85, 0.7] : [0.75, 0.75, 0.8], 1); }
   // Énergie
   S.energy = Math.max(0, S.energy - dt * (running ? 0.5 : P.spd > 0.5 ? 0.05 : 0.02));
   if (S.energy <= 0 && !G.tiredSaid) { G.tiredSaid = true; toast('Oscar a faim… Mange quelque chose (sac) !'); }
@@ -2563,6 +2568,7 @@ function advance() {
 function talkTo(id) {
   if (cpartTalk(id)) return;
   if (seaTalk(id)) return;
+  if (skyTalk(id)) return;
   const st = curStep();
   if (st && st.talk === id) {
     const miss = st.need && st.need();
@@ -3245,6 +3251,7 @@ function buildSkiNPCs() {
   PITCH.marcel = 0.8; PITCH.yvette = 1.35; PITCH.cabriole = 1.55;
 }
 function talkSki(id) {
+  if (skyTalk(id)) return;
   if (id === 'marcel') {
     const night = S.time >= 21 || S.time < 6.5;
     if (night) { talk([['marcel', 'Zzzz… zzzz…']]); return; }
@@ -3443,7 +3450,7 @@ function buildWildNPCs() {
     const [x, z] = MUSHROOMS[i], g = new T.Group(); g.position.set(x, groundY(x, z), z); scene.add(g);
     for (let k = 0; k < 3; k++) { const s = 1 - k * 0.25, ox = [0, 0.4, -0.35][k], oz = [0, 0.25, 0.3][k]; mesh(new T.CylinderGeometry(0.1 * s, 0.13 * s, 0.4 * s, 6), M.cream, ox, 0.2 * s, oz, g); const cap = mesh(new T.SphereGeometry(0.3 * s, 10, 6, 0, 6.283, 0, 1.6), M.red, ox, 0.38 * s, oz, g); for (let d = 0; d < 3; d++) mesh(new T.SphereGeometry(0.05 * s, 5, 4), M.white, ox + Math.cos(d * 2.1) * 0.17 * s, 0.6 * s, oz + Math.sin(d * 2.1) * 0.17 * s, g); }
     mushMeshes.push(g);
-    addInter({ x, z, r: 2.4, icon: '🍄', label: () => 'Cueillir des champignons', can: () => (S.mush || {})[i] !== S.day, act: () => { if (!give('champi')) return; S.mush = S.mush || {}; S.mush[i] = S.day; g.visible = false; sparkle(x, groundY(x, z) + 0.8, z); } });
+    addInter({ x, z, r: 2.4, icon: '🍄', label: () => 'Cueillir des champignons', can: () => (S.mush || {})[i] !== S.day, act: () => { if (!give('champi')) return; skyEvent('champi'); S.mush = S.mush || {}; S.mush[i] = S.day; g.visible = false; sparkle(x, groundY(x, z) + 0.8, z); } });
   }
 }
 const mushMeshes = [];
@@ -3688,6 +3695,7 @@ function updateSide(dt) {
 }
 // ---------- Dialogues ----------
 function talkSide(id) {
+  if (skyTalk(id)) return;
   if (id === 'gaspard') {
     const s = sqState('marais');
     if (s === undefined) return talk([['gaspard', 'Kraaak… Bonjour, l\'ours. Je suis Gaspard, je pêche ici depuis des années.'], ['gaspard', 'Mais des promeneurs ont jeté des déchets dans mon marais. Les grenouilles sont tristes…'], ['oscar', 'Je vais tout ramasser ! Et si je trouve un pot de miel, je le garde.'], ['gaspard', 'Il y en a 6, près des passerelles. Merci !']], () => sqSet('marais', 0));
@@ -4514,6 +4522,7 @@ function updateLaunch(dt) {
   if (G.cine.kind === 'crash') return updateCrash(dt);
   if (G.cine.kind === 'home') return updateHome(dt);
   if (G.cine.kind === 'dive') return updateDive(dt);
+  if (G.cine.kind === 'balloon') return updateBalloon(dt);
   const L = G.cine; L.t += dt; const t = L.t;
   $('quest').style.visibility = 'hidden';
   while (L.cap < CAPTIONS.length && t >= CAPTIONS[L.cap][0]) { status(CAPTIONS[L.cap][1], 'info', 4.5); if (CAPTIONS[L.cap][0] === 10) sfx.takeoff(); L.cap++; }
@@ -4658,7 +4667,7 @@ function refreshMoon() {
 }
 function updateMoon(dt) {
   const on = onMoon() || (G.cine && G.cine.space);
-  if (P.helmets) for (const h of P.helmets) h.visible = onMoon() || P.x > 3000;
+  if (P.helmets) for (const h of P.helmets) h.visible = onMoon() || onSea();
   // Étoiles et Terre visibles dans l'espace et sur la Lune
   const sk = on ? 1 : (G.spaceK || 0);
   starPts.material.opacity = sk; starPts.visible = sk > 0.01;
@@ -5362,6 +5371,7 @@ function skipCine() {
   const L = G.cine; if (!L || L.done || L.t < 3) return;
   if (L.kind === 'crash') { L.done = true; fadeTo(() => { if (L.ph === 1) crashPhase2(); endCrash(); }); }
   else if (L.kind === 'dive') skipDive();
+  else if (L.kind === 'balloon') skipBalloon();
   else if (L.kind === 'home') { L.done = true; fadeTo(() => { if (L.ph === 1) homePhase2(); endHome(); }); }
 }
 function forestTravel(toForest) {
@@ -5668,7 +5678,7 @@ function updateNature(dt) {
 // chez les amis du parc), puis tout le monde plonge. Au fond de la mer vit le peuple des Coquillages :
 // Splash le dauphin, Nacre la vieille tortue, Octavie la pieuvre, Galet le phoque… et Crabos, le grand crabe qui a peur du noir.
 const SEA = { x: SEA_X, z: 0, r: 190 };
-const onSea = () => P.x > 3000;
+const onSea = () => P.x > 3000 && P.x < 5500;
 const SL = (dx, dz) => [SEA.x + dx, SEA.z + dz];
 const SCAMP = SL(0, 132), SVILLAGE = SL(0, 0), SKELP = SL(-108, 40), SCORAL = SL(100, 58), SWRECK = SL(118, -82), STRENCH = { x: SEA.x - 62, z: -126, rx: 56, rz: 30 }, SCAVE = SL(-80, -140);
 const SCEIL = 42;
@@ -6346,6 +6356,472 @@ function drawSeaMap() {
   g.restore();
 }
 
+// ================= Chapitre 5 : l'Île des Nuages =================
+// Splash a parlé d'une île qui flotte dans le ciel. Donovan l'a vue en volant très haut ! Max accroche une montgolfière
+// au camping-car (toile, corde, panier à trouver dans le parc), et tout le monde monte. Là-haut vivent les Plumeaux,
+// de petits oiseaux tout ronds. Leur île descend : ses trois moulins à vent sont en panne, et Grondin l'orage boude.
+const KSKY = { x: SKY_X, z: 0, r: 178 };
+const onCloud = () => P.x > 5500;
+const KL = (dx, dz) => [KSKY.x + dx, KSKY.z + dz];
+const KLAND = KL(0, 64), KVILLAGE = KL(22, 8), KHILL = KL(-32, -34);
+const KMILLS = [KL(-8, -66), KL(62, -18), KL(-62, -8)];
+const KISLETS = [{ id: 'est', x: 140, z: 22, r: 18 }, { id: 'ouest', x: -140, z: 34, r: 18 }, { id: 'nordest', x: 104, z: -112, r: 16 }, { id: 'temple', x: -22, z: -154, r: 24 }];
+const KBLADES = [[140, 22], [-140, 34], [104, -112], [-32, -40]];
+const KPADS = [[56, -4], [70, -4], [62, 6], [-50, 4], [-62, 16], [-74, 4], [-56, -22], [-70, -22], [10, 40], [-14, 30], [34, 30], [-4, 50]];
+const KORBS = [3, 4, 5, 6, 7];
+const KMAINR = a => 92 + 7 * Math.sin(3 * a) + 5 * Math.cos(5 * a + 1);
+function kIslet(x, z) { for (const I of KISLETS) if (Math.hypot(x - KSKY.x - I.x, z - KSKY.z - I.z) < I.r) return I; return null; }
+// Ponts arc-en-ciel entre la grande île et les petites îles
+const KBRIDGES = KISLETS.map(I => { const a = Math.atan2(I.z, I.x), ra = KMAINR(a) - 4, d = Math.hypot(I.x, I.z); const A = [KSKY.x + Math.cos(a) * ra, KSKY.z + Math.sin(a) * ra], B = [KSKY.x + Math.cos(a) * (d - I.r + 4), KSKY.z + Math.sin(a) * (d - I.r + 4)]; return { id: I.id, a: A, b: B, w: 3.4, h: 6 }; });
+const kBridgeOpen = b => b.id !== 'temple' || (S && S.flags.krain);
+function cloudY(x, z) {
+  const dx = x - KSKY.x, dz = z - KSKY.z, d = Math.hypot(dx, dz), a = Math.atan2(dz, dx), R = KMAINR(a);
+  if (d < R) {
+    let y = 2 + (fbm(dx * 0.025 + 300, dz * 0.025, 3) - 0.5) * 7;
+    const dh = Math.hypot(x - KHILL[0], z - KHILL[1]) / 26; if (dh < 1) y += 11 * (1 - dh * dh) ** 2;
+    y = lerp(y, 2.4, sstep(30, 16, Math.hypot(x - KVILLAGE[0], z - KVILLAGE[1])));
+    y = lerp(y, 2, sstep(18, 10, Math.hypot(x - KLAND[0], z - KLAND[1])));
+    for (const m of KMILLS) y = lerp(y, y + 0.5, sstep(9, 5, Math.hypot(x - m[0], z - m[1])));
+    return y - sstep(R - 6, R, d) * 3;
+  }
+  const I = kIslet(x, z);
+  if (I) { const di = Math.hypot(dx - I.x, dz - I.z); return (I.id === 'temple' ? 3 : 1.5 + (fbm(dx * 0.05, dz * 0.05, 2) - 0.5) * 2) - sstep(I.r - 4, I.r, di) * 3; }
+  return -60;
+}
+function cloudDeck(x, z) {
+  for (const b of KBRIDGES) {
+    if (!kBridgeOpen(b)) continue;
+    const vx = b.b[0] - b.a[0], vz = b.b[1] - b.a[1], L2 = vx * vx + vz * vz, t = clamp(((x - b.a[0]) * vx + (z - b.a[1]) * vz) / L2, 0, 1);
+    const px = b.a[0] + vx * t, pz = b.a[1] + vz * t;
+    if (Math.hypot(x - px, z - pz) < b.w / 2 && t > 0.02 && t < 0.98) return 1.2 + Math.sin(t * Math.PI) * b.h;
+  }
+  return null;
+}
+const kVoid = (x, z) => cloudY(x, z) < -20 && cloudDeck(x, z) === null;
+// ---------- Modèles ----------
+function makePlumeau(col, o) {
+  // Un Plumeau : petit oiseau tout rond et tout doux, avec une houppette
+  o = o || {};
+  const g = new T.Group(), f = lam(col, { flatShading: false }), lt = lam(new T.Color(col).lerp(new T.Color(0xffffff), 0.55).getHex(), { flatShading: false }), bk = lam(0xffb030, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.55, 0, 0.75, 0, 1, 0.95, 0.95); ball(body, lt, 0.4, 0, 0.66, 0.24, 0.95, 0.9, 0.7);
+  for (let k = 0; k < 10; k++) { const a = k * 0.63, b = ball(body, f, 0.12, Math.cos(a) * 0.5, 0.75 + Math.sin(k * 1.7) * 0.3, Math.sin(a) * 0.48 - 0.05); b.scale.set(1, 0.7, 1); }
+  const head = new T.Group(); head.position.set(0, 1.05, 0.3); body.add(head);
+  for (const s of [-1, 1]) { ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.13, s * 0.17, 0.05, 0.12, 1, 1.1, 0.6); ball(head, eyeMat, 0.085, s * 0.17, 0.04, 0.18); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.025, s * 0.17 + 0.03, 0.09, 0.25); if (o.old) { const br = new T.Mesh(new T.BoxGeometry(0.22, 0.05, 0.05), lam(0xffffff)); br.position.set(s * 0.18, 0.2, 0.16); br.rotation.z = -s * 0.3; head.add(br); } }
+  const beak = new T.Mesh(new T.ConeGeometry(0.07, 0.18, 6), bk); beak.rotation.x = Math.PI / 2; beak.position.set(0, -0.08, 0.26); head.add(beak);
+  for (const s of [-1, 1]) ball(head, M.pink, 0.05, s * 0.28, -0.08, 0.12, 1, 0.6, 0.4);
+  for (let k = 0; k < 3; k++) { const t = new T.Mesh(new T.ConeGeometry(0.06, 0.32, 5), f); t.position.set((k - 1) * 0.07, 0.42 + (k === 1 ? 0.06 : 0), -0.25); t.rotation.set(-0.5, 0, (k - 1) * 0.4); head.add(t); }
+  const wing = s => { const p = new T.Group(); p.position.set(s * 0.5, 0.85, 0); body.add(p); const w = ball(p, f, 0.22, s * 0.08, -0.08, 0, 0.35, 0.9, 0.8); w.rotation.z = s * 0.3; return p; };
+  const rig = { body, head, armL: wing(-1), armR: wing(1) };
+  for (const s of [-1, 1]) { const l = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.3, 5), bk); l.position.set(s * 0.18, 0.15, 0.05); g.add(l); ball(g, bk, 0.08, s * 0.18, 0.02, 0.12, 1, 0.4, 1.4); }
+  if (o.old) { const cane = mesh(new T.CylinderGeometry(0.035, 0.035, 1.2, 5), M.woodD, 0.6, 0.6, 0.2, g); cane.rotation.z = -0.15; }
+  g.userData = { rig };
+  if (o.s) g.scale.setScalar(o.s);
+  return g;
+}
+function makeCloudGuy(grey) {
+  // Grondin l'orage (gris et grognon) ou un nuage tout blanc
+  const g = new T.Group(), m = lam(grey ? 0x8a8e9e : 0xfbfcff, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  for (const [x, y, z, r] of [[0, 2, 0, 1.4], [1.3, 1.7, 0, 1.05], [-1.3, 1.7, 0, 1.05], [0.6, 2.9, -0.2, 1], [-0.7, 2.8, -0.1, 0.95], [0, 1.4, 0.5, 1]]) ball(body, m, r, x, y, z);
+  const head = new T.Group(); head.position.set(0, 2.1, 1.25); body.add(head);
+  const eyes = [], brows = [];
+  for (const s of [-1, 1]) { ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.22, s * 0.42, 0.2, 0, 1, 1.1, 0.5); const e = ball(head, eyeMat, 0.12, s * 0.42, 0.16, 0.08); eyes.push(e); const br = new T.Mesh(new T.BoxGeometry(0.42, 0.08, 0.08), M.dark); br.position.set(s * 0.42, 0.52, 0.06); br.rotation.z = s * 0.35; head.add(br); brows.push(br); }
+  const mouth = new T.Mesh(new T.TorusGeometry(0.22, 0.04, 4, 12, Math.PI), M.dark); mouth.position.set(0, -0.32, 0.08); head.add(mouth);
+  g.userData = { rig: Object.assign({ body, head }, finRig(body)), mat: m, brows, mouth };
+  return g;
+}
+function makeWindmill() {
+  const g = new T.Group(), st = lam(0xf4efe6), rf = lam(0xd85a4a), wd = lam(0x8a5a3a), cl = lam(0xf8f4ee);
+  mesh(new T.CylinderGeometry(1.5, 2.3, 10, 12), st, 0, 5, 0, g);
+  mesh(new T.ConeGeometry(2.1, 2.4, 12), rf, 0, 11.2, 0, g);
+  mesh(new T.CircleGeometry(0.7, 12, 0, Math.PI), M.dark, 0, 0.1, 2.25, g).rotation.x = 0;
+  for (const y of [4, 7]) mesh(new T.CircleGeometry(0.35, 10), new T.MeshBasicMaterial({ color: 0xffe8a0 }), 0, y, 2.2 - y * 0.06, g);
+  const hub = new T.Group(); hub.position.set(0, 9.2, 2.2); g.add(hub);
+  mesh(new T.CylinderGeometry(0.35, 0.35, 0.6, 10), wd, 0, 0, 0, hub).rotation.x = Math.PI / 2;
+  const blades = new T.Group(); hub.add(blades);
+  for (let k = 0; k < 4; k++) { const b = new T.Group(); b.rotation.z = k * Math.PI / 2; blades.add(b); mesh(new T.BoxGeometry(0.22, 5, 0.12), wd, 0, 2.7, 0.2, b); mesh(new T.BoxGeometry(1.2, 4, 0.05), cl, 0.6, 3, 0.22, b); }
+  g.userData = { blades };
+  return g;
+}
+function makeNestHouse(col) {
+  const g = new T.Group(), wd = lam(0x8a5a3a), f = lam(col, { flatShading: false });
+  mesh(new T.CylinderGeometry(0.4, 0.55, 3.2, 8), wd, 0, 1.6, 0, g);
+  const nest = mesh(new T.TorusGeometry(2.1, 0.55, 8, 18), lam(0xa87a4a), 0, 3.4, 0, g); nest.rotation.x = Math.PI / 2;
+  for (let k = 0; k < 10; k++) { const s = mesh(new T.CylinderGeometry(0.05, 0.05, 1.8, 3), lam(0xc89a5a), Math.cos(k * 0.63) * 2.1, 3.5, Math.sin(k * 0.63) * 2.1, g); s.rotation.set(rand(-1, 1), k, rand(-1, 1)); }
+  const dome = new T.Mesh(new T.SphereGeometry(1.9, 16, 10, 0, 6.283, 0, Math.PI / 2), f); dome.position.y = 3.5; dome.scale.y = 1.15; dome.castShadow = true; g.add(dome);
+  mesh(new T.CircleGeometry(0.55, 12), M.dark, 0, 4.3, 1.78, g);
+  mesh(new T.CylinderGeometry(0.1, 0.1, 0.9, 5), wd, 0, 4.0, 2.1, g).rotation.x = Math.PI / 2;
+  return g;
+}
+// ---------- Construction ----------
+let kCloudSea = [], kMills = [], kBladeM = [], kPads = [], kOrbs = [], kDormeur = null, kHeart = null, kRainbows = [], kFriends = [], kFlocks = [], kFalls = [], kBalloon = null, kLast = null;
+function buildCloud() {
+  const R = KSKY.r + 60, SZ = R * 2;
+  // L'île et les petites îles (le sol plonge tout en bas sous la mer de nuages)
+  const gg = new T.PlaneGeometry(SZ, SZ, 220, 220); gg.rotateX(-Math.PI / 2);
+  const p = gg.attributes.position, col = new Float32Array(p.count * 3), c = new T.Color();
+  const GA = new T.Color(0x7ed07a), GB = new T.Color(0xa8e08a), FL2 = new T.Color(0xf8d0e8), RK = new T.Color(0xb09a8a), RD = new T.Color(0x8a7a7a), MB = new T.Color(0xf4f0ff);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + KSKY.x, z = p.getZ(i) + KSKY.z, y = cloudY(x, z); p.setX(i, x); p.setZ(i, z); p.setY(i, y);
+    c.copy(GA); if (fbm(x * 0.04 + 7, z * 0.04, 3) > 0.55) c.lerp(GB, 0.7); if (fbm(x * 0.09, z * 0.09 + 3, 2) > 0.64) c.lerp(FL2, 0.35);
+    const I = kIslet(x, z); if (I && I.id === 'temple') c.lerp(MB, 0.8);
+    if (y < 0.5) c.lerp(RK, sstep(0.5, -4, y)); if (y < -10) c.lerp(RD, 0.7);
+    c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  gg.setAttribute('color', new T.BufferAttribute(col, 3));
+  // On garde seulement le sol des îles (pas de murs qui tombent dans le vide)
+  { const idx = gg.index.array, keep = []; const isV = i => p.getY(i) < -20; for (let t = 0; t < idx.length; t += 3) if (!isV(idx[t]) && !isV(idx[t + 1]) && !isV(idx[t + 2])) keep.push(idx[t], idx[t + 1], idx[t + 2]); gg.setIndex(keep); }
+  gg.computeVertexNormals();
+  const gm = new T.Mesh(gg, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad })); gm.receiveShadow = true; scene.add(gm);
+  // Le dessous rocheux de chaque île, qui suit bien son bord : un gros rocher qui flotte
+  { const skirt = (cx, cz, Rf, depth) => { const N = 72, rings = [[-3, 0.25], [0.6, -1.6], [-0.2, -0.35 * depth], [-0.45, -0.7 * depth], [-0.8, -depth]], pos = [], cl = [], idx2 = []; const c2 = new T.Color();
+      for (let r = 0; r < rings.length; r++) for (let i = 0; i < N; i++) { const a = i / N * 6.283, R0 = Rf(a), k = rings[r][0], rr = r < 2 ? R0 + k : R0 * (1 + k), jit = r >= 2 && r < rings.length - 1 ? (hash2(i * 7 + r, r * 13) - 0.5) * R0 * 0.12 : 0, x = cx + Math.cos(a) * (rr + jit), z = cz + Math.sin(a) * (rr + jit); const y = r === 0 ? cloudY(cx + Math.cos(a) * (R0 - 3.2), cz + Math.sin(a) * (R0 - 3.2)) - 0.3 : r === 1 ? cloudY(cx + Math.cos(a) * (R0 - 3.2), cz + Math.sin(a) * (R0 - 3.2)) + rings[r][1] : rings[r][1] + (hash2(i, r) - 0.5) * depth * 0.15; pos.push(x, y, z); c2.set(r === 0 ? 0x7ed07a : r === 1 ? 0x8a9a6a : [0xa08a7a, 0x8a7a70, 0x7a6a64][(i + r) % 3]).convertSRGBToLinear(); cl.push(c2.r, c2.g, c2.b); }
+      const tip = pos.length / 3; pos.push(cx, -depth * 1.25, cz); c2.set(0x6a5a54).convertSRGBToLinear(); cl.push(c2.r, c2.g, c2.b);
+      for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < N; i++) { const a0 = r * N + i, a1 = r * N + (i + 1) % N, b0 = a0 + N, b1 = a1 + N; idx2.push(a0, b0, a1, a1, b0, b1); }
+      for (let i = 0; i < N; i++) idx2.push((rings.length - 1) * N + i, tip, (rings.length - 1) * N + (i + 1) % N);
+      const sg = new T.BufferGeometry(); sg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); sg.setAttribute('color', new T.Float32BufferAttribute(cl, 3)); sg.setIndex(idx2); sg.computeVertexNormals();
+      const sm = new T.Mesh(sg, new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad, side: T.DoubleSide })); scene.add(sm); };
+    skirt(KSKY.x, KSKY.z, KMAINR, 60); for (const I of KISLETS) skirt(KSKY.x + I.x, KSKY.z + I.z, () => I.r, 20); }
+  // La mer de nuages tout en bas
+  const cs = [];
+  for (let t = 0; t < 1400; t++) { const a = srand() * 6.283, d = Math.sqrt(srand()) * 560, x = KSKY.x + Math.cos(a) * d, z = KSKY.z + Math.sin(a) * d; cs.push([x, -34 + srange(-4, 3), z, srange(8, 22), srand() * 6]); }
+  kCloudSea = tiledInst(new T.IcosahedronGeometry(1, 1), lam(0xffffff, { emissive: colorL(0x8a9aaa), emissiveIntensity: 0.35 }), cs, { h: 10, shadow: false, sy: e => e[3] * 0.45 });
+  // Nuages qui flottent autour, à hauteur de l'île
+  for (let k = 0; k < 26; k++) { const a = rand(0, 6.283), d = rand(120, 300), g = new T.Group(); g.position.set(KSKY.x + Math.cos(a) * d, rand(-6, 30), KSKY.z + Math.sin(a) * d); scene.add(g); for (let j = 0; j < 5; j++) mesh(new T.IcosahedronGeometry(rand(3, 7), 1), lam(0xffffff, { emissive: colorL(0x9aaabb), emissiveIntensity: 0.3 }), rand(-8, 8), rand(-1, 2), rand(-4, 4), g).castShadow = false; g.userData = { sp: rand(0.5, 1.5), a, d }; kFlocks.push(g); }
+  const free = (x, z, m) => {
+    if (kVoid(x, z) || cloudDeck(x, z) !== null) return false;
+    if (Math.hypot(x - KLAND[0], z - KLAND[1]) < 16 + m || Math.hypot(x - KVILLAGE[0], z - KVILLAGE[1]) < 26 + m) return false;
+    for (const q of KMILLS) if (Math.hypot(x - q[0], z - q[1]) < 9 + m) return false;
+    for (const q of KPADS.concat(KBLADES)) if (Math.hypot(x - KSKY.x - q[0], z - KSKY.z - q[1]) < 4 + m) return false;
+    for (const b of KBRIDGES) if (Math.hypot(x - b.a[0], z - b.a[1]) < 8 + m) return false;
+    if (kIslet(x, z) && kIslet(x, z).id === 'temple') return false;
+    return true;
+  };
+  seed = 8181;
+  // Arbres-nuages, fleurs et herbe
+  const treeGeo = mergeCol([[new T.CylinderGeometry(0.3, 0.45, 4, 7).translate(0, 2, 0), 0x9a7a5a], [new T.IcosahedronGeometry(2.4, 1).translate(0, 5.4, 0), 0xffffff], [new T.IcosahedronGeometry(1.8, 1).translate(1.6, 4.8, 0.6), 0xffffff], [new T.IcosahedronGeometry(1.7, 1).translate(-1.5, 4.9, -0.4), 0xffffff]]);
+  const trees = [];
+  for (let t = 0; t < 8000 && trees.length < 160; t++) { const x = KSKY.x + srange(-160, 160), z = KSKY.z + srange(-170, 160); if (!free(x, z, 3) || trees.some(e => Math.hypot(e[0] - x, e[2] - z) < 7)) continue; trees.push([x, cloudY(x, z) - 0.2, z, srange(0.8, 1.3), srand() * 6]); addCircle(x, z, 0.5).tree = 1; }
+  tiledInst(treeGeo, windLam(0.003, { vertexColors: true }), trees, { h: 6, col: (cc, i) => cc.set([0xffd8ec, 0xffffff, 0xd8ecff, 0xfff0c8, 0xe8d8ff][i % 5]).convertSRGBToLinear() });
+  const flGeo = mergeCol([[new T.CylinderGeometry(0.02, 0.025, 0.5, 3).translate(0, 0.25, 0), 0x4a9a4a], ...[0, 1, 2, 3, 4].map(k => [new T.SphereGeometry(0.08, 5, 4).translate(Math.cos(k * 1.256) * 0.1, 0.52, Math.sin(k * 1.256) * 0.1), 0xffffff]), [new T.SphereGeometry(0.06, 5, 4).translate(0, 0.54, 0), 0xffd84d]]);
+  const fls = [], tf = [];
+  for (let t = 0; t < 30000 && fls.length < 2500; t++) { const x = KSKY.x + srange(-170, 170), z = KSKY.z + srange(-175, 170); if (kVoid(x, z) || cloudDeck(x, z) !== null) continue; fls.push([x, cloudY(x, z), z, srange(0.8, 1.4), srand() * 6]); }
+  tiledInst(flGeo, windLam(0.2, { vertexColors: true }), fls, { h: 1, shadow: false, col: (cc, i) => cc.set([0xff9ad0, 0xffffff, 0xb0a0ff, 0xffd060, 0x90d0ff][i % 5]).convertSRGBToLinear() });
+  const blades = []; for (let k = 0; k < 3; k++) { const b = new T.ConeGeometry(0.09, 0.55, 3); b.translate(0, 0.27, 0); b.rotateZ((k - 1) * 0.45); b.rotateY(k * 1.2); blades.push(b); }
+  for (let t = 0; t < 30000 && tf.length < 5000; t++) { const x = KSKY.x + srange(-170, 170), z = KSKY.z + srange(-175, 170); if (kVoid(x, z) || cloudDeck(x, z) !== null) continue; tf.push([x, cloudY(x, z), z, srange(0.8, 1.4), srand() * 6]); }
+  tiledInst(mergeGeos(blades), windLam(0.35), tf, { h: 1, shadow: false, col: (cc, i) => cc.set([0x7ed07a, 0x9ad880, 0x6ac070][i % 3]).convertSRGBToLinear() });
+  // Ponts arc-en-ciel
+  const rbTex = canvasTex(64, 8, (g2, w, h) => { const cols = ['#ff5a5a', '#ffa040', '#ffe050', '#6ad06a', '#4ab0ff', '#7a6ad8', '#c07ae0']; cols.forEach((cc, i) => { g2.fillStyle = cc; g2.fillRect(i * w / 7, 0, w / 7 + 1, h); }); });
+  for (const b of KBRIDGES) { const pts = []; for (let k = 0; k <= 10; k++) pts.push([lerp(b.a[0], b.b[0], k / 10), lerp(b.a[1], b.b[1], k / 10)]); const m = ribbon(pts, b.w + 0.6, (x, z) => { const vx = b.b[0] - b.a[0], vz = b.b[1] - b.a[1], t = clamp(((x - b.a[0]) * vx + (z - b.a[1]) * vz) / (vx * vx + vz * vz), 0, 1); return 1.1 + Math.sin(t * Math.PI) * b.h; }, new T.MeshBasicMaterial({ map: rbTex, side: T.DoubleSide, transparent: true, opacity: 0.92 })); m.userData.id = b.id; kRainbows.push(m); }
+  // Les trois moulins à vent
+  KMILLS.forEach(([x, z], i) => { const m = makeWindmill(); m.position.set(x, cloudY(x, z), z); m.rotation.y = Math.atan2(KLAND[0] - x, KLAND[1] - z); scene.add(m); kMills.push(m); addCircle(x, z, 2.4); sign(['MOULIN DU NORD', 'MOULIN DE L\'EST', 'MOULIN DE L\'OUEST'][i], x + 5, z + 6, m.rotation.y, 1.8, 0.7, '#5a7ab0'); });
+  // Le nuage dormeur, assis sur le moulin de l'est
+  { kDormeur = makeCloudGuy(false); const [x, z] = KMILLS[1]; kDormeur.position.set(x, cloudY(x, z) + 10.5, z); kDormeur.scale.setScalar(1.5); scene.add(kDormeur); const u = kDormeur.userData; u.brows.forEach(b => { b.visible = false; }); u.mouth.rotation.z = 0; u.mouth.scale.set(0.6, 0.6, 0.6); }
+  // Ailes du moulin du nord, éparpillées
+  KBLADES.forEach(([dx, dz], i) => { const [x, z] = KL(dx, dz), g = new T.Group(); g.position.set(x, cloudY(x, z) + 0.2, z); g.rotation.set(0, i, 1.35); scene.add(g); mesh(new T.BoxGeometry(0.22, 5, 0.12), lam(0x8a5a3a), 0, 0, 0, g); mesh(new T.BoxGeometry(1.2, 4, 0.05), lam(0xf8f4ee), 0.6, 0.3, 0.05, g); g.visible = false; kBladeM.push(g);
+    addInter({ x, z, r: 3, icon: '🪶', label: () => 'Ramasser l\'aile du moulin', can: () => g.visible, act: () => { S.kblade = S.kblade || []; S.kblade.push(i); g.visible = false; sparkle(x, g.position.y + 1, z); sfx.pickup(); skyEvent('blade'); } }); });
+  addInter({ x: KMILLS[0][0], z: KMILLS[0][1] + 4, r: 4, icon: '🔧', label: () => 'Remettre les ailes du moulin', can: () => S.kq === 7 && S.kstep === 1, act: () => { S.flags.kmill1 = 1; refreshCloud(); sparkle(KMILLS[0][0], cloudY(KMILLS[0][0], KMILLS[0][1]) + 9, KMILLS[0][1]); sfx.fanfare(); skyEvent('mill1'); } });
+  // Nuages-trampolines
+  const padMat = lam(0xffffff, { emissive: colorL(0xc8d8ff), emissiveIntensity: 0.25 });
+  KPADS.forEach(([dx, dz], i) => { const [x, z] = KL(dx, dz), g = new T.Group(); g.position.set(x, cloudY(x, z) + 0.2, z); scene.add(g); for (const [ox, oz, r] of [[0, 0, 1.3], [0.9, 0.3, 0.9], [-0.9, 0.2, 0.9], [0.2, -0.8, 0.85], [-0.3, 0.9, 0.8]]) { const b = mesh(new T.SphereGeometry(r, 12, 8), padMat, ox, 0.2, oz, g); b.scale.y = 0.45; } kPads.push({ g, x, z, i, sq: 0 }); });
+  // Bulles de vent, tout en haut, au-dessus des trampolines de l'ouest
+  KORBS.forEach((pi, k) => { const [dx, dz] = KPADS[pi], [x, z] = KL(dx, dz), y = cloudY(x, z) + 6.5, g = new T.Group(); g.position.set(x, y, z); scene.add(g); mesh(new T.SphereGeometry(0.55, 14, 10), new T.MeshPhongMaterial({ color: 0xd8f4ff, transparent: true, opacity: 0.6, shininess: 100 }), 0, 0, 0, g); for (let j = 0; j < 2; j++) { const t = mesh(new T.TorusGeometry(0.4, 0.05, 6, 16), new T.MeshBasicMaterial({ color: 0xffffff }), 0, 0, 0, g); t.rotation.set(j * 1.2, j, 0); } const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xcfefff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); gl.scale.set(3, 3, 1); g.add(gl); g.visible = false; kOrbs.push({ g, x, y, z, k }); });
+  // Le village des Plumeaux
+  const hc = [0xffb0d0, 0xb0e0ff, 0xfff0a0, 0xc8b0ff, 0xb0f0c0, 0xffc8a0];
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + 0.4, x = KVILLAGE[0] + Math.cos(a) * 17, z = KVILLAGE[1] + Math.sin(a) * 17, h = makeNestHouse(hc[k]); h.position.set(x, cloudY(x, z), z); h.rotation.y = Math.atan2(KVILLAGE[0] - x, KVILLAGE[1] - z); scene.add(h); addCircle(x, z, 0.8); }
+  sign('VILLAGE DES PLUMEAUX', KVILLAGE[0] - 4, KVILLAGE[1] + 26, 0, 2, 0.9, '#d86a9a');
+  sign('ÎLE DES NUAGES', KLAND[0] + 8, KLAND[1] + 6, 0, 2, 0.9, '#5a7ab0');
+  // Le temple du Cœur du Ciel, sur la petite île du nord
+  { const I = KISLETS[3], cx = KSKY.x + I.x, cz = KSKY.z + I.z, y = cloudY(cx, cz), wm = lam(0xfbf8ff);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283, x = cx + Math.cos(a) * 12, z = cz + Math.sin(a) * 12; mesh(new T.CylinderGeometry(0.6, 0.7, 6, 10), wm, x, y + 3, z); mesh(new T.BoxGeometry(1.6, 0.4, 1.6), wm, x, y + 6.2, z); addCircle(x, z, 0.8); }
+    mesh(new T.CylinderGeometry(2.2, 2.8, 1.6, 14), wm, cx, y + 0.8, cz); addCircle(cx, cz, 2.6);
+    kHeart = mesh(new T.OctahedronGeometry(1.4, 0), new T.MeshPhongMaterial({ color: 0x9fd8ff, emissive: colorL(0x2a5a8a), emissiveIntensity: 0.3, shininess: 100, transparent: true, opacity: 0.85 }), cx, y + 4, cz); kHeart.scale.y = 1.5;
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0xcff0ff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.2 })); gl.scale.set(12, 12, 1); kHeart.add(gl); kHeart.userData.gl = gl;
+    sign('TEMPLE DU CŒUR DU CIEL', cx + 4, cz + 18, 0, 2, 0.9, '#7a8ab0'); }
+  // Cascades qui tombent du bord de l'île
+  { const wt = canvasTex(64, 256, (g2, w, h) => { g2.fillStyle = 'rgba(150,215,255,0.7)'; g2.fillRect(0, 0, w, h); g2.strokeStyle = 'rgba(255,255,255,.85)'; g2.lineCap = 'round'; for (let k = 0; k < 22; k++) { const x = rand(3, w - 3), y = rand(0, h); g2.lineWidth = rand(2, 5); g2.beginPath(); g2.moveTo(x, y); g2.lineTo(x + rand(-2, 2), y + rand(30, 80)); g2.stroke(); } }); wt.wrapS = wt.wrapT = T.RepeatWrapping; wt.repeat.set(1, 4); const fm = new T.MeshBasicMaterial({ map: wt, transparent: true, side: T.DoubleSide, depthWrite: false });
+    for (const a of [0.9, 2.6, 4.3]) { const R2 = KMAINR(a) - 0.5, x = KSKY.x + Math.cos(a) * R2, z = KSKY.z + Math.sin(a) * R2, f = mesh(new T.PlaneGeometry(5, 60), fm, x, -26, z); f.rotation.y = -a + Math.PI / 2; kFalls.push([x, z]); }
+    kFalls.mat = fm; }
+  // Les Plumeaux
+  addNPC('pompon', { name: 'Pompon le petit Plumeau', col: '#e0a020', model: makePlumeau(0xffd84d, { s: 0.8 }), x: KLAND[0] - 16, z: KLAND[1] - 22, rot: 0.5, head: 1.4 });
+  addNPC('cumulus', { name: 'Grand-Père Cumulus', col: '#7a8ab0', model: makePlumeau(0xf4f4ff, { old: true, s: 1.5 }), x: KVILLAGE[0], z: KVILLAGE[1] + 2, rot: 0, head: 2.2 });
+  addNPC('grondin', { name: 'Grondin l\'orage', col: '#5a5e6e', model: makeCloudGuy(true), x: KBRIDGES[3].a[0] + 4, z: KBRIDGES[3].a[1] + 6, rot: 0.6, head: 3.6, dy: 1 });
+  const villagers = [['plum1', 'Frisette', 0xffa0c8, -8, 8], ['plum2', 'Duvet', 0xa0d0ff, 10, -10], ['plum3', 'Plumette', 0xc0a0ff, -12, -6], ['plum4', 'Bouffon', 0xa0f0b0, 8, 12]];
+  for (const [id, nm, cc, dx, dz] of villagers) addNPC(id, { name: nm + ' le Plumeau', col: '#b06a9a', model: makePlumeau(cc, { s: 1 }), x: KVILLAGE[0] + dx, z: KVILLAGE[1] + dz, rot: rand(0, 6), head: 1.6 });
+  for (const id of ['pompon', 'cumulus', 'grondin'].concat(villagers.map(v => v[0]))) { const n = NPCS[id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: id === 'grondin' ? 5 : 3.2, icon: '💬', label: () => 'Parler à ' + n.name, can: () => !n.hidden, act: () => talkCloud(id) }); }
+  // Les amis, sur la piste d'atterrissage
+  MOON_FRIENDS.forEach(([id, name, colr, mk], i) => { const m = mk(), a = 2.9 + i / MOON_FRIENDS.length * 3.0, x = KLAND[0] + Math.cos(a) * 12, z = KLAND[1] + Math.sin(a) * 8; addNPC('lk_' + id, { name, col: colr, model: m, x, z, rot: Math.atan2(KLAND[0] - x, KLAND[1] - z), head: 2.2 }); const n = NPCS['lk_' + id]; kFriends.push(n); addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3, icon: '💬', label: () => 'Parler à ' + name.split(' (')[0], can: () => !n.hidden, act: () => talkCloudFriend(id) }); });
+  // La montgolfière du camping-car
+  { const u = C.model.userData, g = new T.Group(); u.body.add(g); u.balloon = g;
+    const bt = canvasTex(64, 64, (g2, w, h) => { const cs2 = ['#ff6a6a', '#ffd84d', '#6ab0ff', '#ffffff']; for (let k = 0; k < 8; k++) { g2.fillStyle = cs2[k % 4]; g2.fillRect(k * w / 8, 0, w / 8 + 1, h); } });
+    const env = mesh(new T.SphereGeometry(3.4, 20, 14), lam(0xffffff, { map: bt }), 0, 9.6, 0, g); env.scale.y = 1.2; mesh(new T.ConeGeometry(1.6, 2.4, 16, 1, true), lam(0xffffff, { map: bt, side: T.DoubleSide }), 0, 5.6, 0, g).rotation.x = Math.PI;
+    for (const [x, z] of [[-1.2, -2.2], [1.2, -2.2], [-1.2, 2.2], [1.2, 2.2]]) { const r = mesh(new T.CylinderGeometry(0.03, 0.03, 4.6, 3), lam(0xd8c8a8), x * 0.6, 4.4, z * 0.4, g); r.rotation.set(-z * 0.06, 0, x * 0.08); }
+    g.visible = false; kBalloon = g; }
+  // Voyages
+  addInter({ x: POI.base[0], z: POI.base[1] + 18, r: 5, icon: '🎈', label: () => 'Monter à l\'Île des Nuages', can: () => !!S.flags.ch5 && P.x > -1500 && P.x < 700, act: () => cloudTravel(true) });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 4.5, icon: '🏡', label: () => 'Redescendre au parc des Pins', can: () => onCloud() && !!S.flags.ch5, act: () => cloudTravel(false) });
+}
+// ---------- Les missions du chapitre 5 ----------
+const kCount = k => () => (S[k] || []).length;
+const KQ = [
+  { title: 'Une île dans les nuages', steps: [
+    { t: 'Donovan a vu quelque chose de bizarre en volant : va le voir', talk: 'donovan', at: () => POI.donovan, lines: [
+      ['donovan', 'Coin coin, Oscar ! Hier, j\'ai volé tout là-haut, au-dessus des nuages… Et j\'ai vu une ÎLE ! Une île qui flotte dans le ciel !'],
+      ['oscar', 'Comme celle dont parlait Splash ! Il faut y aller ! … Mais je ne sais pas voler. Je suis un ours. Un ours lourd.'],
+      ['donovan', 'Le camping-car vole, lui ! Mais pas assez haut… Demande à Max.'],
+    ] }] },
+  { title: 'La montgolfière de Max', steps: [
+    { t: 'Va voir Max à son atelier', talk: 'max', at: () => POI.max, lines: [
+      ['max', 'Une île dans les nuages ? On va accrocher une montgolfière au camping-car ! Un grand ballon rempli d\'air chaud.'],
+      ['max', 'Il me faut une grande toile, une longue corde et un panier solide.'],
+      ['max', 'Gisèle a une vieille toile de chapiteau à la mairie. Josette a des cordes à la ferme. Et Yvette, au chalet du ski, a de grands paniers.'],
+      ['oscar', 'Une toile, une corde, un panier. Facile. Je vais même pas les oublier. … C\'était quoi, déjà ?'],
+    ] }] },
+  { title: 'La toile de Gisèle', steps: [
+    { t: 'Va voir Gisèle, la maire, à la mairie du village', talk: 'gisele', at: () => POI.mairie, lines: [
+      ['gisele', 'Oscar ! Le héros du parc ! Une toile pour une montgolfière ? Prends la vieille toile du chapiteau, elle est à toi.'],
+      ['oscar', 'Merci madame la maire ! Je vous rapporterai une photo de l\'île. Si je n\'oublie pas l\'appareil.'],
+    ], done: () => { give('toile'); } }] },
+  { title: 'La corde de Josette', steps: [
+    { t: 'Va voir Josette à la ferme, dans la grande prairie', talk: 'josette', at: () => POI.josette, lines: [
+      ['josette', 'Une longue corde ? J\'en ai plein ! Mes poules s\'en servent pour faire de la balançoire.'],
+      ['oscar', 'Des poules qui font de la balançoire ?! … J\'aimerais bien voir ça.'],
+      ['josette', 'Tiens, la plus solide. Bon voyage dans les nuages !'],
+    ], done: () => { give('corde'); } }] },
+  { title: 'Le panier d\'Yvette', steps: [
+    { t: 'Va voir Yvette au chalet de la station de ski', talk: 'yvette', at: () => POI.chalet, lines: [
+      ['yvette', 'Mon grand panier ? D\'accord, mais d\'abord… j\'ai envie d\'une bonne omelette aux champignons !'],
+      ['yvette', 'Cueille-moi deux champignons dans la grande forêt, et le panier est à toi.'],
+      ['oscar', 'Deux champignons. Pas trois. Parce que le troisième, je le mange.'],
+    ] },
+    { t: 'Cueille 2 champignons dans les forêts du parc', ev: 'champi', n: 2 },
+    { t: 'Rapporte les champignons à Yvette', talk: 'yvette', at: () => POI.chalet, lines: [
+      ['yvette', 'Mmmh, ils sentent bon ! Voilà mon plus grand panier. Il tient même un ours !'],
+    ], done: () => { for (let k = 0; k < 2; k++) take('champi'); give('panier'); } }] },
+  { title: 'Le grand envol', steps: [
+    { t: 'Rapporte la toile, la corde et le panier à Max', talk: 'max', at: () => POI.max, lines: [
+      ['max', 'La toile, la corde, le panier… Je couds, je noue, je gonfle… FFFFFFF !'],
+      ['max', 'La montgolfière est prête ! Tout le monde à bord, direction les nuages !'],
+      ['oscar', 'Attendez-moi ! … J\'ai oublié mon goûter. … Non, je l\'ai. Il est dans mon ventre.'],
+    ], done: () => { for (const k of ['toile', 'corde', 'panier']) take(k); S.flags.balloon = 1; refreshCloud(); startBalloon(); } }] },
+  { title: 'Les Plumeaux', steps: [
+    { t: 'Quelque chose de tout rond sautille près de la montgolfière !', ev: 'pompon', at: () => [NPCS.pompon.x, NPCS.pompon.z] },
+    { t: 'Parle au petit oiseau tout rond', talk: 'pompon', at: () => [NPCS.pompon.x, NPCS.pompon.z], lines: [
+      ['pompon', 'Piou piou ! Un gros nuage marron qui marche ! … Ah non, c\'est un ours !'],
+      ['oscar', 'Je suis Oscar. Je ne suis pas un nuage. Même si je suis tout doux.'],
+      ['pompon', 'Moi c\'est Pompon ! Je suis un Plumeau. Viens vite voir Grand-Père Cumulus au village, il est très inquiet !'],
+    ] },
+    { t: 'Va voir Grand-Père Cumulus au village des Plumeaux', talk: 'cumulus', at: () => KVILLAGE, lines: [
+      ['cumulus', 'Bienvenue, voyageurs d\'en bas. Notre île flotte grâce au vent de ses trois moulins.'],
+      ['cumulus', 'Mais ils se sont tous arrêtés ! Et chaque jour, l\'île descend un peu plus vers la mer de nuages…'],
+      ['oscar', 'On va réparer vos moulins ! Je suis très fort en moulins. Enfin… je suis très fort en tout.'],
+      ['cumulus', 'Le moulin du nord a perdu ses ailes : le vent les a soufflées sur les petites îles. Prends les ponts arc-en-ciel.'],
+    ] }] },
+  { title: 'Le moulin du Nord', steps: [
+    { t: 'Retrouve les 4 ailes du moulin (sur les petites îles et sur la colline)', ev: 'blade', n: 4, count: kCount('kblade'), at: () => { const i = KBLADES.findIndex((b, k) => !(S.kblade || []).includes(k)); return i >= 0 ? KL(KBLADES[i][0], KBLADES[i][1]) : KMILLS[0]; } },
+    { t: 'Remets les ailes au moulin du Nord', ev: 'mill1', at: () => KMILLS[0] }] },
+  { title: 'Le nuage dormeur', steps: [
+    { t: 'Parle à Pompon : il a quelque chose à te dire', talk: 'pompon', at: () => [NPCS.pompon.x, NPCS.pompon.z], lines: [
+      ['pompon', 'Piou ! Le moulin du nord tourne ! Mais sur le moulin de l\'est… il y a un gros nuage qui fait la sieste. Il bloque les ailes !'],
+      ['pompon', 'Pour le réveiller, il faut faire du bruit : saute sur les trois nuages-trampolines juste à côté ! Boing boing boing !'],
+      ['oscar', 'Faire du bruit en sautant ? C\'est mon activité préférée !'],
+    ] },
+    { t: 'Saute sur les 3 nuages-trampolines près du moulin de l\'est', ev: 'bounce', n: 3, count: kCount('kbounce'), done: () => wakeDormeur(), at: () => { const i = [0, 1, 2].find(k => !(S.kbounce || []).includes(k)); return i !== undefined ? KL(KPADS[i][0], KPADS[i][1]) : KMILLS[1]; } }] },
+  { title: 'Les bulles de vent', steps: [
+    { t: 'Va voir Grand-Père Cumulus', talk: 'cumulus', at: () => KVILLAGE, lines: [
+      ['cumulus', 'Deux moulins qui tournent ! Il ne reste que celui de l\'ouest. Lui, il n\'a plus de vent du tout.'],
+      ['cumulus', 'Des bulles de vent flottent tout là-haut, au-dessus des trampolines de l\'ouest. Saute très haut pour les attraper !'],
+    ] },
+    { t: 'Attrape les 5 bulles de vent en sautant sur les trampolines de l\'ouest', ev: 'orb', n: 5, count: kCount('korb'), done: () => { S.flags.kmill3 = 1; talk([['oscar', 'Cinq bulles de vent ! FFFFOUUU… Le moulin de l\'ouest se remet à tourner !']]); sfx.fanfare(); }, at: () => { const o = kOrbs.find(o => !(S.korb || []).includes(o.k)); return o ? [o.x, o.z] : KMILLS[2]; } }] },
+  { title: 'Grondin l\'orage grognon', steps: [
+    { t: 'Retourne voir Grand-Père Cumulus', talk: 'cumulus', at: () => KVILLAGE, lines: [
+      ['cumulus', 'Les trois moulins tournent ! L\'île arrête de descendre… Mais pour qu\'elle remonte, il faut rallumer le Cœur du Ciel, dans le temple du nord.'],
+      ['cumulus', 'Hélas, Grondin l\'orage s\'est installé devant le pont du temple. Il est toujours de mauvaise humeur. Personne n\'ose passer.'],
+    ] },
+    { t: 'Va parler à Grondin l\'orage, devant le pont du temple', talk: 'grondin', at: () => [NPCS.grondin.x, NPCS.grondin.z], lines: [
+      ['grondin', 'GRRRROUMBLE ! Qu\'est-ce que tu veux, toi ? Passe ton chemin ! Je suis de mauvaise humeur !'],
+      ['oscar', 'Pourquoi tu es de mauvaise humeur ?'],
+      ['grondin', '… Parce que personne ne rit jamais avec moi. Dès que j\'arrive, tout le monde part en courant. BROUMM.'],
+      ['oscar', 'Moi, je connais plein de blagues ! … Enfin, mes amis en connaissent plein. Attends-moi !'],
+    ] }] },
+  { title: 'Trois blagues pour Grondin', steps: [
+    { t: 'Demande une blague à Filou, à Roquette et à Praline (près de la montgolfière)', ev: 'joke', n: 3, count: kCount('kjoke'), at: () => { const id = ['filou', 'roquette', 'praline'].find(k => !(S.kjoke || []).includes(k)); const n = id && NPCS['lk_' + id]; return n ? [n.x, n.z] : [NPCS.grondin.x, NPCS.grondin.z]; } },
+    { t: 'Raconte les trois blagues à Grondin', talk: 'grondin', at: () => [NPCS.grondin.x, NPCS.grondin.z], lines: [
+      ['oscar', 'Blague numéro un : qu\'est-ce qu\'un nuage qui court ? … Un nuage pressé !'],
+      ['grondin', '… Hmpf.'],
+      ['oscar', 'Blague numéro deux : pourquoi les oiseaux ne téléphonent jamais ? … Parce qu\'ils ont déjà des pieds-ailes ! Euh… Bon, celle-là, c\'est Roquette.'],
+      ['grondin', '… Pfff… pfrrr…'],
+      ['oscar', 'Blague numéro trois : quel est le comble pour un ours ? … C\'est d\'avoir un poil dans la main ! Et moi, j\'en ai plein !'],
+      ['grondin', 'PFFF… HA… HAHAHAHA ! BROUHAHAHA ! Un poil dans la main ! C\'est la meilleure !'],
+      ['grondin', 'Ça fait du bien de rire… Regarde : je fais un arc-en-ciel ! Passe, ami Oscar. Le pont du temple est à toi.'],
+    ], done: () => { S.flags.krain = 1; refreshCloud(); sfx.fanfare(); confetti(P.x, P.y + 3, P.z); } }] },
+  { title: 'Le Cœur du Ciel', steps: [
+    { t: 'Traverse le pont arc-en-ciel et parle à Cumulus dans le temple du Cœur du Ciel', talk: 'cumulus', at: () => KL(KISLETS[3].x, KISLETS[3].z), lines: [
+      ['cumulus', 'Tu es arrivé jusqu\'au temple… Pose ta patte sur le Cœur du Ciel, Oscar.'],
+      ['oscar', 'Comme ça ? … Oh ! Il s\'allume ! Il est tout chaud !'],
+      ['cumulus', 'Le vent des trois moulins revient au Cœur. Regarde : notre île remonte vers le soleil !'],
+      ['pompon', 'Piou piou piou ! On est sauvés ! C\'est la fête des Plumeaux !'],
+    ], done: () => { S.flags.kheart = 1; refreshCloud(); G.kparty = 14; sfx.fanfare(); confetti(P.x, P.y + 3, P.z); setTimeout(() => talk([['cumulus', 'Merci, Oscar. Désormais, tu es un ami des Plumeaux pour toujours.'], ['grondin', 'Et un ami des orages ! BROUM ! … Pardon, je voulais dire : merci.'], ['lk_plume', 'Hou hou… Oscar, regarde l\'horizon. Il y a une étoile qui clignote en plein jour… On dirait un signal de Zib !'], ['oscar', 'Les Zoublis ont besoin de nous ?! Ce sera notre prochaine aventure !']]), 9000); } }] },
+];
+const kStep = () => { const q = KQ[S.kq]; return q ? q.steps[S.kstep] : null; };
+function skyEvent(ev) {
+  if (!S || !S.flags.ch4done || S.flags.ch5done || S.kq === undefined) return;
+  const st = kStep(); if (!st || st.ev !== ev) { updateQuestUI(); saveGame(); return; }
+  const n = st.count ? st.count() : (S.kcnt = (S.kcnt || 0) + 1);
+  if (st.n && n < st.n) { toast(KQ[S.kq].title + ' : ' + n + ' / ' + st.n); updateQuestUI(); saveGame(); return; }
+  if (st.done) st.done();
+  skyAdvance();
+}
+function skyAdvance() {
+  S.kstep++; S.kcnt = 0;
+  if (S.kstep >= KQ[S.kq].steps.length) {
+    S.kq++; S.kstep = 0;
+    if (KQ[S.kq]) { banner('Chapitre 5', KQ[S.kq].title); sfx.quest(); }
+    else { S.flags.ch5done = 1; banner('Chapitre 5 terminé !', 'L\'Île des Nuages remonte vers le soleil ☁️'); sfx.fanfare(); S.coins += 600; updateHUD(); }
+  } else sfx.step();
+  const st = kStep(); if (st && st.ev && st.count && st.count() >= st.n) return skyAdvance();
+  refreshCloud(); updateQuestUI(); saveGame();
+}
+function skyTalk(id) {
+  if (!S || !S.flags.ch4done || S.flags.ch5done) return false;
+  if (S.kq === undefined) { S.kq = 0; S.kstep = 0; S.kcnt = 0; }
+  const st = kStep(); if (!st || st.talk !== id) return false;
+  talk(st.lines, () => { if (st.done) st.done(); skyAdvance(); });
+  return true;
+}
+function talkCloud(id) {
+  if (skyTalk(id)) return;
+  const happy = !!S.flags.kheart, L = {
+    pompon: happy ? ['Piou ! Je vole un tout petit peu, maintenant ! Regarde ! … Bon, je saute.', 'Tu reviens jouer demain ?'] : ['Piou piou ! Tu es le plus gros oiseau que j\'aie jamais vu ! Ah non, tu es un ours.', 'Les trampolines, c\'est mon jeu préféré !'],
+    cumulus: happy ? ['Le vent souffle, l\'île est heureuse. Merci, Oscar.', 'Reviens nous voir quand tu veux. Il y aura toujours une place pour toi dans un nid.'] : ['Courage, Oscar. Le vent finit toujours par revenir.', 'J\'ai vu passer mille tempêtes, mon petit.'],
+    grondin: S.flags.krain ? ['HAHAHA ! Un poil dans la main ! Je la raconte à tous les nuages !', 'Tu connais d\'autres blagues ? Viens m\'en raconter !'] : ['GRRROUMBLE.', 'BROUMM. Laisse-moi bouder.'],
+    plum1: ['Piou ! Tu as des plumes ? Non ? Des poils ? C\'est bizarre, des poils.'], plum2: ['Je collectionne les flocons de nuage. J\'en ai trois cents !'], plum3: ['Ici, quand il pleut, il pleut vers le bas. Comme chez toi, je crois.'], plum4: ['Je suis le plus drôle des Plumeaux ! Enfin… après Grondin, maintenant.'],
+  };
+  talk([[id, pick(L[id] || ['Piou !'])]]);
+}
+const KJOKES = { filou: 'Devinette-blague : qu\'est-ce qu\'un nuage qui court ? … Un nuage pressé ! Hihi.', roquette: 'Pourquoi les oiseaux ne téléphonent jamais ? Parce qu\'ils ont déjà des pieds-ailes ! … Bon, elle est nulle, mais je l\'adore.', praline: 'Ouaf ! Quel est le comble pour un ours ? D\'avoir un poil dans la main ! Ouaf ouaf !' };
+function talkCloudFriend(id) {
+  const st = kStep();
+  if (st && st.ev === 'joke' && KJOKES[id] && !(S.kjoke || []).includes(id)) { return talk([['lk_' + id, KJOKES[id]], ['oscar', 'Hahaha ! Je la garde pour Grondin !']], () => { S.kjoke = S.kjoke || []; S.kjoke.push(id); skyEvent('joke'); }); }
+  const L = { max: 'Ma montgolfière vole comme une plume ! Enfin, comme un camping-car très léger.', lulu: 'Il n\'y a pas de lac ici… mais les cascades tombent dans les nuages !', raflex: 'Yo ! Une plume de Plumeau pour mon musée, ça serait trop bien.', donovan: 'Coin ! Je vole avec les Plumeaux ! On fait la course !', noisette: 'Les arbres-nuages ont des fruits tout doux… mais pas de noisettes.', blaireau: 'J\'ai le vertige, petit. Je reste au milieu de l\'île.', plume: 'Hou hou ! Je n\'ai jamais volé aussi haut de toute ma vie.', maurice: 'Wouf ! Les trampolines, c\'est mieux que les flaques de boue !', praline: 'Ouaf ! Je saute plus haut que les nuages !', roquette: 'Un pont arc-en-ciel ! Je fais la course jusqu\'au bout !', filou: 'Devinette : je suis en haut du ciel et je fais pousser des fleurs… L\'Île des Nuages !' };
+  talk([['lk_' + id, L[id]]]);
+}
+function refreshCloud() {
+  if (!S) return;
+  const q = S.kq, at = (k, s) => q === k && S.kstep === s;
+  kBladeM.forEach((g, i) => { g.visible = at(7, 0) && !(S.kblade || []).includes(i); });
+  kOrbs.forEach(o => { o.g.visible = at(9, 1) && !(S.korb || []).includes(o.k); });
+  const m1 = kMills[0]; if (m1) m1.userData.blades.visible = !!S.flags.kmill1;
+  if (kDormeur) kDormeur.visible = !S.flags.kmill2;
+  for (const r of kRainbows) r.visible = r.userData.id !== 'temple' || !!S.flags.krain;
+  const g = NPCS.grondin; if (g) { const u = g.model.userData, happy = !!S.flags.krain; u.mat.color.set(happy ? 0xfbfcff : 0x8a8e9e).convertSRGBToLinear(); u.brows.forEach((b, i) => { b.rotation.z = (i ? -1 : 1) * (happy ? -0.25 : 0.35); }); u.mouth.rotation.z = happy ? Math.PI : 0; if (happy) { g.x = KBRIDGES[3].a[0] + 9; g.z = KBRIDGES[3].a[1] + 4; } }
+  if (kHeart) { kHeart.material.emissiveIntensity = S.flags.kheart ? 1.2 : 0.3; kHeart.userData.gl.material.opacity = S.flags.kheart ? 0.9 : 0.2; }
+  const cu = NPCS.cumulus; if (cu) { if (at(12, 0) || S.flags.kheart) { const I = KISLETS[3]; cu.x = KSKY.x + I.x + 3; cu.z = KSKY.z + I.z + 6; } else { cu.x = KVILLAGE[0]; cu.z = KVILLAGE[1] + 2; } }
+  const po = NPCS.pompon; if (po && q >= 7) { po.x = KVILLAGE[0] - 10; po.z = KVILLAGE[1] + 20; }
+  for (const n of kFriends) { n.hidden = !S.flags.ch5; n.model.visible = !!S.flags.ch5; }
+  if (kBalloon) kBalloon.visible = !!S.flags.balloon;
+}
+// ---------- Ambiance de l'île ----------
+function cloudFog() {
+  scene.fog.color.lerp(_c1.set(0xe8f4ff), 0.45);
+  if (G.cine) return [120, 700, 900];
+  return [90, 420, 520];
+}
+function updateCloud(dt) {
+  const on = onCloud() && G.state === 'play';
+  for (const g of kFlocks) { g.visible = on; if (!on) continue; g.userData.a += dt * 0.004 * g.userData.sp; g.position.x = KSKY.x + Math.cos(g.userData.a) * g.userData.d; g.position.z = KSKY.z + Math.sin(g.userData.a) * g.userData.d; }
+  if (kFalls.mat) kFalls.mat.map.offset.y += dt * 0.6;
+  if (!on) return;
+  // Oscar ne tombe jamais de l'île : il s'arrête au bord
+  if (P.mode === 'walk') { if (kVoid(P.x, P.z) && kLast) { P.x = kLast[0]; P.z = kLast[1]; P.vx = P.vz = 0; P.y = walkY(P.x, P.z); if (!G.edgeSaid || G.t - G.edgeSaid > 6) { G.edgeSaid = G.t; oscarSay(pick(['Ouh là ! C\'est haut ! Je recule.', 'Je ne regarde pas en bas. Je ne regarde pas en bas…', 'Si je tombe, j\'atterris dans un nuage tout doux. … Non, je ne vais pas essayer.']), 3.5); } } else kLast = [P.x, P.z]; }
+  // Nuages-trampolines : BOING !
+  P.hv = P.hv || 0; P.hop = P.hop || 0;
+  if (P.mode === 'walk') for (const pd of kPads) { if (P.hop < 0.05 && Math.hypot(P.x - pd.x, P.z - pd.z) < 1.9) { P.hv = pd.i >= 3 && pd.i <= 7 ? 18 : 12; pd.sq = 1; sfx.blip(); puff(pd.x, cloudY(pd.x, pd.z) + 0.6, pd.z, 8, [1, 1, 1], 2); if (pd.i <= 2) { S.kbounce = S.kbounce || []; if (!S.kbounce.includes(pd.i) && S.kq === 8 && S.kstep === 1) { S.kbounce.push(pd.i); skyEvent('bounce'); } } } }
+  if (P.hv !== 0 || P.hop > 0) { P.hop += P.hv * dt; P.hv -= 32 * dt; if (P.hop <= 0) { P.hop = 0; P.hv = 0; } }
+  for (const pd of kPads) { pd.sq = Math.max(0, pd.sq - dt * 3); pd.g.scale.set(1 + pd.sq * 0.2, 1 - pd.sq * 0.5, 1 + pd.sq * 0.2); }
+  // Bulles de vent attrapées en plein saut
+  for (const o of kOrbs) { if (!o.g.visible) continue; o.g.position.y = o.y + Math.sin(G.t * 2 + o.k) * 0.3; o.g.rotation.y += dt; if (Math.hypot(P.x - o.x, P.z - o.z) < 1.8 && P.y + 1.4 > o.g.position.y - 1.2) { o.g.visible = false; S.korb = S.korb || []; S.korb.push(o.k); sparkle(o.x, o.g.position.y, o.z); sfx.ring(); skyEvent('orb'); } }
+  // Les moulins tournent quand ils marchent
+  const runs = [!!S.flags.kmill1, !!S.flags.kmill2, !!S.flags.kmill3];
+  kMills.forEach((m, i) => { if (runs[i]) m.userData.blades.rotation.z += dt * 1.3; });
+  // Le nuage dormeur ronfle, puis s'envole quand il est réveillé
+  if (kDormeur && kDormeur.visible) { if (Math.random() < dt * 1.5) emit(kDormeur.position.x + 2, kDormeur.position.y + 3, kDormeur.position.z, 0.3, 1, 0, 2, 0.5, 0.6, 0.7, 1, 0); kDormeur.scale.y = 1.5 + Math.sin(G.t * 1.5) * 0.05; if (G.kwake !== undefined) { G.kwake += dt; kDormeur.position.y += dt * (3 + G.kwake * 4); kDormeur.position.x += dt * 6; if (G.kwake > 5) { G.kwake = undefined; S.flags.kmill2 = 1; refreshCloud(); } } }
+  // Grondin fait pleuvoir quand il boude
+  const gr = NPCS.grondin; if (gr && !S.flags.krain && Math.random() < dt * 14) emit(gr.x + rand(-2, 2), gr.y + 1.5, gr.z + rand(-1, 1), 0, -8, 0, 0.6, 0.15, 0.6, 0.7, 0.9, 0);
+  if (gr) gr.dy = 1 + Math.sin(G.t * 1.2) * 0.3;
+  // Les Plumeaux sautillent
+  for (const id of ['pompon', 'plum1', 'plum2', 'plum3', 'plum4']) { const n = NPCS[id]; if (n) n.dy = Math.abs(Math.sin(G.t * (id === 'pompon' ? 4 : 2.5) + n.x)) * (id === 'pompon' ? 0.6 : 0.25) + (G.kparty > 0 ? Math.abs(Math.sin(G.t * 7 + n.z)) * 0.8 : 0); }
+  const po = NPCS.pompon; if (po && S.kq === 6 && S.kstep === 0 && Math.hypot(po.x - P.x, po.z - P.z) < 12 && !G.talking) skyEvent('pompon');
+  if (kHeart) { kHeart.rotation.y += dt * (S.flags.kheart ? 1 : 0.2); kHeart.position.y = cloudY(kHeart.position.x, kHeart.position.z) + 4 + Math.sin(G.t) * 0.2; }
+  if (G.kparty > 0) { G.kparty -= dt; if (Math.random() < dt * 5) confetti(KVILLAGE[0] + rand(-12, 12), cloudY(KVILLAGE[0], KVILLAGE[1]) + 5, KVILLAGE[1] + rand(-12, 12)); }
+}
+// Le moulin de l'est se libère quand le nuage dormeur se réveille
+function wakeDormeur() { if (S.flags.kmill2 || G.kwake !== undefined) return; G.kwake = 0; talk([['oscar', 'BOING BOING BOING ! Réveille-toi, gros nuage !'], ['pompon', 'Il ouvre un œil… Il bâille… Il s\'envole ! Le moulin de l\'est est libre !']]); sfx.fanfare(); }
+// ---------- Cinématique : la montgolfière monte jusqu'à l'île ----------
+const BAL_CAP = [[0.5, 'Max : Tout le monde dans le panier… euh, dans le camping-car !'], [4, 'La montgolfière monte doucement au-dessus du parc…'], [9, 'On traverse les nuages !']];
+const BAL_CAP2 = [[0.5, 'Au-dessus des nuages… Regarde ! L\'Île des Nuages !'], [5, 'Des moulins, des ponts arc-en-ciel, des cascades qui tombent dans le vide…'], [9.5, 'On se pose tout doucement…']];
+function startBalloon() {
+  fadeTo(() => {
+    G.cine = { kind: 'balloon', t: 0, cap: 0, ph: 1 };
+    P.mode = 'cine'; P.model.visible = false; G.wanted = 0; if (P.disguise) setDisguise(false);
+    C.x = POI.workshop[0] - 2; C.z = POI.workshop[1] + 14; C.rot = 0.4; C.y = groundY(C.x, C.z); C.model.rotation.set(0, C.rot, 0);
+  });
+}
+function updateBalloon(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  const caps = L.ph === 1 ? BAL_CAP : BAL_CAP2;
+  while (L.cap < caps.length && t >= caps[L.cap][0]) { status(caps[L.cap][1], 'info', 4); L.cap++; }
+  if (L.ph === 1) {
+    const k = clamp(t / 11, 0, 1), bx = POI.workshop[0] - 2, bz = POI.workshop[1] + 14;
+    C.x = bx + Math.sin(t * 0.3) * 4; C.z = bz; C.y = groundY(bx, bz) + 120 * k * k;
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(Math.sin(t) * 0.03, C.rot + t * 0.1, Math.cos(t * 0.8) * 0.03);
+    const a = 0.6 + t * 0.15; camera.position.set(C.x + Math.sin(a) * 26, C.y + 4 + k * 10, C.z + Math.cos(a) * 26); camera.lookAt(C.x, C.y + 5, C.z);
+    if (t > 11 && !L.faded) { L.faded = true; fadeTo(() => balloonPhase2()); }
+  } else {
+    const k = clamp(t / 12, 0, 1), e = 1 - (1 - k) * (1 - k), ex = KLAND[0] + 24, ez = KLAND[1] - 4;
+    C.x = lerp(ex, ex, e); C.z = lerp(ez + 140, ez, e); C.y = lerp(30, cloudY(ex, ez), e);
+    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(Math.sin(t) * 0.03, Math.PI, 0);
+    camera.position.set(C.x + 30 - e * 10, C.y + 10, C.z + 34 - e * 8); camera.lookAt(lerp(KSKY.x, C.x, e), lerp(5, C.y + 4, e), lerp(KSKY.z, C.z, e));
+    if (k >= 1 && t > 13 && !L.done) { L.done = true; puff(C.x, C.y, C.z, 30, [1, 1, 1], 3); fadeTo(endBalloon); }
+  }
+}
+function balloonPhase2() { const L = G.cine; L.ph = 2; L.t = 0; L.cap = 0; P.x = KLAND[0]; P.z = KLAND[1]; S.flags.ch5 = 1; refreshCloud(); }
+function endBalloon() {
+  G.cine = null; $('quest').style.visibility = '';
+  C.x = KLAND[0] + 24; C.z = KLAND[1] - 4; C.rot = Math.PI; C.y = cloudY(C.x, C.z); C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
+  P.mode = 'walk'; P.model.visible = true; P.x = KLAND[0] + 2; P.z = KLAND[1] + 4; P.y = cloudY(P.x, P.z); kLast = [P.x, P.z]; snapCamera();
+  S.flags.ch5 = 1; refreshCloud(); updateQuestUI(); saveGame();
+  banner('Chapitre 5', 'L\'Île des Nuages ☁️');
+  setTimeout(() => talk([['lk_max', 'Atterrissage parfait ! Ma montgolfière est la meilleure du monde !'], ['lk_donovan', 'Coin coin ! Je vous l\'avais dit : une île dans le ciel !'], ['oscar', 'Je marche sur une île qui vole… Je suis un ours-oiseau ! Un oiseaurs !'], ['lk_plume', 'Hou hou… Faites attention aux bords, c\'est très haut !']]), 2400);
+}
+function skipBalloon() { const L = G.cine; if (!L || L.done || L.t < 3) return; L.done = true; fadeTo(() => { if (L.ph === 1) balloonPhase2(); endBalloon(); }); }
+function cloudTravel(up) {
+  fadeTo(() => {
+    G.wanted = 0; if (P.disguise) setDisguise(false);
+    if (up) { C.x = KLAND[0] + 24; C.z = KLAND[1] - 4; C.rot = Math.PI; P.x = KLAND[0] + 2; P.z = KLAND[1] + 4; kLast = [P.x, P.z]; status('🎈 La montgolfière monte jusqu\'à l\'Île des Nuages…', 'info', 4); }
+    else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status('🏡 Retour au parc des Pins !', 'info', 4); }
+    C.y = groundY(C.x, C.z); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
+    P.mode = 'walk'; P.hop = 0; P.hv = 0; P.y = walkY(P.x, P.z); snapCamera(); refreshCloud(); refreshSea(); refreshForest(); updateQuestUI(); saveGame();
+  });
+}
+function drawCloudMap() {
+  const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, R = KSKY.r + 8, k = Wm / (R * 2);
+  const X = x => (x - KSKY.x + R) * k, Z = z => (z - KSKY.z + R) * k;
+  g.fillStyle = '#d8ecff'; g.fillRect(0, 0, Wm, Wm);
+  g.fillStyle = '#7ed07a'; g.beginPath(); for (let i = 0; i <= 64; i++) { const a = i / 64 * 6.283, r = KMAINR(a); const x = X(KSKY.x + Math.cos(a) * r), z = Z(KSKY.z + Math.sin(a) * r); i ? g.lineTo(x, z) : g.moveTo(x, z); } g.fill();
+  for (const I of KISLETS) { g.fillStyle = I.id === 'temple' ? '#f4f0ff' : '#9ad880'; g.beginPath(); g.arc(X(KSKY.x + I.x), Z(KSKY.z + I.z), I.r * k, 0, 6.283); g.fill(); }
+  for (const b of KBRIDGES) { if (!kBridgeOpen(b)) continue; g.strokeStyle = '#ff9ad0'; g.lineWidth = 6; g.beginPath(); g.moveTo(X(b.a[0]), Z(b.a[1])); g.lineTo(X(b.b[0]), Z(b.b[1])); g.stroke(); }
+  g.font = '700 18px Nunito, sans-serif'; g.textAlign = 'center';
+  for (const [t, p] of [['Montgolfière', [KLAND[0], KLAND[1] + 14]], ['Village des Plumeaux', [KVILLAGE[0], KVILLAGE[1] - 24]], ['Colline', KHILL], ['Moulin du Nord', [KMILLS[0][0], KMILLS[0][1] - 10]], ['Moulin de l\'Est', [KMILLS[1][0], KMILLS[1][1] - 10]], ['Moulin de l\'Ouest', [KMILLS[2][0], KMILLS[2][1] - 10]], ['Temple du Cœur du Ciel', KL(KISLETS[3].x, KISLETS[3].z - 30)]]) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#2a3a5a'; g.fillText(t, X(p[0]), Z(p[1])); }
+  const st = S.flags.ch5done ? null : kStep(), tgt = st && st.at && st.at();
+  if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
+  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
+  g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+  g.restore();
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -6503,7 +6979,7 @@ function updateGfx(dt) {
   WIND.time.value += dt;
   // Le ciel suit la caméra et prend les couleurs de l'heure
   if (skyDome) {
-    const space = P.x > 1500 || (G.cine && G.cine.space) || (G.state === 'play' && P.x > 700);
+    const space = (P.x > 1500 && P.x < 5500) || (G.cine && G.cine.space) || (G.state === 'play' && P.x > 700 && P.x < 5500);
     skyDome.visible = !space && (G.spaceK || 0) < 0.5;
     if (skyDome.visible) {
       skyDome.position.copy(camera.position);
@@ -6547,6 +7023,7 @@ const OSCAR_NIGHT = ['Il fait noir… Je n\'ai pas peur. C\'est le noir qui a pe
 const OSCAR_EAT = ['Miam ! Encore ! ENCORE !', 'Les baies, c\'est presque aussi bon que le miel.', 'Je n\'avais pas faim. Mais maintenant, j\'ai encore plus faim.', 'Une baie pour moi, une baie pour moi, une baie pour moi…'];
 const OSCAR_FOREST = ['Ces arbres sont trop grands. C\'est de la triche.', 'Je ne suis pas perdu. Je visite. Très longtemps.', 'Un champignon qui brille ! Je ne le mange pas. … Peut-être un tout petit bout ?', 'Ohé ! Les amis ! … Il n\'y a que l\'écho qui répond. Il est poli, l\'écho.'];
 const OSCAR_SEA = ['Je suis un ours-poisson ! Un poissours !', 'Un poisson m\'a regardé bizarrement. Je l\'ai regardé bizarrement aussi.', 'Est-ce que les algues, ça se mange ? … Beurk. Non.', 'Si je reste ici trop longtemps, je vais avoir des nageoires ?', 'Je ne suis pas mouillé. C\'est le casque. Je suis un génie.'];
+const OSCAR_SKY = ['Je marche sur un nuage ! … Non, sur une île. Mais c\'est presque pareil.', 'Si je saute très fort, je touche le soleil ? … Aïe, non.', 'Les Plumeaux sont tout ronds. Comme moi après le goûter.', 'Je ne regarde pas en bas. Je suis très courageux, mais je ne regarde pas en bas.', 'BOING ! J\'adore les trampolines-nuages !'];
 const OSCAR_MOON = ['Je saute haut comme un kangourou ! Un kangourou poilu.', 'Il n\'y a pas de miel, sur la Lune. Quelle drôle de planète.', 'Je vais planter un drapeau ! … J\'ai oublié le drapeau.'];
 function oscarSay(t, dur) { if (G.talking || G.cine) return; OSAY.txt = t; OSAY.t = dur || 4; OSAY.cd = rand(16, 26); }
 function updateOscar(dt) {
@@ -6562,9 +7039,10 @@ function updateOscar(dt) {
   if (OSAY.bump > 1.2) { oscarSay(pick(OSCAR_BUMP)); OSAY.bump = 0; }
   else if (swimNow) oscarSay(pick(OSCAR_SWIM));
   else if (OSAY.run > 6) { oscarSay(pick(OSCAR_RUN)); OSAY.run = 0; }
-  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 3000 ? OSCAR_SEA : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
+  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 5500 ? OSCAR_SKY : P.x > 3000 ? OSCAR_SEA : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
   else if (P.x < -1500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_FOREST), 4.5);
-  else if (P.x > 3000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_SEA), 4.5);
+  else if (P.x > 5500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_SKY), 4.5);
+  else if (onSea() && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_SEA), 4.5);
   else if (P.x > 1500 && P.x < 3000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_MOON), 4.5);
 }
 // La bulle de pensée, dessinée par-dessus la 3D
@@ -6631,7 +7109,7 @@ const sfx = (() => {
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
   function music() {
     if (!ac || !OPT.music || G.state !== 'play' && G.state !== 'title') return;
-    const moon = G.state === 'play' && (P.x > 1500 || !!G.cine), snow = G.state === 'play' && (P.z < -214 || moon), night = nightK > 0.5 || moon;
+    const moon = G.state === 'play' && ((P.x > 1500 && P.x < 5500) || !!G.cine), snow = G.state === 'play' && (P.z < -214 || moon), night = nightK > 0.5 || moon;
     const forest = G.state === 'play' && P.x < -1500 && !G.cine;
     const bpm = chase ? 150 : moon ? 70 : forest ? 74 : snow ? 84 : night ? 78 : 96, st = 60 / bpm / 2;
     while (nextNote < ac.currentTime + 0.2) {
@@ -6782,7 +7260,8 @@ function updateHUD() {
   $('starN').textContent = (S.stars || 0) + ' / ' + STARS_MAX;
 }
 function updateQuestUI() {
-  if (S.flags.ch3done && !S.flags.ch4done && (P.x > 3000 || !QUESTS[S.q])) { if (S.cq === undefined) { S.cq = 0; S.cstep = 0; S.ccnt = 0; } const cq = CQ[S.cq], cs = cStep(); if (cq && cs) { $('qTitle').textContent = 'Chapitre 4 · ' + cq.title; $('qText').textContent = cs.t + (cs.n ? ' (' + (cs.count ? cs.count() : S.ccnt || 0) + ' / ' + cs.n + ')' : ''); return; } }
+  if (S.flags.ch4done && !S.flags.ch5done && (onCloud() || !QUESTS[S.q])) { if (S.kq === undefined) { S.kq = 0; S.kstep = 0; S.kcnt = 0; } const kq = KQ[S.kq], ks = kStep(); if (kq && ks) { $('qTitle').textContent = 'Chapitre 5 · ' + kq.title; $('qText').textContent = ks.t + (ks.n ? ' (' + (ks.count ? ks.count() : S.kcnt || 0) + ' / ' + ks.n + ')' : ''); return; } }
+  if (S.flags.ch3done && !S.flags.ch4done && (onSea() || !QUESTS[S.q])) { if (S.cq === undefined) { S.cq = 0; S.cstep = 0; S.ccnt = 0; } const cq = CQ[S.cq], cs = cStep(); if (cq && cs) { $('qTitle').textContent = 'Chapitre 4 · ' + cq.title; $('qText').textContent = cs.t + (cs.n ? ' (' + (cs.count ? cs.count() : S.ccnt || 0) + ' / ' + cs.n + ')' : ''); return; } }
   if (S.flags.ch3 && !S.flags.ch3done && (P.x < -1500 || !QUESTS[S.q])) { const fq = FQ[S.fq], fs = fStep(); if (fq && fs) { $('qTitle').textContent = 'Chapitre 3 · ' + fq.title; $('qText').textContent = fs.t + (fs.n ? ' (' + (fs.count ? fs.count() : S.fcnt || 0) + ' / ' + fs.n + ')' : ''); return; } }
   if (S.flags.ch2done && !S.flags.ch3 && (P.x > 1500 || !QUESTS[S.q])) { $('qTitle').textContent = 'Chapitre 3 · Un nouveau voyage'; $('qText').textContent = P.x > 1500 ? 'Rentre sur Terre avec le camping-car spatial : tous les amis montent à bord !' : 'Va à la base de lancement du canyon rouge : un nouveau voyage t\'attend avec tous les amis !'; return; }
   if (S.flags.moon && !S.flags.ch2done && (P.x > 1500 || !QUESTS[S.q])) { const mq = MQ[S.mq], ms = mStep(); if (mq && ms) { $('qTitle').textContent = 'Chapitre 2 · ' + mq.title; $('qText').textContent = ms.t + (ms.n ? ' (' + (S.mcnt || 0) + ' / ' + ms.n + ')' : ''); return; } }
@@ -6938,6 +7417,7 @@ function openJournal() {
     [S.flags.carnetDone, '📖 Carnet sauvage d\'Elliot : ' + nw + ' / ' + WILD.length, S.flags.carnet ? 'Approche-toi des animaux sauvages pour les noter.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.'],
   ];
   if (S.flags.moon) { const hm = document.createElement('div'); hm.innerHTML = '<b>🌙 Chapitre 2 : les Zoublis</b><p></p>'; hm.querySelector('p').textContent = S.flags.ch2done ? 'Terminé ! Les Zoublis sont rentrés chez eux.' : (MQ[S.mq] ? MQ[S.mq].title + ' — ' + mStep().t : ''); L.appendChild(hm); }
+  if (S.flags.ch4done) { const h5 = document.createElement('div'); h5.innerHTML = '<b>☁️ Chapitre 5 : l\'Île des Nuages</b><p></p>'; h5.querySelector('p').textContent = S.flags.ch5done ? 'Terminé ! L\'Île des Nuages est remontée vers le soleil.' : KQ[S.kq || 0] ? KQ[S.kq || 0].title + ' — ' + KQ[S.kq || 0].steps[S.kq === undefined ? 0 : S.kstep].t : ''; L.appendChild(h5); }
   if (S.flags.ch3done) { const h4 = document.createElement('div'); h4.innerHTML = '<b>🐚 Chapitre 4 : le Royaume sous la Mer</b><p></p>'; h4.querySelector('p').textContent = S.flags.ch4done ? 'Terminé ! La Grande Perle brille de nouveau au village des Coquillages.' : CQ[S.cq || 0] ? CQ[S.cq || 0].title + ' — ' + CQ[S.cq || 0].steps[S.cq === undefined ? 0 : S.cstep].t : ''; L.appendChild(h4); }
   if (S.flags.ch2done) { const h3 = document.createElement('div'); h3.innerHTML = '<b>🌳 Chapitre 3 : la Forêt Immense</b><p></p>'; h3.querySelector('p').textContent = S.flags.ch3done ? 'Terminé ! Tous les amis sont rentrés, et la graine de l\'Arbre-Mère pousse près de ta grotte.' : S.flags.ch3 ? (FQ[S.fq] ? FQ[S.fq].title + ' — ' + fStep().t : '') : 'Un nouveau voyage t\'attend à la base de lancement (ou en rentrant de la Lune).'; L.appendChild(h3); }
   const h2 = document.createElement('div'); h2.innerHTML = '<b>🧭 Les aventures du Grand Nord</b><p>Parle aux habitants des nouvelles régions !</p>'; L.appendChild(h2);
@@ -6964,6 +7444,7 @@ function drawMoonMap() {
 }
 function openMap() { drawMap(); openPanel('pMap'); }
 function drawMap() {
+  if (P.x > 5500) { drawCloudMap(); return; }
   if (P.x > 3000) { drawSeaMap(); return; }
   if (P.x > 1500) { drawMoonMap(); return; }
   if (P.x < -1500) { drawForestMap(); return; }
@@ -6992,7 +7473,7 @@ function drawMap() {
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
-  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), cs4 = S.flags.ch3done && !S.flags.ch4done && S.cq !== undefined && cStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : cs4 && cs4.at ? cs4.at() : mapTarget();
+  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), cs4 = S.flags.ch3done && !S.flags.ch4done && S.cq !== undefined && cStep(), ks5 = S.flags.ch4done && !S.flags.ch5done && S.kq !== undefined && kStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : cs4 && cs4.at ? cs4.at() : ks5 && ks5.at ? ks5.at() : mapTarget();
   const stg = sideTarget(); if (stg && stg !== tgt) { g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(stg[0]), Z(stg[1]), 9, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
@@ -7039,7 +7520,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500 && P.x < 3000) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (P.x > 3000) { C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); refreshSea(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500 && P.x < 3000) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (onSea()) { C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; } if (P.x > 5500) { C.x = KLAND[0] + 24; C.z = KLAND[1] - 4; C.rot = Math.PI; kLast = [P.x, P.z]; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); refreshSea(); refreshCloud(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -7070,7 +7551,7 @@ $('bNew').addEventListener('click', () => { try { localStorage.removeItem(SAVE_K
 // ================= Caméra =================
 const camPos = new V3(0, 30, 30), camLook = new V3();
 // Après un voyage, la caméra se place tout de suite derrière Oscar
-function snapCamera() { const lo = P.x < -1500, sea = P.x > 3000; camPos.set(P.x, P.y + (lo ? 13.2 : sea ? 15.2 : 34.2), P.z + (sea ? 19 : 17)); camLook.set(P.x, P.y + 1.2, P.z); }
+function snapCamera() { const lo = P.x < -1500, sea = onSea(); camPos.set(P.x, P.y + (lo ? 13.2 : sea ? 15.2 : 34.2), P.z + (sea ? 19 : 17)); camLook.set(P.x, P.y + 1.2, P.z); }
 function updateCamera(dt) {
   if (G.camOverride || G.cine) return;
   if (G.state === 'title') {
@@ -7088,7 +7569,7 @@ function updateCamera(dt) {
   // Dans la Forêt Immense, la caméra passe sous les grands arbres
   if (P.x < -1500 && P.mode === 'walk') off = [0, 12, 17];
   // Sous la mer aussi, la caméra descend près du fond
-  if (P.x > 3000 && P.mode === 'walk') off = [0, 14, 19];
+  if (onSea() && P.mode === 'walk') off = [0, 14, 19];
   if (G.talking && G.talkWho && G.talkWho !== 'oscar' && NPCS[G.talkWho]) {
     const n = NPCS[G.talkWho];
     target.set((P.x + n.x) / 2, Math.max(P.y + 1.5, n.id === 'plume' ? n.y - 2 : P.y + 1.5), (P.z + n.z) / 2);
@@ -7211,7 +7692,7 @@ function step(dt) {
     else if (P.mode === 'cine') updateLaunch(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateSea(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateSea(dt); updateCloud(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -7243,7 +7724,7 @@ function step(dt) {
   const space = G.state === 'play' && ((P.x > 1500 && P.x < 3000) || (G.cine && G.cine.space));
   if (space) { scene.background.set(0x05060c); scene.fog.color.set(0x05060c); hemi.intensity = 0.42; hemi.color.set(0xcfd8ff); hemi.groundColor.set(0x404050); sun.intensity = 0.95; sun.color.setRGB(1, 1, 1); winMat.emissiveIntensity = 0.6; }
   else if (G.spaceK > 0) { _c1.set(0x05060c); scene.background.lerp(_c1, G.spaceK); scene.fog.color.lerp(_c1, G.spaceK); }
-  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : G.state === 'play' && !space && P.x > 3000 ? seaFog() : null;
+  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : G.state === 'play' && !space && onSea() ? seaFog() : G.state === 'play' && !space && P.x > 5500 ? cloudFog() : null;
   const fogN = space ? 260 : ff ? ff[0] : G.cine ? 2500 : 140, fogF = space ? 900 : ff ? ff[1] : G.cine ? 6000 : 340, far = space ? 6000 : ff ? ff[2] : G.cine ? 6000 : 380;
   scene.fog.near = fogN; scene.fog.far = fogF; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   if (G.state === 'play' && P.x > 700 && P.x < 1500) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
@@ -7293,6 +7774,7 @@ buildMoon();
 buildForest();
 buildNature();
 buildSea();
+buildCloud();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -7302,7 +7784,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>

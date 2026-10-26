@@ -47,7 +47,7 @@ Pour y jouer en local, ouvre `escadron/index.html`.
 
 ## Jeu : Ours Malin
 
-Aventure 3D en 4 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
+Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
 
 - 14 missions qui se suivent, avec Max le castor, Lulu la loutre, Raflex le raton laveur (son musée), Donovan le canard (course contre la montre), Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau.
 - Une ligne blanche au sol guide vers l'objectif pendant les deux premières missions.
@@ -95,6 +95,13 @@ Aventure 3D en 4 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
   4. retrouver le ballon de Galet ;
   5. suivre les bulles dorées jusqu'à la grotte de Crabos, le grand crabe qui avait pris la Grande Perle parce qu'il avait peur du noir ;
   6. lui apporter une lanterne, puis rendre la perle au village pour la grande fête de la mer.
+- Chapitre 5, l'Île des Nuages (13 missions) : Donovan a vu une île qui flotte dans le ciel. Max accroche une montgolfière au camping-car, avec la toile de Gisèle, la corde de Josette et le panier d'Yvette (contre 2 champignons). Là-haut vivent les Plumeaux, de petits oiseaux tout ronds : Pompon, Grand-Père Cumulus, Frisette, Duvet, Plumette et Bouffon. Leur île descend parce que ses 3 moulins à vent sont en panne :
+  - retrouver les 4 ailes du moulin du Nord sur les petites îles, en traversant les ponts arc-en-ciel ;
+  - réveiller le nuage dormeur assis sur le moulin de l'Est en sautant sur les nuages-trampolines ;
+  - attraper 5 bulles de vent tout en haut, en rebondissant, pour le moulin de l'Ouest ;
+  - faire rire Grondin, l'orage grognon, avec 3 blagues de Filou, Roquette et Praline. Il fait alors un arc-en-ciel qui mène au temple ;
+  - rallumer le Cœur du Ciel pour que l'île remonte vers le soleil.
+  L'île flotte au-dessus d'une mer de nuages, avec des cascades qui tombent dans le vide, des arbres-nuages pastel, des maisons-nids et des moulins. Oscar ne peut pas tomber : il s'arrête au bord. À la fin, Madame Plume voit un signal de Zib… peut-être une prochaine aventure avec les Zoublis !
 - La Forêt Immense : arbres géants et séquoias de plus de 30 mètres, lianes, racines, rivière avec des ponts en troncs, lac des Brumes, ruines anciennes, champignons géants et petits champignons qui brillent la nuit, arbres à lanternes, rayons de soleil entre les arbres, brume qui flotte, lucioles, cerfs et lapins. La caméra passe sous les grands arbres.
 - Oscar a du caractère : c'est un ours un peu bête, très drôle et têtu. Il est gourmand, il se croit le plus malin et il ne veut jamais avoir tort. Il pense tout haut dans une petite bulle : quand il reste sans bouger, quand il fonce dans un arbre (il insiste !), quand il nage, court, mange des baies, se promène la nuit, dans la forêt ou sur la Lune.
 - Encore plus de nature :
