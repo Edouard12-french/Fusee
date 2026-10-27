@@ -13,7 +13,9 @@ Jeu 3D dans le navigateur (Three.js + WebGL), une mission complète de la Terre 
 
 La Terre, la Lune, l'atmosphère et les nuages sont calculés en temps réel dans un shader.
 
-Contrôle de mission : le directeur de lancement fait le tour des postes (Propulsion, Guidage, Météo, Sauvegarde vol), puis chaque poste annonce les étapes du vol dans un panneau radio, avec une voix en français si le navigateur le permet.
+Contrôle de mission : le directeur de lancement fait le tour des postes (Propulsion, Guidage, Météo, Sauvegarde vol), puis chaque poste annonce les étapes du vol dans un panneau radio, avec une voix si le navigateur le permet.
+
+Le jeu existe en **français et en anglais** : il choisit tout seul la langue du navigateur, et le bouton « 🇬🇧 English / 🇫🇷 Français » du menu permet de changer.
 
 Vues (touche C) : poursuite, cockpit avec tableau de bord, caméra embarquée sur le flanc, caméra extérieure (suivi au sol avec zoom, puis vue de côté).
 
@@ -102,6 +104,21 @@ Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
   - faire rire Grondin, l'orage grognon, avec 3 blagues de Filou, Roquette et Praline. Il fait alors un arc-en-ciel qui mène au temple ;
   - rallumer le Cœur du Ciel pour que l'île remonte vers le soleil.
   L'île flotte au-dessus d'une mer de nuages, avec des cascades qui tombent dans le vide, des arbres-nuages pastel, des maisons-nids et des moulins. Oscar ne peut pas tomber : il s'arrête au bord. À la fin, Madame Plume voit un signal de Zib… peut-être une prochaine aventure avec les Zoublis !
+- Chapitre 6, la planète Mars (9 missions) : Zib envoie un message, ses cousins les Marsous sont en danger après une énorme tempête de sable. Max fabrique un super carburant… au miel ! Oscar doit trouver 5 pots de miel cachés dans le parc sans les manger. Sur Mars (sol rouge, ciel caramel, coucher de soleil bleu, deux petites lunes, tourbillons de poussière, on saute plus haut), Oscar rencontre Pito, Mamie Rouille et Boulon le mécanicien :
+  - creuser 4 dunes pour retrouver les pierres de glace de la Fontaine du village ;
+  - nettoyer les 6 panneaux de la centrale solaire couverts de poussière rouge ;
+  - retrouver les 3 roues du rover au fond du grand canyon ;
+  - grimper au sommet du Mont Olympe, le grand volcan, pour rallumer le phare ;
+  - planter les premières fleurs de Mars dans la serre.
+  À la fin, Zib arrive en soucoupe… mais un trou noir apparaît et aspire le camping-car !
+- Chapitre 7, le Monde Dessiné (10 missions) : le trou noir recrache tout le monde dans un monde où tout est dessiné au crayon, avec des contours noirs, un soleil qui sourit et des poissons qui volent. Les couleurs s'effacent : le Roi Crayon a perdu ses 5 Crayons Magiques. Avec Gribouille (un gribouillis qui s'est mis à vivre), Madame Gomme, Capitaine Pinceau et les Taches, Oscar :
+  - redonne leurs couleurs à 5 amis devenus des dessins tout blancs ;
+  - monte l'Escalier qui flotte pour le crayon rouge ;
+  - fait repeindre le pont de l'Île Jaune que Madame Gomme a effacé ;
+  - trouve le crayon bleu dans la rivière qui coule vers le haut et le vert au cœur de la forêt de gribouillis ;
+  - joue à cache-cache avec les Taches pour le crayon violet ;
+  - met les 5 crayons dans le Grand Taille-Crayon : les couleurs reviennent petit à petit dans tout le monde, et un passage arc-en-ciel ramène tout le monde au parc pour une grande fête.
+  Ce sont des personnages inventés pour le jeu.
 - La Forêt Immense : arbres géants et séquoias de plus de 30 mètres, lianes, racines, rivière avec des ponts en troncs, lac des Brumes, ruines anciennes, champignons géants et petits champignons qui brillent la nuit, arbres à lanternes, rayons de soleil entre les arbres, brume qui flotte, lucioles, cerfs et lapins. La caméra passe sous les grands arbres.
 - Oscar a du caractère : c'est un ours un peu bête, très drôle et têtu. Il est gourmand, il se croit le plus malin et il ne veut jamais avoir tort. Il pense tout haut dans une petite bulle : quand il reste sans bouger, quand il fonce dans un arbre (il insiste !), quand il nage, court, mange des baies, se promène la nuit, dans la forêt ou sur la Lune.
 - Encore plus de nature :
@@ -122,6 +139,7 @@ Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
 - Cycle jour et nuit, pêche (8 poissons), fouilles au trésor, boutiques du village, chapeaux à acheter.
 - Camping-car à conduire, puis à faire voler à travers 8 anneaux.
 - 12 pommes de pin dorées à trouver, clavier ou écran tactile.
+- En français et en anglais : le jeu prend la langue du navigateur, et le bouton « 🇬🇧 English / 🇫🇷 Français » de l'écran titre (ou Options > Langue) permet de changer. Toutes les missions, les dialogues, les panneaux et la carte sont traduits.
 - Sauvegarde automatique : la partie est gardée dans le navigateur et, sur claude.ai, dans le compte du joueur (elle ne s'efface pas). Le jeu sauvegarde aussi quand on quitte la page. Dans les Options, « Tout recommencer » efface la partie (il faut appuyer deux fois).
 
 Pour y jouer en local, ouvre `ours/index.html`. Pour itch.io, tout est dans `itch/ours/` (zip, couverture, captures et guide `PAGE-ITCH.md`).
