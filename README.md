@@ -104,13 +104,14 @@ Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
   - faire rire Grondin, l'orage grognon, avec 3 blagues de Filou, Roquette et Praline. Il fait alors un arc-en-ciel qui mène au temple ;
   - rallumer le Cœur du Ciel pour que l'île remonte vers le soleil.
   L'île flotte au-dessus d'une mer de nuages, avec des cascades qui tombent dans le vide, des arbres-nuages pastel, des maisons-nids et des moulins. Oscar ne peut pas tomber : il s'arrête au bord. À la fin, Madame Plume voit un signal de Zib… peut-être une prochaine aventure avec les Zoublis !
-- Chapitre 6, la planète Mars (9 missions) : Zib envoie un message, ses cousins les Marsous sont en danger après une énorme tempête de sable. Max fabrique un super carburant… au miel ! Oscar doit trouver 5 pots de miel cachés dans le parc sans les manger. Sur Mars (sol rouge, ciel caramel, coucher de soleil bleu, deux petites lunes, tourbillons de poussière, on saute plus haut), Oscar rencontre Pito, Mamie Rouille et Boulon le mécanicien :
+- Chapitre 6, la planète Mars (13 missions) : Zib envoie un message, ses cousins les Marsous sont en danger après une énorme tempête de sable. Max fabrique un super carburant… au miel ! Oscar doit trouver 5 pots de miel cachés dans le parc sans les manger. Sur Mars (sol rouge, ciel caramel, coucher de soleil bleu, deux petites lunes, tourbillons de poussière, on saute plus haut), Oscar rencontre Pito, Mamie Rouille et Boulon le mécanicien :
   - creuser 4 dunes pour retrouver les pierres de glace de la Fontaine du village ;
   - nettoyer les 6 panneaux de la centrale solaire couverts de poussière rouge ;
   - retrouver les 3 roues du rover au fond du grand canyon ;
   - grimper au sommet du Mont Olympe, le grand volcan, pour rallumer le phare ;
   - planter les premières fleurs de Mars dans la serre.
-  À la fin, Zib arrive en soucoupe… mais un trou noir apparaît et aspire le camping-car !
+  Puis le moteur au miel tombe en panne : tout le monde est coincé sur Mars ! Pendant 4 jours (il faut dormir dans le camping-car chaque soir), Oscar construit la Fusée Fraise avec Boulon : la coque avec 5 plaques de métal de la vieille sonde, les moteurs avec le gaz des cheminées du volcan, le hublot et les sièges avec l'aide des Marsous, et enfin la peinture aux fraises de Mamie Rouille.
+  À la fin, Zib arrive en soucoupe… mais un trou noir apparaît et aspire la fusée et le camping-car !
 - Chapitre 7, le Monde Dessiné (10 missions) : le trou noir recrache tout le monde dans un monde où tout est dessiné au crayon, avec des contours noirs, un soleil qui sourit et des poissons qui volent. Les couleurs s'effacent : le Roi Crayon a perdu ses 5 Crayons Magiques. Avec Gribouille (un gribouillis qui s'est mis à vivre), Madame Gomme, Capitaine Pinceau et les Taches, Oscar :
   - redonne leurs couleurs à 5 amis devenus des dessins tout blancs ;
   - monte l'Escalier qui flotte pour le crayon rouge ;

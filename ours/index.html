@@ -1406,6 +1406,26 @@ function ball(parent, mat, r, x, y, z, sx, sy, sz) {
   if (sx) m.scale.set(sx, sy, sz); m.castShadow = true; parent.add(m); return m;
 }
 const eyeMat = lam(0x1d1416, { flatShading: false });
+// La tenue de garde forestier d'Oscar : chapeau à large bord, chemise beige avec poches et insigne, foulard vert
+function rangerHat(head, y, sc) {
+  const h = new T.Group(); h.position.set(0, y, -0.03); head.add(h);
+  const felt = lam(0x9a7448, { flatShading: false }), feltD = lam(0x6e5232, { flatShading: false });
+  const brim = new T.Mesh(new T.CylinderGeometry(0.86, 0.9, 0.05, 28), felt); brim.castShadow = true; h.add(brim);
+  const cr = new T.Mesh(new T.ConeGeometry(0.46, 0.62, 4, 1), felt); cr.rotation.y = Math.PI / 4; cr.position.y = 0.3; cr.scale.set(1, 1, 1); cr.castShadow = true; h.add(cr);
+  const base = new T.Mesh(new T.CylinderGeometry(0.44, 0.46, 0.16, 20), felt); base.position.y = 0.1; h.add(base);
+  const band = new T.Mesh(new T.CylinderGeometry(0.465, 0.475, 0.08, 20), feltD); band.position.y = 0.07; h.add(band);
+  const pin = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 0.02, 10), lam(0xffc53d)); pin.rotation.x = Math.PI / 2; pin.position.set(0, 0.08, 0.47); h.add(pin);
+  h.scale.setScalar(sc);
+  return h;
+}
+function rangerScarf(parent, x, y, z, r, rx) {
+  const g = new T.Group(); g.position.set(x, y, z); g.rotation.x = rx || 0; parent.add(g);
+  const gr = lam(0x2f7a4c, { flatShading: false });
+  const ring = new T.Mesh(new T.TorusGeometry(r, r * 0.16, 8, 20), gr); ring.rotation.x = Math.PI / 2; g.add(ring);
+  const knot = new T.Mesh(new T.SphereGeometry(r * 0.2, 8, 6), gr); knot.position.set(0, -0.02, r * 0.98); g.add(knot);
+  const tip = new T.Mesh(new T.ConeGeometry(r * 0.34, r * 0.6, 4), gr); tip.rotation.x = Math.PI; tip.position.set(0, -r * 0.36, r * 0.98); g.add(tip);
+  return g;
+}
 function makeBear() {
   // Oscar debout comme un vrai ours dressé sur ses pattes arrière : gros ventre, bosse aux épaules, vraie tête d'ours
   const g = new T.Group(), fur = lam(0x5b3a2a), furD = lam(0x40291e), muz = lam(0x9a7256), claw = lam(0xd8d0c0), white = new T.MeshBasicMaterial({ color: 0xffffff });
@@ -1437,6 +1457,17 @@ function makeBear() {
   for (let k = 0; k < 7; k++) tuft(body, fur, rand(-0.3, 0.3), 2.62 + rand(-0.04, 0.04), -0.1 - k * 0.06, 0.07, 0.18, -1.2);
   const rig = { body, head, armL: leg(body, -0.55, 2.15, 0.28, 0.17, 0.72, true), armR: leg(body, 0.55, 2.15, 0.28, 0.17, 0.72, true), legL: leg(g, -0.34, 0.62, 0.0, 0.24, 0.32, false), legR: leg(g, 0.34, 0.62, 0.0, 0.24, 0.32, false) };
   rig.armL.rotation.x = rig.armR.rotation.x = -0.55; rig.armL.rotation.z = -0.15; rig.armR.rotation.z = 0.15;
+  const ranger = new T.Group(); body.add(ranger);
+  { const kh = lam(0xc9b07a, { flatShading: false }), khD = lam(0xa88f5a, { flatShading: false }), br = lam(0x5a3a22);
+    const prof = [[0.5, 0.95], [0.74, 1.0], [0.79, 1.25], [0.76, 1.55], [0.69, 1.85], [0.64, 2.1], [0.5, 2.36], [0.3, 2.45]].map(([r, y]) => new T.Vector2(r, y));
+    const sh = new T.Mesh(new T.LatheGeometry(prof, 22), kh); sh.scale.z = 0.92; sh.castShadow = true; ranger.add(sh);
+    for (const sx of [-1, 1]) { const pk = new T.Mesh(new T.BoxGeometry(0.26, 0.24, 0.05), khD); pk.position.set(sx * 0.28, 1.88, 0.63); pk.rotation.y = sx * 0.28; ranger.add(pk); const fl = new T.Mesh(new T.BoxGeometry(0.28, 0.07, 0.06), khD); fl.position.set(sx * 0.28, 1.99, 0.64); fl.rotation.y = sx * 0.28; ranger.add(fl); }
+    for (let k = 0; k < 4; k++) ball(ranger, lam(0xf4efe6), 0.025, 0, 1.25 + k * 0.22, 0.73 - k * 0.025);
+    const bd = new T.Mesh(new T.CylinderGeometry(0.09, 0.09, 0.03, 6), lam(0xffc53d)); bd.rotation.x = Math.PI / 2 - 0.15; bd.position.set(-0.28, 2.1, 0.62); ranger.add(bd);
+    const belt = new T.Mesh(new T.TorusGeometry(0.76, 0.06, 6, 26), br); belt.rotation.x = Math.PI / 2; belt.position.y = 1.02; belt.scale.y = 0.93; ranger.add(belt);
+    const bk = new T.Mesh(new T.BoxGeometry(0.16, 0.12, 0.05), lam(0xd8b040)); bk.position.set(0, 1.02, 0.72); ranger.add(bk);
+    rangerScarf(ranger, 0, 2.3, 0.05, 0.42, 0.25); }
+  const rhat = rangerHat(head, 0.33, 0.62);
   // Déguisement : chapeau, manteau à carreaux et lunettes
   const dis = new T.Group(); dis.visible = false; body.add(dis);
   const coat = new T.Mesh(new T.CylinderGeometry(0.74, 0.84, 1.35, 14), lam(0xc0392b)); coat.position.set(0, 1.3, 0); coat.scale.z = 0.98; coat.castShadow = true; dis.add(coat);
@@ -1469,7 +1500,7 @@ function makeBear() {
   extra.explo = new T.Group(); extra.explo.position.y = 0.32; head.add(extra.explo); extra.explo.visible = false;
   { extra.explo.add(new T.Mesh(new T.CylinderGeometry(0.85, 0.85, 0.05, 16), lam(0xd8c08a))); const c = new T.Mesh(new T.SphereGeometry(0.45, 12, 8, 0, 6.283, 0, 1.6), lam(0xd8c08a)); c.position.y = 0.02; extra.explo.add(c); const b = new T.Mesh(new T.CylinderGeometry(0.46, 0.46, 0.1, 14), lam(0x6e4430)); b.position.y = 0.08; extra.explo.add(b); }
   for (const h of [hat, extra.cowboy, extra.crown, extra.golden, extra.noisette, extra.bonnet, extra.explo]) h.scale.setScalar(0.74);
-  g.userData = { rig, dis, hat, glasses, extra };
+  g.userData = { rig, dis, hat, glasses, extra, ranger, rhat };
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
@@ -1818,7 +1849,8 @@ function makeBearQuad() {
     return l;
   };
   const rig = { body, head, armL: leg(-0.36, 0.98, 0.75), armR: leg(0.36, 0.98, 0.75), legL: leg(-0.36, 0.98, -0.72), legR: leg(0.36, 0.98, -0.72), quad: true };
-  g.userData = { rig, extra: bearHats(head, 0.36) };
+  const ranger = rangerScarf(head, 0, -0.18, -0.12, 0.4, -0.35), rhat = rangerHat(head, 0.33, 0.62);
+  g.userData = { rig, extra: bearHats(head, 0.36), ranger, rhat };
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
@@ -1826,6 +1858,8 @@ function makeOscar() {
   const g = new T.Group(), quad = makeBearQuad(), up = makeBear();
   up.visible = false; g.add(quad, up);
   const u = up.userData;
+  // Oscar est un ours noir tout simple, sans tenue : la tenue de garde forestier reste rangée
+  for (const o of [u.ranger, quad.userData.ranger, u.rhat, quad.userData.rhat]) o.visible = false;
   g.userData = { quad, up, rig: quad.userData.rig, dis: u.dis, hat: u.hat, glasses: u.glasses, extra: u.extra, extraQ: quad.userData.extra };
   return g;
 }
@@ -1946,6 +1980,8 @@ function updateHats() {
   u.glasses.visible = P.disguise || S.wear === 'sun';
   u.hat.visible = P.disguise && !S.wear;
   if (P.disguise) u.glasses.visible = true;
+  // La tenue de garde forestier, sauf quand Oscar porte un déguisement ou un autre chapeau
+  if (u.ranger) { for (const r of u.ranger) r.visible = !P.disguise; for (const h of u.rhat) h.visible = !P.disguise && !S.wear; }
 }
 // Oscar s'assoit quand il ne bouge plus (comme un vrai ours)
 function sitPose(dt, idle) {
@@ -4757,6 +4793,7 @@ function refreshMoon() {
 function updateMoon(dt) {
   const on = onMoon() || (G.cine && G.cine.space);
   if (P.helmets) for (const h of P.helmets) h.visible = onMoon() || onSea() || onMars();
+  { const hm = onMoon() || onSea() || onMars(), u = P.model.userData; if (u.rhat) for (const h of u.rhat) h.visible = !hm && !P.disguise && !S.wear; }
   // Étoiles et Terre visibles dans l'espace et sur la Lune
   const sk = on ? 1 : (G.spaceK || 0);
   starPts.material.opacity = sk; starPts.visible = sk > 0.01;
@@ -6928,6 +6965,11 @@ const RDUNES = [RL(-20, 128), RL(40, 118), RL(-118, 86), RL(-130, -40)];
 const RPANELS = [0, 1, 2, 3, 4, 5].map(i => RL(-86 + (i % 3) * 12, 28 + Math.floor(i / 3) * 14));
 const RWHEELS = [RL(108, -80), RL(116, -30), RL(124, 14)];
 const RPLANTERS = [RL(60, 40), RL(66, 48), RL(72, 40)];
+const RPAD = RL(28, -58), RPROBE = RL(-132, 12);
+const RMETAL = [RL(-126, 4), RL(-140, 20), RL(-122, 24), RL(-144, -2), RL(-130, 34)];
+const RVENTS = [0.6, 2.4, 4.4].map(a => [ROLY[0] + Math.cos(a) * 26, ROLY[1] + Math.sin(a) * 26]);
+// Les missions qui ont besoin d'un numéro (le chapitre a 13 missions)
+const RZIB = 12;
 const RHONEY = [[POI.camp[0] + 9, POI.camp[1] - 7], [POI.musee[0] - 6, POI.musee[1] + 8], [POI.ferme[0] + 9, POI.ferme[1] + 3], [POI.owl[0] - 7, POI.owl[1] + 9], [POI.base[0] - 9, POI.base[1] + 4]];
 const segT = (x, z, a, b) => { const vx = b[0] - a[0], vz = b[1] - a[1], t = clamp(((x - a[0]) * vx + (z - a[1]) * vz) / (vx * vx + vz * vz), 0, 1); return [Math.hypot(x - a[0] - vx * t, z - a[1] - vz * t), t]; };
 function marsY(x, z) {
@@ -6939,7 +6981,7 @@ function marsY(x, z) {
   // Le village des Marsous, au fond d'un cratère tout rond
   const dc = Math.hypot(x - RVILLAGE[0], z - RVILLAGE[1]);
   y = lerp(y, -1.5, sstep(34, 25, dc)); y += 3 * Math.exp(-((dc - 36) ** 2) / 26);
-  for (const [p, r, h] of [[RLAND, 16, 0], [RSERRE, 18, 0.2], [RSOLAR, 26, 0.4], [RGARAGE, 12, 0]]) y = lerp(y, h, sstep(r, r * 0.6, Math.hypot(x - p[0], z - p[1])));
+  for (const [p, r, h] of [[RLAND, 16, 0], [RSERRE, 18, 0.2], [RSOLAR, 26, 0.4], [RGARAGE, 12, 0], [RPAD, 13, 0.1]]) y = lerp(y, h, sstep(r, r * 0.6, Math.hypot(x - p[0], z - p[1])));
   // Le grand canyon
   const [cd, ct] = segT(x, z, RCANYON[0], RCANYON[1]), cdep = 12 * sstep(0, 0.1, ct) * sstep(1, 0.9, ct);
   y -= cdep * sstep(18, 9, cd);
@@ -7016,6 +7058,31 @@ function makeBeacon() {
   g.userData = { lamp, gl };
   return g;
 }
+// La Fusée Fraise que tout le monde construit sur Mars, étage par étage
+function makeMarsRocket() {
+  const g = new T.Group(), wh = lam(0xf4f0ea, { flatShading: false }), rd = lam(0xe0403a, { flatShading: false }), mt = M.metal, dk = M.dark;
+  const st = [new T.Group(), new T.Group(), new T.Group(), new T.Group()]; st.forEach(x => g.add(x));
+  // 1 : la plateforme et la coque
+  const pad = new T.Group();
+  mesh(new T.CylinderGeometry(4.5, 4.8, 0.6, 20), lam(0x8a8a92), 0, 0.3, 0, pad);
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.785; const tw = mesh(new T.BoxGeometry(0.5, 13, 0.5), lam(0x9a9aa2), Math.cos(a) * 3.6, 6.5, Math.sin(a) * 3.6, pad); tw.castShadow = true; }
+  mesh(new T.CylinderGeometry(1.9, 2.1, 9, 20), wh, 0, 6.2, 0, st[0]);
+  for (let y = 2.2; y < 10.5; y += 1.4) mesh(new T.TorusGeometry(2.02 - (y - 2) * 0.02, 0.04, 4, 24), mt, 0, y, 0, st[0]).rotation.x = Math.PI / 2;
+  // 2 : les trois moteurs et les ailerons
+  for (let k = 0; k < 3; k++) { const a = k / 3 * 6.283; const n = mesh(new T.CylinderGeometry(0.45, 0.85, 1.4, 12, 1, true), dk, Math.cos(a) * 1.1, 1.3, Math.sin(a) * 1.1, st[1]); n.material = lam(0x3a3a44, { side: T.DoubleSide }); const f = mesh(new T.BoxGeometry(0.18, 3, 2), rd, Math.cos(a + 1.05) * 2.4, 3, Math.sin(a + 1.05) * 2.4, st[1]); f.rotation.y = -(a + 1.05); }
+  // 3 : le nez, le hublot et la porte
+  mesh(new T.ConeGeometry(1.95, 4, 20), rd, 0, 12.7, 0, st[2]);
+  mesh(new T.SphereGeometry(0.3, 10, 8), lam(0xffd84d), 0, 14.8, 0, st[2]);
+  const win = mesh(new T.CylinderGeometry(0.75, 0.75, 0.2, 18), new T.MeshPhongMaterial({ color: 0x8ad8ff, emissive: colorL(0x2a6a9a), emissiveIntensity: 0.4, shininess: 100 }), 0, 8.6, 1.98, st[2]); win.rotation.x = Math.PI / 2;
+  mesh(new T.TorusGeometry(0.78, 0.1, 6, 18), mt, 0, 8.6, 2.02, st[2]);
+  mesh(new T.BoxGeometry(1.2, 2, 0.15), lam(0xc8c4bc), 0, 4.2, 2.04, st[2]);
+  // 4 : la peinture de Mamie Rouille (des fraises !) et le drapeau
+  for (const y of [3, 10]) mesh(new T.CylinderGeometry(2.14, 2.14, 0.6, 20, 1, true), rd, 0, y, 0, st[3]);
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + 0.3; ball(st[3], rd, 0.28, Math.cos(a) * 2.06, 6.6 + (k % 2) * 0.8, Math.sin(a) * 2.06, 1, 1.2, 0.5); ball(st[3], M.green, 0.12, Math.cos(a) * 2.08, 6.95 + (k % 2) * 0.8, Math.sin(a) * 2.08, 1.4, 0.5, 0.5); }
+  mesh(new T.CylinderGeometry(0.05, 0.05, 2.4, 5), mt, 3.4, 14.3, 0, st[3]); mesh(new T.BoxGeometry(1.4, 0.8, 0.05), rd, 4.1, 15, 0, st[3]);
+  g.userData = { st, pad };
+  return g;
+}
 // Le trou noir (ou le trou blanc) : une boule et un disque qui tourbillonne
 function makeHole(white) {
   const g = new T.Group();
@@ -7037,7 +7104,7 @@ function makeHole(white) {
   return g;
 }
 // ---------- Construction ----------
-let rDunesM = [], rPanels = [], rWheelM = [], rPlantM = [], rHoneyM = [], rFount = null, rRover = null, rBeacon = null, rDevils = [], rMoons = [], rFriends = [], rUfo = null, rHole = null, marsBall = null;
+let rRocket = null, rMetalM = [], rVentM = [], rDunesM = [], rPanels = [], rWheelM = [], rPlantM = [], rHoneyM = [], rFount = null, rRover = null, rBeacon = null, rDevils = [], rMoons = [], rFriends = [], rUfo = null, rHole = null, marsBall = null;
 function buildMars() {
   const gg = new T.RingGeometry(0.01, MARS.r + 80, 170, 100); gg.rotateX(-Math.PI / 2);
   const p = gg.attributes.position, col = new Float32Array(p.count * 3), c = new T.Color();
@@ -7056,7 +7123,7 @@ function buildMars() {
   marsBall = new T.Mesh(new T.SphereGeometry(320, 48, 32), new T.MeshToonMaterial({ color: colorL(0xb05a36), gradientMap: toonGrad })); marsBall.position.set(MARS.x, -334, MARS.z); scene.add(marsBall);
   // Rochers rouges, pierres dressées et petites plaques de glace
   seed = 6262; const rocks = [], spires = [];
-  const freeR = (x, z, m) => { for (const q of [RLAND, RVILLAGE, RSERRE, RSOLAR, RGARAGE]) if (Math.hypot(x - q[0], z - q[1]) < (q === RVILLAGE ? 30 : 16) + m) return false; if (segT(x, z, RCANYON[0], RCANYON[1])[0] < 10 + m && false) return false; for (const q of RDUNES.concat(RWHEELS)) if (Math.hypot(x - q[0], z - q[1]) < 5 + m) return false; return Math.hypot(x - MARS.x, z - MARS.z) < MARS.r - 6; };
+  const freeR = (x, z, m) => { for (const q of [RLAND, RVILLAGE, RSERRE, RSOLAR, RGARAGE, RPAD, RPROBE]) if (Math.hypot(x - q[0], z - q[1]) < (q === RVILLAGE ? 30 : 16) + m) return false; if (segT(x, z, RCANYON[0], RCANYON[1])[0] < 10 + m && false) return false; for (const q of RDUNES.concat(RWHEELS, RMETAL, RVENTS)) if (Math.hypot(x - q[0], z - q[1]) < 5 + m) return false; return Math.hypot(x - MARS.x, z - MARS.z) < MARS.r - 6; };
   for (let t = 0; t < 12000 && rocks.length < 650; t++) { const x = MARS.x + srange(-MARS.r, MARS.r), z = MARS.z + srange(-MARS.r, MARS.r); if (!freeR(x, z, 2)) continue; const s = srange(0.4, 1.8); rocks.push([x, marsY(x, z) + s * 0.2, z, s, srand() * 6]); if (s > 1) addCircle(x, z, s * 0.8); }
   tiledInst(new T.DodecahedronGeometry(1, 0), lam(0xffffff), rocks, { h: 2, col: (cc, i) => cc.set([0x9a4a32, 0x7a3a2a, 0xb0643e][i % 3]).convertSRGBToLinear() });
   const spGeo = aoGeo(mergeCol([[new T.CylinderGeometry(0.9, 1.6, 5, 7).translate(0, 2.5, 0), 0xb85a3a], [new T.CylinderGeometry(1.5, 0.9, 1.2, 7).translate(0, 5.5, 0), 0x9a4a32], [new T.CylinderGeometry(0.7, 1.2, 2.4, 7).translate(0.3, 7.2, 0), 0xc86a40]]), 0.65);
@@ -7113,6 +7180,18 @@ function buildMars() {
   // Les pots de miel cachés dans le parc des Pins (pour le super carburant de Max)
   RHONEY.forEach(([x, z], i) => { const g = new T.Group(); g.position.set(x, groundY(x, z), z); scene.add(g); mesh(new T.CylinderGeometry(0.4, 0.35, 0.8, 12), new T.MeshPhongMaterial({ color: colorL(0xf0a020), shininess: 80, transparent: true, opacity: 0.92 }), 0, 0.4, 0, g); mesh(new T.CylinderGeometry(0.44, 0.44, 0.15, 12), lam(0xd84a3a), 0, 0.85, 0, g); mesh(new T.BoxGeometry(0.5, 0.25, 0.02), M.cream, 0, 0.45, 0.39, g); g.visible = false; rHoneyM.push(g);
     addInter({ x, z, r: 2.4, icon: '🍯', label: () => (EN ? 'Pick up the honey pot' : 'Ramasser le pot de miel'), can: () => g.visible, act: () => { S.rhoney = S.rhoney || []; S.rhoney.push(i); g.visible = false; sparkle(x, groundY(x, z) + 1, z); sfx.pickup(); oscarSay(pick([(EN ? 'I\'m not eating it. I\'m not eating it. I… No. I\'m not eating it.' : 'Je ne le mange pas. Je ne le mange pas. Je… Non. Je ne le mange pas.'), (EN ? 'Just one little lick? … NO, Oscar. It\'s for the rocket.' : 'Juste une petite léchouille ? … NON, Oscar. C\'est pour la fusée.'), (EN ? 'This honey smells so good my tummy is doing somersaults.' : 'Ce miel sent tellement bon que mon ventre fait des bonds.')]), 3.5); marsEvent('miel'); } }); });
+  // La Fusée Fraise, sur son pas de tir près du garage
+  rRocket = makeMarsRocket(); rRocket.position.set(RPAD[0], marsY(RPAD[0], RPAD[1]), RPAD[1]); scene.add(rRocket); rRocket.userData.pad.position.copy(rRocket.position); scene.add(rRocket.userData.pad); rRocket.position.y += 0.6; addCircle(RPAD[0], RPAD[1], 3.4);
+  sign((EN ? 'LAUNCH PAD' : 'PAS DE TIR'), RPAD[0] + 8, RPAD[1] + 10, -0.4, 2, 0.8, '#c0303a');
+  // La vieille sonde écrasée près de la glace polaire, et ses plaques de métal
+  { const [x, z] = RPROBE, y = marsY(x, z), g = new T.Group(); g.position.set(x, y, z); g.rotation.set(0.3, 0.8, 0.2); scene.add(g); mesh(new T.BoxGeometry(2.4, 1.6, 2), lam(0xd8c890), 0, 0.6, 0, g); mesh(new T.BoxGeometry(5, 0.06, 1.6), lam(0x2a4a8a), 3.2, 0.9, 0, g).rotation.z = 0.4; mesh(new T.ConeGeometry(0.9, 0.5, 12, 1, true), lam(0xe8e4dc, { side: T.DoubleSide }), -0.6, 1.8, 0, g).rotation.z = 0.8; addCircle(x, z, 2.2); }
+  RMETAL.forEach(([x, z], i) => { const m = mesh(new T.BoxGeometry(1.4, 0.08, 1), lam(0xb8bcc4), x, marsY(x, z) + 0.1, z); m.rotation.set(0.1, i, 0.15); m.visible = false; rMetalM.push(m);
+    addInter({ x, z, r: 2.4, icon: '🔩', label: () => (EN ? 'Pick up the metal plate' : 'Ramasser la plaque de métal'), can: () => m.visible, act: () => { S.rmetal = S.rmetal || []; S.rmetal.push(i); m.visible = false; sparkle(x, marsY(x, z) + 1, z); sfx.pickup(); marsEvent('rmetal'); } }); });
+  // Les cheminées qui fument sur les pentes du volcan
+  RVENTS.forEach(([x, z], i) => { const g = new T.Group(); g.position.set(x, marsY(x, z), z); scene.add(g); mesh(new T.CylinderGeometry(0.6, 1.2, 1, 9), lam(0x5a2a1e), 0, 0.4, 0, g); mesh(new T.CircleGeometry(0.55, 9), new T.MeshBasicMaterial({ color: 0xffa040 }), 0, 0.92, 0, g).rotation.x = -Math.PI / 2; addCircle(x, z, 1.1); rVentM.push(g);
+    addInter({ x, z: z + 1.8, r: 2.6, icon: '🫙', label: () => (EN ? 'Fill a bottle with volcano gas' : 'Remplir une bouteille de gaz du volcan'), can: () => rqAt(9, 1) && !(S.rgas || []).includes(i), act: () => { S.rgas = S.rgas || []; S.rgas.push(i); puff(x, marsY(x, z) + 1.5, z, 14, [0.9, 0.6, 0.4], 2); sfx.ring(); marsEvent('rgas'); } }); });
+  // Dormir dans le camping-car en panne pour passer au jour suivant
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 4.5, icon: '🌙', label: () => (EN ? 'Sleep in the camper until morning' : 'Dormir dans le camping-car jusqu\'au matin'), can: () => onMars() && rStep() && rStep().ev === 'rsleep', act: () => marsSleep() });
   // Les Marsous
   addNPC('pito', { name: (EN ? 'Pito the little Marsie' : 'Pito le petit Marsou'), col: '#d0603a', model: makeMarsou(0xf07a4a, { cap: true, s: 0.85 }), x: RLAND[0] - 14, z: RLAND[1] - 16, rot: 0.4, head: 1.4 });
   addNPC('rouille', { name: (EN ? 'Granny Rusty' : 'Mamie Rouille'), col: '#a04a30', model: makeMarsou(0xd8704a, { old: true, s: 1.25 }), x: RVILLAGE[0] - 6, z: RVILLAGE[1] + 7, rot: 0.3, head: 2 });
@@ -7128,7 +7207,7 @@ function buildMars() {
   rHole = makeHole(false); rHole.visible = false; scene.add(rHole);
   // Voyages
   addInter({ x: POI.base[0] - 8, z: POI.base[1] + 14, r: 5, icon: '🔴', label: () => (EN ? 'Go to Mars' : 'Aller sur Mars'), can: () => !!S.flags.ch6 && P.x > -1500 && P.x < 700, act: () => marsTravel(true) });
-  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 4.5, icon: '🌍', label: () => (EN ? 'Go back to Earth' : 'Rentrer sur Terre'), can: () => onMars() && !!S.flags.ch6 && !(S.rq === 8 && S.rstep === 2), act: () => marsTravel(false) });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 4.5, icon: '🌍', label: () => (EN ? 'Go back to Earth' : 'Rentrer sur Terre'), can: () => onMars() && !!S.flags.ch6done, act: () => marsTravel(false) });
 }
 // ---------- Les missions du chapitre 6 ----------
 const rCount = k => () => (S[k] || []).length;
@@ -7202,21 +7281,79 @@ const RQ = [
       ['oscar', (EN ? 'Flowers on Mars? That\'s the best idea in the world. After honey.' : 'Des fleurs sur Mars ? C\'est la plus belle idée du monde. Après le miel.')],
     ], done: () => give('graineR') },
     { t: (EN ? 'Plant the seeds in the 3 planters in the greenhouse' : 'Plante les graines dans les 3 jardinières de la serre'), ev: 'rplant', n: 3, count: rCount('rplant'), at: () => nearestOf(RPLANTERS, S.rplant || []) || RSERRE, done: () => { take('graineR'); talk([['pito', (EN ? 'They\'re growing! They\'re growing! The first flowers on Mars! Bzzzzzt with joy!' : 'Elles poussent ! Elles poussent ! Les premières fleurs de Mars ! Bzzzzzt de joie !')], ['oscar', (EN ? 'Red, yellow, blue flowers… The bees will be jealous.' : 'Des fleurs rouges, jaunes, bleues… Les abeilles vont être jalouses.')]]); confetti(P.x, P.y + 3, P.z); sfx.fanfare(); } }] },
+  { title: (EN ? 'Stuck on Mars!' : 'Coincés sur Mars !'), steps: [
+    { t: (EN ? 'Max looks very worried: go and see him near the camper' : 'Max a l\'air très inquiet : va le voir près du camping-car'), talk: 'lr_max', at: () => [C.x, C.z], lines: [
+      ['lr_max', (EN ? 'Oscar… I have some very bad news. The honey engine burned everything up during the trip. There isn\'t a single drop left.' : 'Oscar… J\'ai une très mauvaise nouvelle. Le moteur au miel a tout brûlé pendant le voyage. Il ne reste plus une seule goutte.')],
+      ['oscar', (EN ? 'No more honey?! … Wait. Does that mean we can\'t go home?' : 'Plus de miel ?! … Attends. Ça veut dire qu\'on ne peut pas rentrer ?')],
+      ['lr_max', (EN ? 'Exactly. We\'re STUCK on Mars. To get home, we need to build a real rocket. And it\'s going to take several days.' : 'Exactement. On est COINCÉS sur Mars. Pour rentrer, il faut construire une vraie fusée. Et ça va prendre plusieurs jours.')],
+      ['oscar', (EN ? 'Several days without honey… That\'s the worst news of my whole life. Okay. We\'ll build a rocket. I\'m very good at rockets. I think.' : 'Plusieurs jours sans miel… C\'est la pire nouvelle de toute ma vie. Bon. On construit une fusée. Je suis très fort en fusées. Je crois.')],
+      ['lr_max', (EN ? 'Go and see Bolt the mechanic. He\'s the only one with the tools we need.' : 'Va voir Boulon le mécanicien. Lui seul a les outils qu\'il nous faut.')],
+    ] },
+    { t: (EN ? 'Ask Bolt to help you build a rocket' : 'Demande à Boulon de vous aider à construire une fusée'), talk: 'boulon', at: () => RGARAGE, lines: [
+      ['boulon', (EN ? 'A rocket?! I\'ve dreamed of one since I was tiny! We\'ll call it… the Strawberry Rocket! Red like Mars, and sweet like… um… a strawberry.' : 'Une fusée ?! J\'en rêve depuis que je suis tout petit ! On va l\'appeler… la Fusée Fraise ! Rouge comme Mars, et sucrée comme… euh… une fraise.')],
+      ['boulon', (EN ? 'We\'ll start with the hull. I need 5 metal plates. There are some around the old crashed probe, near the polar ice, to the west.' : 'On commence par la coque. Il me faut 5 plaques de métal. Il y en a autour de la vieille sonde écrasée, près de la glace polaire, à l\'ouest.')],
+      ['oscar', (EN ? 'Five plates. I\'ll carry them all at once. … Okay, one at a time.' : 'Cinq plaques. Je les porterai toutes en même temps. … Bon, une par une.')],
+    ] },
+    { t: (EN ? 'Pick up 5 metal plates around the old probe, near the polar ice' : 'Ramasse 5 plaques de métal autour de la vieille sonde, près de la glace polaire'), ev: 'rmetal', n: 5, count: rCount('rmetal'), at: () => nearestOf(RMETAL, S.rmetal || []) || RPROBE },
+    { t: (EN ? 'Bring the metal plates to Bolt' : 'Rapporte les plaques de métal à Boulon'), talk: 'boulon', at: () => RGARAGE, lines: [
+      ['boulon', (EN ? 'Click clack, I weld, I screw… There\'s the hull of the Strawberry Rocket, on the launch pad!' : 'Clic clac, je soude, je visse… Voilà la coque de la Fusée Fraise, sur le pas de tir !')],
+      ['boulon', (EN ? 'Now it has to cool down all night. Go and sleep in your camper. We\'ll carry on tomorrow morning!' : 'Maintenant, elle doit refroidir toute la nuit. Va dormir dans votre camping-car. On continue demain matin !')],
+    ], done: () => { S.flags.rrocket1 = 1; refreshMars(); sfx.fanfare(); } },
+    { t: (EN ? 'You have to wait until tomorrow: sleep in the camper until morning' : 'Il faut attendre demain : dors dans le camping-car jusqu\'au matin'), ev: 'rsleep', at: () => [C.x, C.z] }] },
+  { title: (EN ? 'Day 2: the engines' : 'Jour 2 : les moteurs'), steps: [
+    { t: (EN ? 'Go back to Bolt at the garage' : 'Retourne voir Boulon au garage'), talk: 'boulon', at: () => RGARAGE, lines: [
+      ['boulon', (EN ? 'Good morning, big teddy bear! Sleep well? The hull is nice and cold, it\'s perfect.' : 'Bonjour, gros nounours ! Bien dormi ? La coque est toute froide, elle est parfaite.')],
+      ['boulon', (EN ? 'Today, the engines! They run on volcano gas. Fill 3 bottles at the smoking chimneys on the slopes of Mount Olympus.' : 'Aujourd\'hui, les moteurs ! Ils marchent avec le gaz du volcan. Remplis 3 bouteilles aux cheminées qui fument, sur les pentes du Mont Olympe.')],
+      ['oscar', (EN ? 'Volcano gas? Does it smell bad? … It smells bad. Okay, I\'m going anyway.' : 'Du gaz de volcan ? Ça sent mauvais ? … Ça sent mauvais. D\'accord, j\'y vais quand même.')],
+    ] },
+    { t: (EN ? 'Fill 3 bottles at the smoking chimneys on the slopes of Mount Olympus' : 'Remplis 3 bouteilles aux cheminées qui fument sur les pentes du Mont Olympe'), ev: 'rgas', n: 3, count: rCount('rgas'), at: () => nearestOf(RVENTS, S.rgas || []) || RGARAGE },
+    { t: (EN ? 'Bring the volcano gas to Bolt' : 'Rapporte le gaz du volcan à Boulon'), talk: 'boulon', at: () => RGARAGE, lines: [
+      ['boulon', (EN ? 'Three bottles! I plug in, I adjust… VROOM VROOM VROOM! Three purring engines!' : 'Trois bouteilles ! Je branche, je règle… VROUM VROUM VROUM ! Trois moteurs qui ronronnent !')],
+      ['boulon', (EN ? 'The glue on the fins has to dry all night. See you tomorrow!' : 'La colle des ailerons doit sécher toute la nuit. À demain !')],
+      ['oscar', (EN ? 'Another night on Mars… I\'ll dream of honey. Like every night.' : 'Encore une nuit sur Mars… Je vais rêver de miel. Comme toutes les nuits.')],
+    ], done: () => { S.flags.rrocket2 = 1; refreshMars(); sfx.fanfare(); } },
+    { t: (EN ? 'Sleep in the camper until morning' : 'Dors dans le camping-car jusqu\'au matin'), ev: 'rsleep', at: () => [C.x, C.z] }] },
+  { title: (EN ? 'Day 3: the porthole and the seats' : 'Jour 3 : le hublot et les sièges'), steps: [
+    { t: (EN ? 'Go back to Bolt at the garage' : 'Retourne voir Boulon au garage'), talk: 'boulon', at: () => RGARAGE, lines: [
+      ['boulon', (EN ? 'We\'re still missing the rocket\'s nose, a big porthole and really comfy seats for your whole gang.' : 'Il manque le nez de la fusée, un grand hublot et des sièges bien moelleux pour toute ta bande.')],
+      ['boulon', (EN ? 'Nugget, Sandy and Ruby, in the village, surely have what we need. Go and see them!' : 'Pépite, Sablon et Rubis, au village, ont sûrement ce qu\'il faut. Va les voir !')],
+    ] },
+    { t: (EN ? 'Ask Nugget, Sandy and Ruby for help, in Marsie Village' : 'Demande de l\'aide à Pépite, Sablon et Rubis, au village des Marsous'), ev: 'rseat', n: 3, count: rCount('rseat'), at: () => { const id = ['mars1', 'mars2', 'mars3'].find(k => !(S.rseat || []).includes(k)); return id ? [NPCS[id].x, NPCS[id].z] : RGARAGE; } },
+    { t: (EN ? 'Bring everything to Bolt' : 'Rapporte tout à Boulon'), talk: 'boulon', at: () => RGARAGE, lines: [
+      ['boulon', (EN ? 'Cushions, a window, seat belts… I fit the nose, I install the porthole… It\'s almost finished!' : 'Des coussins, une vitre, des ceintures… Je pose le nez, j\'installe le hublot… Elle est presque finie !')],
+      ['boulon', (EN ? 'One last night, and the Strawberry Rocket will be ready.' : 'Une dernière nuit, et la Fusée Fraise sera prête.')],
+    ], done: () => { S.flags.rrocket3 = 1; refreshMars(); sfx.fanfare(); } },
+    { t: (EN ? 'Sleep in the camper until morning' : 'Dors dans le camping-car jusqu\'au matin'), ev: 'rsleep', at: () => [C.x, C.z] }] },
+  { title: (EN ? 'Day 4: the Strawberry Rocket' : 'Jour 4 : la Fusée Fraise'), steps: [
+    { t: (EN ? 'Granny Rusty is waiting for you in front of the rocket' : 'Mamie Rouille t\'attend devant la fusée'), talk: 'rouille', at: () => RPAD, lines: [
+      ['rouille', (EN ? 'Good morning, dear. I couldn\'t sleep, so I painted your rocket all night. Look!' : 'Bonjour, mon grand. Je ne dormais pas, alors j\'ai peint votre fusée toute la nuit. Regarde !')],
+      ['oscar', (EN ? 'Strawberries! Everywhere! It\'s the most beautiful rocket in the universe!' : 'Des fraises ! Partout ! C\'est la plus belle fusée de l\'univers !')],
+      ['rouille', (EN ? 'And here are some Martian biscuits for the trip. They\'re a bit hard. Dip them in your milk.' : 'Et voici des biscuits martiens pour le voyage. Ils sont un peu durs. Trempe-les dans ton lait.')],
+    ], done: () => { S.flags.rrocket4 = 1; refreshMars(); sfx.fanfare(); confetti(P.x, P.y + 3, P.z); } },
+    { t: (EN ? 'Say goodbye to Pito' : 'Dis au revoir à Pito'), talk: 'pito', at: () => [NPCS.pito.x, NPCS.pito.z], lines: [
+      ['pito', (EN ? 'Bzzt… You\'re leaving already? I\'m going to be so sad.' : 'Bzzt… Vous partez déjà ? Je vais être tout triste.')],
+      ['oscar', (EN ? 'We\'ll come back, Pito. Promise. And I\'ll bring you some honey. Well… if I don\'t eat it on the way.' : 'On reviendra, Pito. Promis. Et je t\'apporterai du miel. Enfin… si je ne le mange pas en route.')],
+      ['pito', (EN ? 'Bzzt! Wait… Look at the sky! A spaceship is coming near the village!' : 'Bzzt ! Attends… Regarde le ciel ! Un vaisseau arrive près du village !')],
+    ] }] },
   { title: (EN ? 'A hole in the sky' : 'Un trou dans le ciel'), steps: [
     { t: (EN ? 'A spaceship is landing near the village! Go and look' : 'Un vaisseau se pose près du village ! Va voir'), ev: 'rzib', at: () => [NPCS.zibm.x, NPCS.zibm.z] },
     { t: (EN ? 'Talk to Zib' : 'Parle à Zib'), talk: 'zibm', at: () => [NPCS.zibm.x, NPCS.zibm.z], lines: [
       ['zibm', (EN ? 'Bleeep! Friend Oscar! I saw the volcano beacon, so I came. Thank you for saving my cousins!' : 'Bliiip ! Ami Oscar ! J\'ai vu le phare du volcan, alors je suis venu. Merci d\'avoir sauvé mes cousins !')],
-      ['rouille', (EN ? 'They fixed everything, Zib. The fountain, the lights, the rover… and even flowers!' : 'Ils ont tout réparé, Zib. La fontaine, la lumière, le rover… et même des fleurs !')],
+      ['rouille', (EN ? 'They fixed everything, Zib. The fountain, the lights, the rover… and even flowers! And they built a rocket.' : 'Ils ont tout réparé, Zib. La fontaine, la lumière, le rover… et même des fleurs ! Et ils ont construit une fusée.')],
       ['zibm', (EN ? 'Bloop… But I bring bad news. A black hole is coming. A huge whirlpool that sucks everything in!' : 'Bloup… Mais j\'apporte une mauvaise nouvelle. Un trou noir s\'approche. Un énorme tourbillon qui aspire tout !')],
       ['oscar', (EN ? 'A black hole? Like the hole of my den, but blacker?' : 'Un trou noir ? Comme le trou de mon terrier, mais en plus noir ?')],
-      ['zibm', (EN ? 'Much, much blacker. Leave quickly, before it arrives! Get into your camper!' : 'En beaucoup plus noir. Partez vite, avant qu\'il n\'arrive ! Montez dans votre camping-car !')],
+      ['zibm', (EN ? 'Much, much blacker. Leave quickly in your rocket, before it gets here!' : 'En beaucoup plus noir. Partez vite avec votre fusée, avant qu\'il n\'arrive !')],
     ], done: () => { give('pierreMars'); toast((EN ? '🔴 Granny Rusty gives you a Mars pebble, so you never forget the Marsies.' : '🔴 Mamie Rouille t\'offre un caillou de Mars, pour ne jamais oublier les Marsous.')); } },
     { t: (EN ? 'Quick! Join Max near the camper to leave' : 'Vite ! Rejoins Max près du camping-car pour partir'), talk: 'lr_max', at: () => [C.x, C.z], lines: [
-      ['lr_max', (EN ? 'Is everyone here? The honey engine is warm! Lift-off!' : 'Tout le monde est là ? Le moteur au miel est chaud ! On décolle !')],
+      ['lr_max', (EN ? 'Is everyone here? We tie the camper to the top of the Strawberry Rocket… and lift off!' : 'Tout le monde est là ? On attache le camping-car en haut de la Fusée Fraise… et on décolle !')],
       ['lr_praline', (EN ? 'Woof! Look, up there! The sky is swirling!' : 'Ouaf ! Regardez, là-haut ! Le ciel fait un tourbillon !')],
-      ['oscar', (EN ? 'Goodbye Marsies! Goodbye Mars! … Um… why is the camper heading for the whirlpool all by itself?!' : 'Au revoir les Marsous ! Au revoir Mars ! … Euh… pourquoi le camping-car part tout seul vers le tourbillon ?!')],
+      ['oscar', (EN ? 'Goodbye Marsies! Goodbye Mars! … Um… why is the rocket heading for the whirlpool all by itself?!' : 'Au revoir les Marsous ! Au revoir Mars ! … Euh… pourquoi la fusée part toute seule vers le tourbillon ?!')],
     ], done: () => { startBlackHole(); } }] },
 ];
+const rqAt = (k, st) => S && S.rq === k && S.rstep === st;
+function marsSleep() {
+  fadeTo(() => { S.time = 7.3; S.day++; S.energy = 100; marsEvent('rsleep'); updateHUD(); status((EN ? '☀️ A new day dawns on Mars… Day ' : '☀️ Un nouveau jour se lève sur Mars… Jour ') + S.day, 'info', 4); });
+}
 const rStep = () => { const q = RQ[S.rq]; return q ? q.steps[S.rstep] : null; };
 function marsEvent(ev) {
   if (!S || !S.flags.ch5done || S.flags.ch6done || S.rq === undefined) return;
@@ -7244,6 +7381,11 @@ function marsTalk(id) {
 }
 function talkMars(id) {
   if (marsTalk(id)) return;
+  const sst = rStep();
+  if (sst && sst.ev === 'rseat' && ['mars1', 'mars2', 'mars3'].includes(id) && !(S.rseat || []).includes(id)) {
+    const L = { mars1: [['mars1', (EN ? 'Bzzt! Cushions for the rocket? I sewed the softest ones on Mars, with crater moss!' : 'Bzzt ! Des coussins pour la fusée ? J\'ai cousu les plus doux de Mars, avec de la mousse de cratère !')], ['oscar', (EN ? 'They\'re so soft… I could take a nap on them. No, Oscar. Later.' : 'Ils sont si moelleux… Je pourrais faire une sieste dessus. Non, Oscar. Plus tard.')]], mars2: [['mars2', (EN ? 'A big window? I make glass out of the red sand. Here, it\'s brand new!' : 'Une grande vitre ? Je fabrique du verre avec le sable rouge. Tiens, elle est toute neuve !')], ['oscar', (EN ? 'You can see through it! … Of course, it\'s a window. Thanks, Sandy!' : 'On voit à travers ! … Normal, c\'est une vitre. Merci, Sablon !')]], mars3: [['mars3', (EN ? 'Seat belts are very important in a rocket. Buckle up tight, big bear!' : 'Des ceintures de sécurité, c\'est très important dans une fusée. Attache-toi bien, gros ours !')], ['oscar', (EN ? 'I\'ll buckle up. Promise. Even though I\'d rather look out of the porthole.' : 'Je m\'attacherai. Promis. Même si je préfère regarder par le hublot.')]] };
+    return talk(L[id], () => { S.rseat = S.rseat || []; S.rseat.push(id); sfx.ring(); marsEvent('rseat'); });
+  }
   const L = {
     pito: [(EN ? 'Bzzt! On Mars, the sunset is blue! Blue! Did you know?' : 'Bzzt ! Sur Mars, le coucher de soleil est bleu ! Bleu ! Tu savais ?'), (EN ? 'I jump really high here. You too! Try it!' : 'Je saute très haut, ici. Toi aussi ! Essaie !'), (EN ? 'When I grow up, I\'ll be a rover pilot.' : 'Quand je serai grand, je serai pilote de rover.')],
     rouille: [(EN ? 'Here, a year lasts almost two of your years. So I have… a lot fewer birthdays!' : 'Ici, une année dure presque deux de vos années. Alors j\'ai… beaucoup d\'anniversaires en moins !'), (EN ? 'Take care of yourself, dear. And eat well.' : 'Prends soin de toi, mon grand. Et mange bien.')],
@@ -7266,10 +7408,12 @@ function refreshMars() {
   if (rFount) { const f = !!S.flags.rfount; rFount.water.visible = f; rFount.spire.visible = f; rFount.stones.forEach(s => { s.visible = f; }); }
   rPanels.forEach((g, i) => { g.userData.dust.visible = !(S.rpanel || []).includes(i) && !S.flags.ch6done; });
   rWheelM.forEach((w, i) => { w.visible = at(5, 1) && !(S.rwheel || []).includes(i); });
+  rMetalM.forEach((m, i) => { m.visible = at(8, 2) && !(S.rmetal || []).includes(i); });
+  if (rRocket) { const u = rRocket.userData; u.st.forEach((g, i) => { g.visible = !!S.flags['rrocket' + (i + 1)] && !S.flags.ch6done; }); rRocket.visible = !!S.flags.rrocket1 && !S.flags.ch6done; u.pad.visible = !!S.flags.rrocket1; }
   if (rRover) rRover.userData.wheels.forEach((w, i) => { w.visible = !!S.flags.rrover || [0, 1, 3].includes(i); });
   if (rBeacon) { const on = !!S.flags.rbeacon; rBeacon.userData.lamp.material.color.set(on ? 0xffe8a0 : 0x6a5a50); rBeacon.userData.gl.material.opacity = on ? 0.9 : 0; }
   rPlantM.forEach((f, i) => { f.visible = (S.rplant || []).includes(i); });
-  const zArr = S.rq > 8 || (S.rq === 8 && S.rstep >= 0 && S.flags.rzibUfo) || S.flags.ch6done;
+  const zArr = S.rq > RZIB || (S.rq === RZIB && S.flags.rzibUfo) || S.flags.ch6done;
   const z = NPCS.zibm; if (z) { z.hidden = !zArr; z.model.visible = !!zArr; }
   if (rUfo) { rUfo.visible = !!zArr && !S.flags.ch6done; rUfo.position.set(RVILLAGE[0] + 20, marsY(RVILLAGE[0] + 20, RVILLAGE[1] + 34) + 1.2, RVILLAGE[1] + 34); }
   const po = NPCS.pito; if (po) { if (S.rq >= 3) { po.x = RVILLAGE[0] + 6; po.z = RVILLAGE[1] + 12; } else { po.x = RLAND[0] - 14; po.z = RLAND[1] - 16; } }
@@ -7297,16 +7441,18 @@ function updateMars(dt) {
   for (const d of rDevils) { d.a += dt * d.sp; const x = MARS.x + Math.cos(d.a) * d.r, z = MARS.z + Math.sin(d.a * 1.3) * d.r * 0.8; d.g.position.set(x, marsY(x, z), z); d.g.rotation.y += dt * 3; if (Math.random() < dt * 6) emit(x + rand(-2, 2), marsY(x, z) + rand(0, 6), z + rand(-2, 2), rand(-2, 2), rand(1, 3), rand(-2, 2), 1.5, 0.4, 0.85, 0.55, 0.35, 0); }
   if (rFount && S.flags.rfount && Math.random() < dt * 14) emit(RVILLAGE[0] + rand(-0.3, 0.3), marsY(RVILLAGE[0], RVILLAGE[1]) + 5.5, RVILLAGE[1] + rand(-0.3, 0.3), rand(-1.5, 1.5), rand(3, 5), rand(-1.5, 1.5), 1.2, 0.25, 0.7, 0.9, 1, -9);
   if (rRover && S.flags.rrover) { const a = G.t * 0.08, x = RGARAGE[0] + 2 + Math.cos(a) * 16, z = RGARAGE[1] + 14 + Math.sin(a) * 10; rRover.position.set(x, marsY(x, z), z); rRover.rotation.y = -a + Math.PI; rRover.userData.cam.rotation.y = Math.sin(G.t) * 0.6; for (const w of rRover.userData.wheels) w.rotation.x += dt * 3; }
+  for (const v of rVentM) if (Math.random() < dt * 6 && Math.hypot(v.position.x - P.x, v.position.z - P.z) < 90) emit(v.position.x + rand(-0.3, 0.3), v.position.y + 1, v.position.z + rand(-0.3, 0.3), rand(-0.4, 0.4), rand(2, 3.5), rand(-0.4, 0.4), 2.5, 0.6, 0.75, 0.6, 0.5, 0);
+  if (C.model && onMars() && S.flags.ch6 && !S.flags.ch6done && Math.random() < dt * 3) puff(C.x + rand(-1, 1), C.y + 2.5, C.z + rand(-1, 1), 2, [0.4, 0.4, 0.42], 1);
   if (rBeacon && S.flags.rbeacon) rBeacon.userData.gl.material.opacity = 0.7 + Math.sin(G.t * 3) * 0.25;
   if (NPCS.pito) { const n = NPCS.pito; n.dy = Math.abs(Math.sin(G.t * 3.5)) * 0.5; if (n.model.userData.prop) n.model.userData.prop.rotation.y += dt * 12; }
   for (const id of ['mars1', 'mars2', 'mars3']) { const n = NPCS[id]; if (n) n.dy = Math.abs(Math.sin(G.t * 2.2 + n.x)) * 0.25; }
   // Découvertes
   const po = NPCS.pito; if (po && S.rq === 2 && S.rstep === 0 && Math.hypot(po.x - P.x, po.z - P.z) < 13 && !G.talking) marsEvent('pito');
-  if (S.rq === 8 && S.rstep === 0 && !S.flags.rzibUfo && Math.hypot(P.x - RVILLAGE[0], P.z - RVILLAGE[1]) < 60) { S.flags.rzibUfo = 1; refreshMars(); puff(NPCS.zibm.x, NPCS.zibm.y + 1, NPCS.zibm.z, 20, [0.6, 1, 0.8], 3); sfx.alert(); status((EN ? '👽 A spaceship is landing near the village…' : '👽 Un vaisseau se pose près du village…'), 'info', 4); }
-  if (S.rq === 8 && S.rstep === 0 && S.flags.rzibUfo && Math.hypot(P.x - NPCS.zibm.x, P.z - NPCS.zibm.z) < 12 && !G.talking) marsEvent('rzib');
+  if (S.rq === RZIB && S.rstep === 0 && !S.flags.rzibUfo && Math.hypot(P.x - RVILLAGE[0], P.z - RVILLAGE[1]) < 60) { S.flags.rzibUfo = 1; refreshMars(); puff(NPCS.zibm.x, NPCS.zibm.y + 1, NPCS.zibm.z, 20, [0.6, 1, 0.8], 3); sfx.alert(); status((EN ? '👽 A spaceship is landing near the village…' : '👽 Un vaisseau se pose près du village…'), 'info', 4); }
+  if (S.rq === RZIB && S.rstep === 0 && S.flags.rzibUfo && Math.hypot(P.x - NPCS.zibm.x, P.z - NPCS.zibm.z) < 12 && !G.talking) marsEvent('rzib');
   if (rUfo && rUfo.visible) { rUfo.rotation.y += dt * 0.4; rUfo.userData.lights.forEach((l, i) => { l.material.color.set([0xff5a5a, 0xffd84d, 0x5aff9a, 0x5ab0ff][(i + Math.floor(G.t * 4)) % 4]); }); }
   // Le trou noir grandit dans le ciel à la fin du chapitre
-  if (rHole && S.rq === 8 && S.rstep >= 1 && !G.cine) { rHole.visible = true; rHole.position.set(P.x - 30, P.y + 8, P.z - 160); rHole.scale.setScalar(30 + Math.sin(G.t) * 1.5); }
+  if (rHole && S.rq === RZIB && S.rstep >= 1 && !G.cine) { rHole.visible = true; rHole.position.set(P.x - 30, P.y + 8, P.z - 160); rHole.scale.setScalar(30 + Math.sin(G.t) * 1.5); }
   else if (rHole && !G.cine) rHole.visible = false;
 }
 // ---------- Cinématique : le camping-car au miel file vers Mars ----------
@@ -7349,7 +7495,7 @@ function endMarsLaunch() {
   P.mode = 'walk'; P.model.visible = true; P.x = RLAND[0] + 2; P.z = RLAND[1] + 4; P.y = marsY(P.x, P.z); snapCamera();
   S.flags.ch6 = 1; refreshMars(); updateQuestUI(); saveGame();
   banner((EN ? 'Chapter 6' : 'Chapitre 6'), (EN ? 'The planet Mars 🔴' : 'La planète Mars 🔴'));
-  setTimeout(() => talk([['lr_max', (EN ? 'We\'re on Mars! The honey engine worked!' : 'On est sur Mars ! Le moteur au miel a marché !')], ['lr_plume', (EN ? 'Hoo hoo… Everything is red. The ground, the rocks, even the sky is caramel-coloured.' : 'Hou hou… Tout est rouge. Le sol, les rochers, même le ciel est couleur caramel.')], ['oscar', (EN ? 'Caramel? … I\'m hungry.' : 'Caramel ? … J\'ai faim.')], ['lr_lulu', (EN ? 'Look, over there, behind the rocks! Something is moving!' : 'Regardez, là-bas, derrière les rochers ! Quelque chose bouge !')]]), 2400);
+  setTimeout(() => talk([['lr_max', (EN ? 'We\'re on Mars! The honey engine worked! … Hmm. It\'s making some funny smoke. I\'ll look at it later.' : 'On est sur Mars ! Le moteur au miel a marché ! … Hum. Il fait une drôle de fumée. Je regarderai ça plus tard.')], ['lr_plume', (EN ? 'Hoo hoo… Everything is red. The ground, the rocks, even the sky is caramel-coloured.' : 'Hou hou… Tout est rouge. Le sol, les rochers, même le ciel est couleur caramel.')], ['oscar', (EN ? 'Caramel? … I\'m hungry.' : 'Caramel ? … J\'ai faim.')], ['lr_lulu', (EN ? 'Look, over there, behind the rocks! Something is moving!' : 'Regardez, là-bas, derrière les rochers ! Quelque chose bouge !')]]), 2400);
 }
 function skipMarsLaunch() { const L = G.cine; if (!L || L.done || L.t < 3) return; L.done = true; fadeTo(endMarsLaunch); }
 function marsTravel(go) {
@@ -7368,7 +7514,7 @@ function startBlackHole() {
   fadeTo(() => {
     G.cine = { kind: 'bhole', t: 0, cap: 0, ph: 1 };
     P.mode = 'cine'; P.model.visible = false; G.wanted = 0;
-    C.x = RLAND[0] + 16; C.z = RLAND[1] + 2; C.y = marsY(C.x, C.z); camera.far = 6000; camera.updateProjectionMatrix(); sfx.takeoff();
+    C.x = RPAD[0]; C.z = RPAD[1]; C.y = marsY(C.x, C.z); camera.far = 6000; camera.updateProjectionMatrix(); sfx.takeoff();
     rHole.visible = true; showCamperParts();
   });
 }
@@ -7381,15 +7527,17 @@ function updateBlackHole(dt) {
     const hx = RLAND[0] + 16, hz = RLAND[1] - 320, hy = 260, k = clamp(t / 12, 0, 1), e = k * k;
     rHole.visible = true; rHole.position.set(hx, hy, hz); rHole.scale.setScalar(120 + k * 60); rHole.quaternion.copy(camera.quaternion); rHole.userData.mat.uniforms.uT.value += dt * (1 + k * 4);
     G.spaceK = sstep(0.1, 0.5, k); L.space = k > 0.45;
-    const sx = RLAND[0] + 16, sz = RLAND[1] + 2, sy = marsY(sx, sz), a = k * 9;
+    const sx = RPAD[0], sz = RPAD[1], sy = marsY(sx, sz), a = k * 9;
     const rad = lerp(40, 2, e);
     C.x = lerp(sx, hx, e) + Math.cos(a) * rad * sstep(0.2, 0.5, k); C.z = lerp(sz, hz, e) + Math.sin(a) * rad * 0.4 * sstep(0.2, 0.5, k); C.y = lerp(sy + 0.8, hy, Math.pow(k, 1.4));
-    C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(Math.sin(t * 3) * k, t * k * 4, Math.cos(t * 2) * k);
+    rRocket.visible = true; rRocket.position.set(C.x, C.y + 0.6, C.z); rRocket.rotation.set(Math.sin(t * 3) * k * 0.5, t * k * 4, Math.cos(t * 2) * k * 0.5);
+    C.model.position.set(C.x, C.y + 15.2, C.z); C.model.rotation.copy(rRocket.rotation);
+    if (t > 0.5 && Math.random() < dt * 40) emit(C.x + rand(-1.5, 1.5), C.y - 0.5, C.z + rand(-1.5, 1.5), rand(-1, 1), -8, rand(-1, 1), 1.2, 1.4, 1, 0.75, 0.3, 0);
     const sh = k * 0.6;
     if (t < 3.5) { camera.position.set(sx + 8, sy + 3, sz + 18); camera.lookAt(lerp(C.x, hx, 0.4), lerp(C.y + 4, hy, 0.4), lerp(C.z, hz, 0.4)); }
     else { const vx = C.x - hx, vy = C.y - hy, vz = C.z - hz, vl = Math.hypot(vx, vy, vz) || 1, bd = 26 + 10 * (1 - k); camera.position.set(C.x + vx / vl * bd + 6 + rand(-sh, sh), C.y + vy / vl * bd + 5 + rand(-sh, sh), C.z + vz / vl * bd + rand(-sh, sh)); camera.lookAt(lerp(C.x, hx, 0.5), lerp(C.y, hy, 0.5), lerp(C.z, hz, 0.5)); }
     if (Math.random() < dt * 40) emit(C.x + rand(-4, 4), C.y + rand(-4, 4), C.z + rand(-4, 4), (hx - C.x) * 0.05, (hy - C.y) * 0.05, (hz - C.z) * 0.05, 1, 0.6, 1, 0.8, 0.5, 0);
-    if (t > 12.5 && !L.faded) { L.faded = true; fadeTo(() => { L.ph = 2; L.t = 0; L.cap = 0; L.space = false; G.spaceK = 0; rHole.visible = false; P.x = DLAND[0]; P.z = DLAND[1]; S.flags.ch6done = 1; S.flags.ch7 = 1; if (S.dq === undefined) { S.dq = 0; S.dstep = 0; S.dcnt = 0; } refreshDessin(); }); }
+    if (t > 12.5 && !L.faded) { L.faded = true; fadeTo(() => { L.ph = 2; L.t = 0; L.cap = 0; L.space = false; G.spaceK = 0; rHole.visible = false; rRocket.visible = false; P.x = DLAND[0]; P.z = DLAND[1]; S.flags.ch6done = 1; S.flags.ch7 = 1; if (S.dq === undefined) { S.dq = 0; S.dstep = 0; S.dcnt = 0; } refreshDessin(); }); }
   } else {
     const k = clamp(t / 12, 0, 1), e = 1 - (1 - k) * (1 - k), ex = DLAND[0] + 16, ez = DLAND[1] + 2;
     C.x = ex + Math.sin(t * 1.3) * 6 * (1 - k); C.z = ez; C.y = lerp(90, dessinY(ex, ez) + 0.8, e);
@@ -9015,7 +9163,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { RQ, rStep, marsEvent, refreshMars, RLAND, RVILLAGE, ROLY, RDUNES, RPANELS, RWHEELS, RPLANTERS, RHONEY, RGARAGE, RSERRE, MARS, marsY, startMarsLaunch, startBlackHole, DQ, dStep, dessinEvent, refreshDessin, DLAND, DPLAZA, DCASTLE, DSTAIR, DPLAT, DISLE, DBRIDGE, DPOOL, DSCRIB, DVILLAGE, DHIDE, DLOST, DCRAY, DRAW, dessinY, DCOL, startWhiteHole, INTER, waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, ptMesh, pts, mountains, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { RPAD, RMETAL, RVENTS, RQ, rStep, marsEvent, refreshMars, RLAND, RVILLAGE, ROLY, RDUNES, RPANELS, RWHEELS, RPLANTERS, RHONEY, RGARAGE, RSERRE, MARS, marsY, startMarsLaunch, startBlackHole, DQ, dStep, dessinEvent, refreshDessin, DLAND, DPLAZA, DCASTLE, DSTAIR, DPLAT, DISLE, DBRIDGE, DPOOL, DSCRIB, DVILLAGE, DHIDE, DLOST, DCRAY, DRAW, dessinY, DCOL, startWhiteHole, INTER, waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, ptMesh, pts, mountains, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>
