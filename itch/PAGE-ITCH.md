@@ -20,7 +20,7 @@
    - Coche **« Mobile friendly »** et **« Fullscreen button »**.
 7. **Pricing** : choisis **« No payment required »**, puis active **« Suggested donation »** avec **2 €**. Un jeu gratuit attire beaucoup plus de joueurs, et ceux qui l'aiment donnent quand même.
 8. **Cover image** : `couverture-630x500.png`.
-9. **Screenshots** : ajoute les images de `captures/` dans cet ordre : 19, 21, 20, 02, 13, 25, 26, 18, 23, 28, 04, 06, 15, 14, 22, 27, 09, 10, 17, 16, 24, 07, 03, 05, 08, 11, 12, 01. Les plus belles d’abord (itch.io accepte beaucoup d’images ; si tu dois choisir, garde les 12 premières).
+9. **Screenshots** : ajoute les images de `captures/` dans cet ordre : 19, 21, 20, 29, 02, 13, 25, 26, 18, 23, 28, 04, 06, 15, 14, 22, 27, 09, 10, 17, 16, 24, 07, 03, 05, 08, 11, 12, 01. Les plus belles d’abord (itch.io accepte beaucoup d’images ; si tu dois choisir, garde les 12 premières).
 10. **Genre** : Simulation. **Tags** : `space`, `rocket`, `moon`, `3d`, `simulation`, `arcade`, `webgl`, `french`, `browser`, `singleplayer`.
 11. **Description** : copie le texte plus bas (le français puis l'anglais, pour attirer aussi les joueurs étrangers).
 12. Clique sur **Save**, puis passe la page en **Public** quand tout est prêt.
@@ -64,7 +64,8 @@ Amarre-toi à la Station spatiale internationale pour refaire le plein, file ver
 
 - Terre, Lune, atmosphère et nuages en 3D temps réel
 - 4 vues : poursuite, cockpit, caméra embarquée, caméra au sol
-- Contrôle de mission en français avec voix
+- Contrôle de mission avec voix
+- En français et en anglais
 - 12 succès à débloquer
 - Fonctionne sur ordinateur et sur téléphone
 
@@ -85,7 +86,8 @@ Dock with the International Space Station to refuel, fly to the Moon and gently 
 
 - Real-time 3D Earth, Moon, atmosphere and clouds
 - 4 camera views: chase, cockpit, onboard camera, ground tracking camera
-- Mission control callouts (game text and voice in French)
+- Mission control callouts with voice
+- In English and French (button in the menu)
 - 12 achievements to unlock
 - Plays on desktop and mobile
 

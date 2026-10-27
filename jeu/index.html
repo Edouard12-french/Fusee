@@ -190,6 +190,7 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
     <div class="btns">
       <button class="go" id="startBtn" type="button">Lancer la mission</button>
       <button class="ghost" id="fsBtn" type="button">Plein écran</button>
+      <button class="ghost" id="langBtn" type="button">🇬🇧 English</button>
     </div>
   </div>
 </div>
@@ -233,16 +234,25 @@ body { background: #02040a; color: var(--ink); font-family: var(--hud); overflow
 <script>
 (() => {
 'use strict';
+const EN = (() => { try { const v = localStorage.getItem('fusee-lang'); if (v) return v === 'en'; } catch (e) {} return !/^fr/i.test(navigator.language || 'fr'); })();
+// Les textes de la page passent en anglais, et le bouton change de langue
+{ const HT = {"Vitesse": "Speed", "Troposphère": "Troposphere", "Carburant": "Fuel", "Boucliers": "Shields", "Vue : poursuite": "View: chase", "Voix : oui": "Voice: on", "Son : oui": "Sound: on", "Passer l'intro": "Skip intro", "FUSÉE": "ROCKET", "Mission Lune": "Moon Mission", "Décolle depuis une vraie base de lancement, traverse l'atmosphère, amarre-toi à la Station spatiale internationale, puis file vers la Lune et pose-toi en douceur sur sa surface.": "Launch from a real launch base, cross the atmosphere, dock with the International Space Station, then head for the Moon and land gently on its surface.", "Base de lancement": "Launch base", "Ariane 6 · Guyane": "Ariane 6 · Guiana", "Cap Canaveral": "Cape Canaveral", "Falcon 9 · Floride": "Falcon 9 · Florida", "Baïkonour": "Baikonur", "Soyouz · Kazakhstan": "Soyuz · Kazakhstan", "ou ZQSD / WASD : piloter": "or WASD / ZQSD: steer", "Espace": "Space", "boost, et poussée pendant l'alunissage": "boost, and thrust during landing", "glisse le doigt pour piloter, bouton BOOST": "slide your finger to steer, BOOST button", "Succès 0/12": "Achievements 0/12", "Lancer la mission": "Launch the mission", "Plein écran": "Full screen", "Appuie sur P ou Échap pour reprendre.": "Press P or Esc to resume.", "Reprendre": "Resume", "Abandonner la mission": "Abandon the mission", "Altitude max": "Max altitude", "Étape": "Stage", "Soutenir le jeu": "Support the game", "Relancer": "Launch again", "Copier mon score": "Copy my score", "Changer de base": "Change base", "Texte à partager": "Text to share"};
+  if (EN) { document.documentElement.lang = 'en'; document.title = 'Fusée Kármán · Moon Mission';
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); const ns = []; while (w.nextNode()) ns.push(w.currentNode);
+    for (const t of ns) { if (/SCRIPT|STYLE/.test(t.parentNode.nodeName)) continue; const k = t.nodeValue.trim(); if (k && HT[k]) t.nodeValue = t.nodeValue.replace(k, HT[k]); }
+    document.querySelectorAll('[title],[aria-label],[alt]').forEach(e => { for (const a of ['title', 'aria-label', 'alt']) { const v = e.getAttribute(a); if (v && HT[v]) e.setAttribute(a, HT[v]); } }); }
+  const lb = document.getElementById('langBtn'); if (lb) { lb.textContent = EN ? '🇫🇷 Français' : '🇬🇧 English'; lb.addEventListener('click', () => { try { localStorage.setItem('fusee-lang', EN ? 'fr' : 'en'); } catch (e) {} location.reload(); }); } }
+
 const $ = id => document.getElementById(id);
 function fail(msg) { const d = document.createElement('div'); d.id = 'err'; d.textContent = msg; document.body.appendChild(d); }
-if (!window.THREE) { fail("Le moteur 3D n'a pas pu se charger. Vérifie ta connexion puis recharge la page."); return; }
+if (!window.THREE) { fail((EN ? 'The 3D engine couldn\'t load. Check your connection and reload the page.' : "Le moteur 3D n'a pas pu se charger. Vérifie ta connexion puis recharge la page.")); return; }
 const T = THREE;
 const coarse = matchMedia('(pointer: coarse)').matches;
 
 let renderer;
 try {
   renderer = new T.WebGLRenderer({ canvas: $('gl'), antialias: !coarse, powerPreference: 'high-performance' });
-} catch (e) { fail("Ton navigateur ne supporte pas la 3D (WebGL). Essaie avec Chrome, Firefox ou Safari à jour."); return; }
+} catch (e) { fail((EN ? 'Your browser doesn\'t support 3D (WebGL). Try an up-to-date Chrome, Firefox or Safari.' : "Ton navigateur ne supporte pas la 3D (WebGL). Essaie avec Chrome, Firefox ou Safari à jour.")); return; }
 renderer.autoClear = false;
 renderer.outputEncoding = T.sRGBEncoding;
 renderer.toneMapping = T.ACESFilmicToneMapping;
@@ -783,9 +793,9 @@ function buildAriane() {
       E: { n: [[ln[0], ly + ln[1], ln[2], ln[3], ln[4]]], yMin: ly, yMax: ly + L.H, r: 0.3, plume: 0.12 },
     },
     seq: [
-      { alt: 48, cfg: 'B', sep: ['boosters'], t: 'Séparation des boosters', n: 'Les 4 boosters à poudre P120C se détachent' },
-      { alt: 80, cfg: 'C', sep: ['stage1'], t: 'Séparation du premier étage', n: 'Le moteur Vinci de l\'étage supérieur s\'allume' },
-      { alt: 110, cfg: 'D', sep: ['fairing'], t: 'Largage de la coiffe', n: 'Le module lunaire est à découvert' },
+      { alt: 48, cfg: 'B', sep: ['boosters'], t: (EN ? 'Booster separation' : 'Séparation des boosters'), n: (EN ? 'The 4 P120C solid boosters break away' : 'Les 4 boosters à poudre P120C se détachent') },
+      { alt: 80, cfg: 'C', sep: ['stage1'], t: (EN ? 'First stage separation' : 'Séparation du premier étage'), n: (EN ? 'The upper stage Vinci engine ignites' : 'Le moteur Vinci de l\'étage supérieur s\'allume') },
+      { alt: 110, cfg: 'D', sep: ['fairing'], t: (EN ? 'Fairing jettison' : 'Largage de la coiffe'), n: (EN ? 'The lunar module is uncovered' : 'Le module lunaire est à découvert') },
     ],
   };
 }
@@ -830,8 +840,8 @@ function buildFalcon() {
       E: { n: [[ln[0], ly + ln[1], ln[2], ln[3], ln[4]]], yMin: ly, yMax: ly + L.H, r: 0.28, plume: 0.12 },
     },
     seq: [
-      { alt: 70, cfg: 'C', sep: ['stage1'], t: 'MECO · séparation', n: 'Le premier étage fait demi-tour pour revenir se poser', flip: true },
-      { alt: 110, cfg: 'D', sep: ['fairing'], t: 'Largage de la coiffe', n: 'Le module lunaire est à découvert' },
+      { alt: 70, cfg: 'C', sep: ['stage1'], t: (EN ? 'MECO · separation' : 'MECO · séparation'), n: (EN ? 'The first stage turns around to come back and land' : 'Le premier étage fait demi-tour pour revenir se poser'), flip: true },
+      { alt: 110, cfg: 'D', sep: ['fairing'], t: (EN ? 'Fairing jettison' : 'Largage de la coiffe'), n: (EN ? 'The lunar module is uncovered' : 'Le module lunaire est à découvert') },
     ],
   };
 }
@@ -893,10 +903,10 @@ function buildSoyuz() {
       E: { n: [[ln[0], ly + ln[1], ln[2], ln[3], ln[4]]], yMin: ly, yMax: ly + L.H, r: 0.2, plume: 0.1 },
     },
     seq: [
-      { alt: 40, cfg: 'A2', sep: ['les'], t: 'Largage de la tour de sauvetage', n: 'La tour d\'éjection n\'est plus nécessaire' },
-      { alt: 46, cfg: 'B', sep: ['boosters'], t: 'Croix de Korolev', n: 'Les 4 boosters se séparent en forme de croix', cross: true },
-      { alt: 85, cfg: 'C', sep: ['stage1'], t: 'Séparation du corps central', n: 'Le troisième étage s\'allume' },
-      { alt: 110, cfg: 'D', sep: ['fairing'], t: 'Largage de la coiffe', n: 'Le module lunaire est à découvert' },
+      { alt: 40, cfg: 'A2', sep: ['les'], t: (EN ? 'Escape tower jettison' : 'Largage de la tour de sauvetage'), n: (EN ? 'The escape tower is no longer needed' : 'La tour d\'éjection n\'est plus nécessaire') },
+      { alt: 46, cfg: 'B', sep: ['boosters'], t: (EN ? 'Korolev Cross' : 'Croix de Korolev'), n: (EN ? 'The 4 boosters separate in the shape of a cross' : 'Les 4 boosters se séparent en forme de croix'), cross: true },
+      { alt: 85, cfg: 'C', sep: ['stage1'], t: (EN ? 'Core stage separation' : 'Séparation du corps central'), n: (EN ? 'The third stage ignites' : 'Le troisième étage s\'allume') },
+      { alt: 110, cfg: 'D', sep: ['fairing'], t: (EN ? 'Fairing jettison' : 'Largage de la coiffe'), n: (EN ? 'The lunar module is uncovered' : 'Le module lunaire est à découvert') },
     ],
   };
 }
@@ -1096,9 +1106,9 @@ const streaks = Array.from({ length: STREAKS }, () => { const a = rnd(0, Math.PI
 
 /* ---------- Base de lancement ---------- */
 const SITES = [
-  { name: 'Kourou', full: 'Ensemble de lancement n°4', where: 'Kourou, Guyane française', rocket: 'ariane', rocketName: 'Ariane 6', padTop: 1.0, hall: 'BAL' },
-  { name: 'Cap Canaveral', full: 'Complexe de lancement 39A', where: 'Cap Canaveral, Floride', rocket: 'falcon', rocketName: 'Falcon 9', padTop: 1.0, hall: 'HANGAR 39A' },
-  { name: 'Baïkonour', full: 'Pas de tir n°31', where: 'Baïkonour, Kazakhstan', rocket: 'soyuz', rocketName: 'Soyouz', padTop: 0.35, hall: 'MIK' },
+  { name: 'Kourou', full: (EN ? 'Launch Complex No. 4' : 'Ensemble de lancement n°4'), where: (EN ? 'Kourou, French Guiana' : 'Kourou, Guyane française'), rocket: 'ariane', rocketName: 'Ariane 6', padTop: 1.0, hall: 'BAL' },
+  { name: (EN ? 'Cape Canaveral' : 'Cap Canaveral'), full: (EN ? 'Launch Complex 39A' : 'Complexe de lancement 39A'), where: (EN ? 'Cape Canaveral, Florida' : 'Cap Canaveral, Floride'), rocket: 'falcon', rocketName: 'Falcon 9', padTop: 1.0, hall: 'HANGAR 39A' },
+  { name: (EN ? 'Baikonur' : 'Baïkonour'), full: (EN ? 'Launch Pad No. 31' : 'Pas de tir n°31'), where: (EN ? 'Baikonur, Kazakhstan' : 'Baïkonour, Kazakhstan'), rocket: 'soyuz', rocketName: (EN ? 'Soyuz' : 'Soyouz'), padTop: 0.35, hall: 'MIK' },
 ];
 let siteIdx = 0;
 try { siteIdx = clamp(Number(localStorage.getItem('fusee-site')) || 0, 0, 2); } catch (e) {}
@@ -1123,7 +1133,7 @@ const signTex = canvasTex(1024, 256, (g, w, h) => {
   g.fillStyle = '#e6e8ea'; g.fillRect(0, 0, w, h);
   g.fillStyle = '#1f3f9a'; g.fillRect(0, h - 40, w, 40);
   g.fillStyle = '#16181d'; g.font = '700 120px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('BASE FUSÉE', w / 2, h / 2 - 16);
+  g.fillText((EN ? 'ROCKET BASE' : 'BASE FUSÉE'), w / 2, h / 2 - 16);
 });
 
 
@@ -1649,13 +1659,13 @@ function makeDockGate(label) {
 
 /* ---------- Données de vol ---------- */
 const LAYERS = [
-  { at: 0, name: 'Troposphère' },
-  { at: 12, name: 'Stratosphère', note: 'Au-dessus des avions de ligne' },
-  { at: 50, name: 'Mésosphère', note: 'Là où brûlent les étoiles filantes' },
-  { at: 80, name: 'Thermosphère', note: "Plus que 20 km avant l'espace" },
-  { at: 100, name: 'Ligne de Kármán', note: "Bienvenue dans l'espace", gold: true },
-  { at: 200, name: 'Orbite basse', note: 'Zone des satellites' },
-  { at: 408, name: "Altitude de l'ISS", note: 'Passe dans l\'anneau vert pour t\'amarrer', gold: true },
+  { at: 0, name: (EN ? 'Troposphere' : 'Troposphère') },
+  { at: 12, name: (EN ? 'Stratosphere' : 'Stratosphère'), note: (EN ? 'Above the airliners' : 'Au-dessus des avions de ligne') },
+  { at: 50, name: (EN ? 'Mesosphere' : 'Mésosphère'), note: (EN ? 'Where shooting stars burn up' : 'Là où brûlent les étoiles filantes') },
+  { at: 80, name: (EN ? 'Thermosphere' : 'Thermosphère'), note: (EN ? 'Only 20 km left before space' : "Plus que 20 km avant l'espace") },
+  { at: 100, name: (EN ? 'Kármán line' : 'Ligne de Kármán'), note: (EN ? 'Welcome to space' : "Bienvenue dans l'espace"), gold: true },
+  { at: 200, name: (EN ? 'Low orbit' : 'Orbite basse'), note: (EN ? 'Satellite zone' : 'Zone des satellites') },
+  { at: 408, name: (EN ? 'ISS altitude' : "Altitude de l'ISS"), note: (EN ? 'Fly through the green ring to dock' : 'Passe dans l\'anneau vert pour t\'amarrer'), gold: true },
 ];
 const layerAt = a => { let l = LAYERS[0]; for (const x of LAYERS) if (a >= x.at) l = x; return l; };
 const SPEED_TABLE = [[0, 0], [1, 380], [11, 1250], [30, 3300], [70, 7600], [100, 9400], [200, 19500], [408, 27600], [600, 28000]];
@@ -1667,15 +1677,15 @@ function speedAt(a) {
   return 28000;
 }
 const soundSpeed = a => a < 11 ? lerp(1225, 1062, a / 11) : 1062;
-const STAGE_NAMES = { pad: 'Décollage', climb: 'Décollage', ascent: 'Ascension', tli: 'Départ vers la Lune', transfer: 'Voyage vers la Lune', orbit: 'Orbite lunaire', descent: 'Descente', landing: 'Alunissage', win: 'Sur la Lune' };
+const STAGE_NAMES = { pad: (EN ? 'Lift-off' : 'Décollage'), climb: (EN ? 'Lift-off' : 'Décollage'), ascent: (EN ? 'Ascent' : 'Ascension'), tli: (EN ? 'Leaving for the Moon' : 'Départ vers la Lune'), transfer: (EN ? 'Journey to the Moon' : 'Voyage vers la Lune'), orbit: (EN ? 'Lunar orbit' : 'Orbite lunaire'), descent: (EN ? 'Descent' : 'Descente'), landing: (EN ? 'Landing' : 'Alunissage'), win: (EN ? 'On the Moon' : 'Sur la Lune') };
 
 const BX = 7, BY = 4.2, SPAWN_Z = -430;
-const fmt1 = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const fmt0 = v => Math.round(v).toLocaleString('fr-FR');
+const fmt1 = v => v.toLocaleString((EN ? 'en-US' : 'fr-FR'), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmt0 = v => Math.round(v).toLocaleString((EN ? 'en-US' : 'fr-FR'));
 let best = { score: 0, stage: '' };
 try { const b = JSON.parse(localStorage.getItem('fusee-best-v3') || 'null'); if (b && typeof b.score === 'number') best = b; } catch (e) {}
 function showRecord(isNew) {
-  const t = best.score > 0 ? (isNew ? 'Nouveau record : ' : 'Record : ') + fmt0(best.score) + ' points' + (best.stage ? ' · ' + best.stage : '') : '';
+  const t = best.score > 0 ? (isNew ? (EN ? 'New record: ' : 'Nouveau record : ') : (EN ? 'Record: ' : 'Record : ')) + fmt0(best.score) + ' points' + (best.stage ? ' · ' + best.stage : '') : '';
   $('recMenu').textContent = t; $('recOver').textContent = t;
 }
 showRecord(false);
@@ -1718,7 +1728,7 @@ function boomSound() {
   s.connect(f).connect(g).connect(master); s.start();
 }
 $('mute').addEventListener('click', () => {
-  muted = !muted; $('mute').textContent = muted ? 'Son : non' : 'Son : oui';
+  muted = !muted; $('mute').textContent = muted ? (EN ? 'Sound: off' : 'Son : non') : (EN ? 'Sound: on' : 'Son : oui');
   if (master) master.gain.value = muted ? 0 : 0.8;
 });
 
@@ -1959,7 +1969,7 @@ function spawnStation(kind) {
   st.mesh.position.set(rnd(-2, 2), -8.5, SPAWN_Z);
   st.vx = 0; st.vy = 0; st.vz = S * rel;
   scene.add(st.mesh); objs.push(st);
-  const gate = makeDockGate(kind === 'iss' ? 'AMARRAGE ISS' : 'AMARRAGE GATEWAY');
+  const gate = makeDockGate(kind === 'iss' ? (EN ? 'ISS DOCKING' : 'AMARRAGE ISS') : (EN ? 'GATEWAY DOCKING' : 'AMARRAGE GATEWAY'));
   gate.mesh.position.set(rnd(-3.5, 3.5), rnd(-1.5, 2.5), SPAWN_Z);
   gate.vx = 0; gate.vy = 0; gate.vz = S * rel; gate.station = kind;
   scene.add(gate.mesh); objs.push(gate);
@@ -2046,8 +2056,8 @@ function explode(x, y, z) {
 const flash = new T.PointLight(0xffa050, 0, 60, 2); scene.add(flash);
 
 const DEATH = {
-  plane: 'Collision avec un avion de ligne', balloon: 'Ballon-sonde percuté', meteor: 'Touché par une météorite',
-  sat: 'Collision avec un satellite', debris: 'Percuté par un débris spatial', asteroid: 'Percuté par un astéroïde', station: 'Collision avec la station',
+  plane: (EN ? 'Collision with an airliner' : 'Collision avec un avion de ligne'), balloon: (EN ? 'Hit a weather balloon' : 'Ballon-sonde percuté'), meteor: (EN ? 'Hit by a meteorite' : 'Touché par une météorite'),
+  sat: (EN ? 'Collision with a satellite' : 'Collision avec un satellite'), debris: (EN ? 'Hit by space debris' : 'Percuté par un débris spatial'), asteroid: (EN ? 'Hit by an asteroid' : 'Percuté par un astéroïde'), station: (EN ? 'Collision with the station' : 'Collision avec la station'),
 };
 function computeScore() {
   const a = Math.min(maxAlt, 600);
@@ -2066,31 +2076,31 @@ function endMission(won, title, text) {
   $('reason').className = won ? 'win' : '';
   $('overText').hidden = !text; $('overText').textContent = text || '';
   $('sScore').textContent = fmt0(score);
-  if (phase === 'landing' || won) { $('sMidL').textContent = 'Précision'; $('sMid').textContent = fmt0(Math.hypot(LD.x, LD.z) * 10) + ' m'; }
-  else if (phase === 'transfer') { $('sMidL').textContent = 'Trajet'; $('sMid').textContent = Math.round(tr.u * 100) + ' %'; }
-  else { $('sMidL').textContent = 'Altitude max'; $('sMid').textContent = fmt1(maxAlt) + ' km'; }
+  if (phase === 'landing' || won) { $('sMidL').textContent = (EN ? 'Accuracy' : 'Précision'); $('sMid').textContent = fmt0(Math.hypot(LD.x, LD.z) * 10) + ' m'; }
+  else if (phase === 'transfer') { $('sMidL').textContent = (EN ? 'Distance' : 'Trajet'); $('sMid').textContent = Math.round(tr.u * 100) + ' %'; }
+  else { $('sMidL').textContent = (EN ? 'Max altitude' : 'Altitude max'); $('sMid').textContent = fmt1(maxAlt) + ' km'; }
   $('sStage').textContent = stage;
   $('newAch').hidden = !newAch.length;
-  $('newAch').textContent = newAch.length ? 'Nouveaux succès : ' + newAch.join(' · ') : '';
+  $('newAch').textContent = newAch.length ? (EN ? 'New achievements: ' : 'Nouveaux succès : ') + newAch.join(' · ') : '';
   const showSupport = won || maxAlt > 100;
   $('support').hidden = !showSupport;
   $('supportText').textContent = SUPPORT_URL
-    ? 'Tu as aimé Fusée Kármán ? Le jeu est gratuit. Tu peux soutenir son créateur pour qu\'il ajoute de nouvelles missions.'
-    : 'Tu as aimé Fusée Kármán ? Le jeu est gratuit. Pour soutenir son créateur, utilise le bouton « Faire un don » sous le jeu, sur sa page itch.io.';
+    ? (EN ? 'Did you enjoy Fusée Kármán? The game is free. You can support its creator so he can add new missions.' : 'Tu as aimé Fusée Kármán ? Le jeu est gratuit. Tu peux soutenir son créateur pour qu\'il ajoute de nouvelles missions.')
+    : (EN ? 'Did you enjoy Fusée Kármán? The game is free. To support its creator, use the "Donate" button under the game, on its itch.io page.' : 'Tu as aimé Fusée Kármán ? Le jeu est gratuit. Pour soutenir son créateur, utilise le bouton « Faire un don » sous le jeu, sur sa page itch.io.');
   $('supportLink').hidden = !SUPPORT_URL;
   if (SUPPORT_URL) $('supportLink').href = SUPPORT_URL;
   const rn = SITES[siteIdx].rocketName;
   shareMsg = won
-    ? `J'ai posé ma ${rn} sur la Lune dans Fusée Kármán ! Score : ${fmt0(score)} points. Tu fais mieux ?`
-    : `Dans Fusée Kármán, ma ${rn} est arrivée jusqu'à l'étape « ${stage} ». Score : ${fmt0(score)} points. Tu fais mieux ?`;
+    ? (EN ? `I landed my ${rn} on the Moon in Fusée Kármán! Score: ${fmt0(score)} points. Can you do better?` : `J'ai posé ma ${rn} sur la Lune dans Fusée Kármán ! Score : ${fmt0(score)} points. Tu fais mieux ?`)
+    : (EN ? `In Fusée Kármán, my ${rn} made it to the "${stage}" stage. Score: ${fmt0(score)} points. Can you do better?` : `Dans Fusée Kármán, ma ${rn} est arrivée jusqu'à l'étape « ${stage} ». Score : ${fmt0(score)} points. Tu fais mieux ?`);
   if (SUPPORT_URL) shareMsg += ' ' + SUPPORT_URL;
-  $('shareText').hidden = true; $('copyBtn').textContent = 'Copier mon score';
+  $('shareText').hidden = true; $('copyBtn').textContent = (EN ? 'Copy my score' : 'Copier mon score');
   bannerQ.length = 0; bannerT = 0; $('banner').classList.remove('on');
   showRecord(isNew);
   bb.hidden = true; bOff(); $('skip').hidden = true;
 }
 function die(reason) {
-  if (state === 'play') radio('Contrôle', 'Nous avons perdu le signal… ' + reason + '.', true, true);
+  if (state === 'play') radio((EN ? 'Control' : 'Contrôle'), (EN ? 'We\'ve lost the signal… ' : 'Nous avons perdu le signal… ') + reason + '.', true, true);
   if (state !== 'play') return;
   tmpV.set(0, 0, 0); rocket.localToWorld(tmpV);
   explode(tmpV.x, tmpV.y, tmpV.z);
@@ -2112,8 +2122,8 @@ function hitShield(o, i) {
     fire.emit({ x: m.position.x, y: m.position.y, z: m.position.z, vx: Math.sin(ph) * Math.cos(th) * v, vy: Math.sin(ph) * Math.sin(th) * v, vz: Math.cos(ph) * v + S * 0.6, drag: 1.8, max: rnd(0.4, 1.0), s0: rnd(0.6, 1.4), s1: rnd(2, 4), a: 0.6 });
   }
   tone(140, 60, 0.5, 'sawtooth', 0.1);
-  banner('Bouclier touché', lives === 1 ? 'Dernier bouclier : fais attention !' : 'Plus que ' + lives + ' boucliers', 'warn');
-  radio('Contrôle', 'Impact détecté. Bouclier endommagé.');
+  banner((EN ? 'Shield hit' : 'Bouclier touché'), lives === 1 ? (EN ? 'Last shield: be careful!' : 'Dernier bouclier : fais attention !') : (EN ? 'Only ' : 'Plus que ') + lives + (EN ? ' shields left' : ' boucliers'), 'warn');
+  radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Impact detected. Shield damaged.' : 'Impact détecté. Bouclier endommagé.'));
   if (o.kind !== 'station') { scene.remove(m); objs.splice(i, 1); return true; }
   return false;
 }
@@ -2164,14 +2174,14 @@ function drawArrow(x, y, dx, dy, len, color) {
 let towerCleared = false, landCalls = new Set(), voiceOn = true;
 const synth = window.speechSynthesis || null;
 let frVoice = null;
-function pickVoice() { try { const vs = synth.getVoices(); frVoice = vs.find(v => /^fr/i.test(v.lang)) || null; } catch (e) {} }
+function pickVoice() { try { const vs = synth.getVoices(); frVoice = vs.find(v => (EN ? /^en/i : /^fr/i).test(v.lang)) || null; } catch (e) {} }
 if (synth) { pickVoice(); try { synth.onvoiceschanged = pickVoice; } catch (e) {} }
 function say(text, urgent) {
   if (!synth || !voiceOn || muted || !text) return;
   try {
     if (urgent) synth.cancel(); else if (synth.pending) return;
     const u = new SpeechSynthesisUtterance(text.replace(/…/g, '...'));
-    u.lang = 'fr-FR'; if (frVoice) u.voice = frVoice; u.rate = 1.12; u.pitch = 0.95; u.volume = 0.95;
+    u.lang = (EN ? 'en-US' : 'fr-FR'); if (frVoice) u.voice = frVoice; u.rate = 1.12; u.pitch = 0.95; u.volume = 0.95;
     synth.speak(u);
   } catch (e) {}
 }
@@ -2182,7 +2192,7 @@ function radio(role, text, speak = true, urgent = false) {
   line.className = 'rl';
   line.style.setProperty('--c', ROLE_COL[role] || '#9cc6ff');
   const b = document.createElement('b');
-  b.textContent = role === 'Directeur' && SITES[siteIdx].rocket === 'ariane' ? 'Dir. des opérations' : role;
+  b.textContent = role === (EN ? 'Director' : 'Directeur') && SITES[siteIdx].rocket === 'ariane' ? (EN ? 'Ops director' : 'Dir. des opérations') : role;
   line.appendChild(b); line.appendChild(document.createTextNode(text));
   box.appendChild(line);
   while (box.children.length > 4) box.removeChild(box.firstChild);
@@ -2192,18 +2202,18 @@ function radio(role, text, speak = true, urgent = false) {
 }
 function clearRadio() { $('radio').textContent = ''; }
 $('voiceBtn').addEventListener('click', () => {
-  voiceOn = !voiceOn; $('voiceBtn').textContent = voiceOn ? 'Voix : oui' : 'Voix : non';
+  voiceOn = !voiceOn; $('voiceBtn').textContent = voiceOn ? (EN ? 'Voice: on' : 'Voix : oui') : (EN ? 'Voice: off' : 'Voix : non');
   if (!voiceOn && synth) try { synth.cancel(); } catch (e) {}
 });
 
 /* ---------- Vues : poursuite, cockpit, caméra embarquée, extérieure ---------- */
-const VIEWS = ['poursuite', 'cockpit', 'embarquée', 'extérieure'];
+const VIEWS = ['poursuite', 'cockpit', (EN ? 'cockpit' : 'embarquée'), (EN ? 'outside' : 'extérieure')];
 let view = 0;
 try { view = clamp(Number(localStorage.getItem('fusee-view')) || 0, 0, 3); } catch (e) {}
-$('viewBtn').textContent = 'Vue : ' + VIEWS[view];
+$('viewBtn').textContent = (EN ? 'View: ' : 'Vue : ') + VIEWS[view];
 $('viewBtn').addEventListener('click', () => {
   view = (view + 1) % VIEWS.length;
-  $('viewBtn').textContent = 'Vue : ' + VIEWS[view];
+  $('viewBtn').textContent = (EN ? 'View: ' : 'Vue : ') + VIEWS[view];
   try { localStorage.setItem('fusee-view', String(view)); } catch (e) {}
 });
 const _vA = new T.Vector3(), _vB = new T.Vector3(), _vF = new T.Vector3(), _vU = new T.Vector3();
@@ -2305,9 +2315,9 @@ function drawCockpit() {
   const gr = clamp(Math.min(ph * 0.42, W * 0.07), 22, 62), gy = py + ph * 0.5;
   gShown += (gForce() - gShown) * 0.1;
   const spdNow = phase === 'landing' || state === 'win' ? Math.hypot(LD.vx, LD.vy, LD.vz) * 36 : (state === 'pad' ? vv * 3600 : spd);
-  gauge(W * 0.16, gy, gr, gShown / 5, 'FORCE G', fmt1(gShown) + ' g', '#ffcf5a');
-  gauge(W * 0.3, gy, gr, fuel / 100, 'CARBURANT', Math.ceil(fuel) + ' %', fuel < 25 ? '#ff4a5c' : '#5dff9a');
-  gauge(W * 0.7, gy, gr, clamp(spdNow / 30000, 0, 1), 'VITESSE', fmt0(spdNow), '#9cc6ff');
+  gauge(W * 0.16, gy, gr, gShown / 5, (EN ? 'G-FORCE' : 'FORCE G'), fmt1(gShown) + ' g', '#ffcf5a');
+  gauge(W * 0.3, gy, gr, fuel / 100, (EN ? 'FUEL' : 'CARBURANT'), Math.ceil(fuel) + ' %', fuel < 25 ? '#ff4a5c' : '#5dff9a');
+  gauge(W * 0.7, gy, gr, clamp(spdNow / 30000, 0, 1), (EN ? 'SPEED' : 'VITESSE'), fmt0(spdNow), '#9cc6ff');
   const ax = W * 0.5, ar = gr * 1.05;
   g.save(); g.beginPath(); g.arc(ax, gy, ar, 0, Math.PI * 2); g.clip();
   const pitch = state === 'play' && earthPhaseNow() ? pitchAsc(alt) : 0;
@@ -2323,7 +2333,7 @@ function drawCockpit() {
   g.fillStyle = '#081018'; g.fillRect(sx, py + ph * 0.18, sw, ph * 0.64);
   g.strokeStyle = '#353a42'; g.strokeRect(sx, py + ph * 0.18, sw, ph * 0.64);
   g.fillStyle = '#5dff9a'; g.font = `600 ${Math.round(clamp(ph * 0.12, 9, 14))}px "Chakra Petch", monospace`; g.textAlign = 'left'; g.textBaseline = 'top';
-  const lines = [STAGE_NAMES[phase] || 'Pas de tir', 'Boucliers ' + lives + '/3', 'Score ' + fmt0(score), state === 'pad' ? 'T' + (tCount < 0 ? '-' : '+') + Math.abs(Math.ceil(tCount)) : (phase === 'transfer' ? 'J+' + fmt1(tr.u * 3) : '')];
+  const lines = [STAGE_NAMES[phase] || (EN ? 'Launch pad' : 'Pas de tir'), (EN ? 'Shields ' : 'Boucliers ') + lives + '/3', (EN ? 'Score ' : 'Score ') + fmt0(score), state === 'pad' ? 'T' + (tCount < 0 ? '-' : '+') + Math.abs(Math.ceil(tCount)) : (phase === 'transfer' ? 'J+' + fmt1(tr.u * 3) : '')];
   lines.forEach((l, i) => g.fillText(l, sx + 8, py + ph * 0.22 + i * ph * 0.15));
   for (let i = 0; i < 8; i++) { g.fillStyle = (Math.floor(time * 2 + i * 1.7) % 3 === 0) ? '#ff8a2a' : '#3a3f47'; g.fillRect(W * 0.38 + i * W * 0.03, py + ph * 0.86, W * 0.018, 5); }
   g.restore();
@@ -2341,23 +2351,23 @@ function rocketScreen() {
 // Mets ici l'adresse de ta page itch.io, par exemple 'https://ton-pseudo.itch.io/fusee-karman'
 const SUPPORT_URL = '';
 const ACH = [
-  ['mach1', 'Mur du son', 'Dépasser Mach 1'],
-  ['karman', 'Astronaute', 'Franchir la ligne de Kármán'],
-  ['p120', 'Made in Kourou', 'Larguer les boosters d\'Ariane 6'],
-  ['korolev', 'Croix de Korolev', 'Larguer les boosters du Soyouz'],
-  ['retour', 'Demi-tour', 'Séparer le 1er étage de la Falcon 9'],
-  ['iss', 'Bienvenue à bord', 'S\'amarrer à l\'ISS'],
-  ['tli', 'Cap sur la Lune', 'Réussir l\'injection trans-lunaire'],
-  ['gateway', 'Gateway', 'S\'amarrer à la station lunaire'],
-  ['moon', 'Sur la Lune', 'Se poser sur la Lune'],
-  ['perfect', 'Pile sur la cible', 'Se poser à moins de 50 m'],
-  ['noshield', 'Intouchable', 'Se poser sans perdre de bouclier'],
-  ['allsites', 'Tour du monde', 'Se poser depuis les 3 bases'],
+  ['mach1', (EN ? 'Sound barrier' : 'Mur du son'), (EN ? 'Go faster than Mach 1' : 'Dépasser Mach 1')],
+  ['karman', (EN ? 'Astronaut' : 'Astronaute'), (EN ? 'Cross the Kármán line' : 'Franchir la ligne de Kármán')],
+  ['p120', 'Made in Kourou', (EN ? 'Drop the Ariane 6 boosters' : 'Larguer les boosters d\'Ariane 6')],
+  ['korolev', (EN ? 'Korolev Cross' : 'Croix de Korolev'), (EN ? 'Drop the Soyuz boosters' : 'Larguer les boosters du Soyouz')],
+  ['retour', (EN ? 'U-turn' : 'Demi-tour'), (EN ? 'Separate the Falcon 9 first stage' : 'Séparer le 1er étage de la Falcon 9')],
+  ['iss', (EN ? 'Welcome aboard' : 'Bienvenue à bord'), (EN ? 'Dock with the ISS' : 'S\'amarrer à l\'ISS')],
+  ['tli', (EN ? 'Heading for the Moon' : 'Cap sur la Lune'), (EN ? 'Complete the trans-lunar injection' : 'Réussir l\'injection trans-lunaire')],
+  ['gateway', 'Gateway', (EN ? 'Dock with the lunar station' : 'S\'amarrer à la station lunaire')],
+  ['moon', (EN ? 'On the Moon' : 'Sur la Lune'), (EN ? 'Land on the Moon' : 'Se poser sur la Lune')],
+  ['perfect', (EN ? 'Bullseye' : 'Pile sur la cible'), (EN ? 'Land less than 50 m from the target' : 'Se poser à moins de 50 m')],
+  ['noshield', (EN ? 'Untouchable' : 'Intouchable'), (EN ? 'Land without losing a shield' : 'Se poser sans perdre de bouclier')],
+  ['allsites', (EN ? 'World tour' : 'Tour du monde'), (EN ? 'Land from all 3 bases' : 'Se poser depuis les 3 bases')],
 ];
 let achDone = new Set(), newAch = [], shareMsg = '';
 try { achDone = new Set(JSON.parse(localStorage.getItem('fusee-succes') || '[]')); } catch (e) {}
 function renderAch() {
-  $('achBtn').textContent = `Succès ${ACH.filter(a => achDone.has(a[0])).length}/${ACH.length}`;
+  $('achBtn').textContent = (EN ? `Achievements ${ACH.filter(a => achDone.has(a[0])).length}/${ACH.length}` : `Succès ${ACH.filter(a => achDone.has(a[0])).length}/${ACH.length}`);
   const box = $('achList'); box.textContent = '';
   for (const [id, name, desc] of ACH) {
     const d = document.createElement('div'); d.className = 'ach' + (achDone.has(id) ? ' on' : '');
@@ -2379,7 +2389,7 @@ function unlock(id) {
   const a = ACH.find(x => x[0] === id); if (!a) return;
   achDone.add(id); newAch.push(a[1]);
   try { localStorage.setItem('fusee-succes', JSON.stringify([...achDone])); } catch (e) {}
-  toast('Succès débloqué', a[1]);
+  toast((EN ? 'Achievement unlocked' : 'Succès débloqué'), a[1]);
   tone(784, 784, 0.12, 'triangle', 0.08); tone(1175, 1175, 0.25, 'triangle', 0.08, 0.1);
   renderAch();
 }
@@ -2388,8 +2398,8 @@ $('achBtn').addEventListener('click', () => {
   const l = $('achList'); l.hidden = !l.hidden; $('achBtn').setAttribute('aria-expanded', String(!l.hidden));
 });
 $('copyBtn').addEventListener('click', () => {
-  const done = () => { $('copyBtn').textContent = 'Copié !'; };
-  const fallback = () => { const ta = $('shareText'); ta.value = shareMsg; ta.hidden = false; ta.focus(); ta.select(); $('copyBtn').textContent = 'Copie le texte ci-dessus'; };
+  const done = () => { $('copyBtn').textContent = (EN ? 'Copied!' : 'Copié !'); };
+  const fallback = () => { const ta = $('shareText'); ta.value = shareMsg; ta.hidden = false; ta.focus(); ta.select(); $('copyBtn').textContent = (EN ? 'Copy the text above' : 'Copie le texte ci-dessus'); };
   try { navigator.clipboard.writeText(shareMsg).then(done, fallback); } catch (e) { fallback(); }
 });
 
@@ -2458,18 +2468,18 @@ function update(dt) {
       if (c.textContent !== label) { c.textContent = label; tone(880, 880, 0.15, 'square', 0.05); }
     } else c.textContent = '';
     const at = v => prev < v && tCount >= v;
-    if (at(-9.6)) radio('Directeur', 'Tour des postes pour le lancement.');
-    if (at(-9.0)) radio('Propulsion', 'Propulsion : GO.');
-    if (at(-8.4)) radio('Guidage', 'Guidage : GO.');
-    if (at(-7.8)) radio('Météo', 'Météo : GO.');
-    if (at(-7.2)) radio('Sauvegarde', 'Sauvegarde vol : GO.');
-    if (at(-6.6)) radio('Directeur', 'Nous sommes GO pour le lancement.');
-    if (at(-8)) banner('Séquence automatique', 'Les ordinateurs de bord prennent la main');
-    if (at(-6)) { banner('Déluge d\'eau', 'Protection du pas de tir activée'); radio('Sol', 'Déluge d\'eau activé.', false); }
+    if (at(-9.6)) radio((EN ? 'Director' : 'Directeur'), (EN ? 'Poll of stations for launch.' : 'Tour des postes pour le lancement.'));
+    if (at(-9.0)) radio('Propulsion', (EN ? 'Propulsion: GO.' : 'Propulsion : GO.'));
+    if (at(-8.4)) radio((EN ? 'Guidance' : 'Guidage'), (EN ? 'Guidance: GO.' : 'Guidage : GO.'));
+    if (at(-7.8)) radio((EN ? 'Weather' : 'Météo'), (EN ? 'Weather: GO.' : 'Météo : GO.'));
+    if (at(-7.2)) radio((EN ? 'Flight safety' : 'Sauvegarde'), (EN ? 'Flight safety: GO.' : 'Sauvegarde vol : GO.'));
+    if (at(-6.6)) radio((EN ? 'Director' : 'Directeur'), (EN ? 'We are GO for launch.' : 'Nous sommes GO pour le lancement.'));
+    if (at(-8)) banner((EN ? 'Automatic sequence' : 'Séquence automatique'), (EN ? 'The on-board computers take over' : 'Les ordinateurs de bord prennent la main'));
+    if (at(-6)) { banner((EN ? 'Water deluge' : 'Déluge d\'eau'), (EN ? 'Launch pad protection activated' : 'Protection du pas de tir activée')); radio((EN ? 'Ground' : 'Sol'), (EN ? 'Water deluge activated.' : 'Déluge d\'eau activé.'), false); }
     for (const n of [5, 4, 2, 1]) if (at(-n)) say(['', 'un', 'deux', 'trois', 'quatre', 'cinq'][n], true);
-    if (at(-3)) { banner('Allumage', 'Montée en poussée des moteurs'); $('skip').hidden = true; radio('Propulsion', 'Trois… Allumage !', true, true); }
-    if (at(0)) { banner('Décollage !', SITES[siteIdx].where, 'gold'); tone(220, 660, 0.8, 'sawtooth', 0.06); radio('Compte', 'Top. Décollage !', true, true); }
-    if (tCount > 0 && alt / U > 11 && !towerCleared) { towerCleared = true; radio('Contrôle', 'La fusée a dégagé la tour.'); }
+    if (at(-3)) { banner((EN ? 'Ignition' : 'Allumage'), (EN ? 'Engines throttling up' : 'Montée en poussée des moteurs')); $('skip').hidden = true; radio('Propulsion', (EN ? 'Three… Ignition!' : 'Trois… Allumage !'), true, true); }
+    if (at(0)) { banner((EN ? 'Lift-off!' : 'Décollage !'), SITES[siteIdx].where, 'gold'); tone(220, 660, 0.8, 'sawtooth', 0.06); radio((EN ? 'Countdown' : 'Compte'), (EN ? 'Mark. Lift-off!' : 'Top. Décollage !'), true, true); }
+    if (tCount > 0 && alt / U > 11 && !towerCleared) { towerCleared = true; radio((EN ? 'Control' : 'Contrôle'), (EN ? 'The rocket has cleared the tower.' : 'La fusée a dégagé la tour.')); }
     applyPadAnims(tCount);
     if (tCount > -6 && tCount < 1 && Math.random() < dt * 25) {
       const s = Math.random() < 0.5 ? -1 : 1;
@@ -2487,7 +2497,7 @@ function update(dt) {
     shake = Math.max(shake, tCount > -2.5 && tCount < 9 ? 0.08 * sstep(-2.5, 0, tCount) * (1 - sstep(3, 9, tCount)) : 0);
     if (tCount >= 11) {
       state = 'play'; phase = 'climb'; tP = 0;
-      radio('Guidage', 'Début de la manœuvre de bascule.');
+      radio((EN ? 'Guidance' : 'Guidage'), (EN ? 'Starting the pitch-over manoeuvre.' : 'Début de la manœuvre de bascule.'));
       camStartOffset = camera.position.clone().sub(rocket.position);
       $('count').hidden = true; $('skip').hidden = true;
       if (coarse) bb.hidden = false;
@@ -2508,7 +2518,7 @@ function update(dt) {
       if (tP >= 3.5) {
         phase = 'ascent'; tP = 0;
         const h = $('hint');
-        h.textContent = coarse ? 'Glisse le doigt · Suis la flèche quand un obstacle arrive' : 'Flèches : piloter · Suis la flèche quand un obstacle arrive · Espace : boost';
+        h.textContent = coarse ? (EN ? 'Slide your finger · Follow the arrow when an obstacle comes' : 'Glisse le doigt · Suis la flèche quand un obstacle arrive') : (EN ? 'Arrows: steer · Follow the arrow when an obstacle comes · Space: boost' : 'Flèches : piloter · Suis la flèche quand un obstacle arrive · Espace : boost');
         h.hidden = false; h.style.opacity = 1;
         setTimeout(() => { h.style.opacity = 0; }, 5000);
       }
@@ -2521,7 +2531,7 @@ function update(dt) {
         if (tP >= 6) {
           phase = 'transfer'; tP = 0; tr.s = 0; tr.u = 0;
           for (const ev of veh.seq) if (!ev.done) { ev.done = true; doSeparation(ev); }
-          doSeparation({ cfg: 'E', sep: ['stage2'], t: 'Séparation de l\'étage supérieur', n: 'Le module lunaire file seul vers la Lune' });
+          doSeparation({ cfg: 'E', sep: ['stage2'], t: (EN ? 'Upper stage separation' : 'Séparation de l\'étage supérieur'), n: (EN ? 'The lunar module heads off to the Moon on its own' : 'Le module lunaire file seul vers la Lune') });
           legT = 0;
           tr.P0.copy(P);
           tr.P1.copy(P).sub(MC).normalize().multiplyScalar(RM + 100).add(MC);
@@ -2532,12 +2542,12 @@ function update(dt) {
         const target = Math.min(3.6, 0.9 * (1 + alt / 110)) * (boosting ? 1.6 : 1);
         vv += (target - vv) * Math.min(1, dt * 1.3);
         fuel = Math.max(0, fuel - (boosting ? 4.5 : 1.1) * dt);
-        if (fuel < 25 && !lowFuelWarned) { lowFuelWarned = true; banner('Carburant bas', 'Attrape les bidons jaunes : suis la flèche', 'warn'); radio('Propulsion', 'Carburant bas, récupère des réservoirs.'); tone(660, 440, 0.3, 'square', 0.06); }
+        if (fuel < 25 && !lowFuelWarned) { lowFuelWarned = true; banner((EN ? 'Low fuel' : 'Carburant bas'), (EN ? 'Grab the yellow fuel cans: follow the arrow' : 'Attrape les bidons jaunes : suis la flèche'), 'warn'); radio('Propulsion', (EN ? 'Low fuel, collect some tanks.' : 'Carburant bas, récupère des réservoirs.')); tone(660, 440, 0.3, 'square', 0.06); }
         if (fuel > 50) lowFuelWarned = false;
-        if (fuel === 0 && !mecoDone) { mecoDone = true; banner('MECO', 'Extinction des moteurs : plus de carburant', 'warn'); tone(400, 100, 0.8, 'sawtooth', 0.06); }
+        if (fuel === 0 && !mecoDone) { mecoDone = true; banner('MECO', (EN ? 'Engine cut-off: out of fuel' : 'Extinction des moteurs : plus de carburant'), 'warn'); tone(400, 100, 0.8, 'sawtooth', 0.06); }
       } else {
         power = 0; vv -= 0.35 * dt;
-        if (vv < 0) { die('Panne sèche : la fusée retombe'); }
+        if (vv < 0) { die((EN ? 'Out of fuel: the rocket is falling back' : 'Panne sèche : la fusée retombe')); }
       }
       const dA = vv * dt; alt += dA; groundDy = -dA / U;
       maxAlt = Math.max(maxAlt, alt);
@@ -2545,13 +2555,13 @@ function update(dt) {
       S += (targetS - S) * Math.min(1, dt * 2);
       spd = speedAt(alt) * (boosting ? 1.06 : 1);
       if (phase === 'ascent') {
-        if (!machDone && spd >= soundSpeed(alt)) { machDone = true; unlock('mach1'); banner('Mach 1', 'Tu viens de franchir le mur du son'); radio('Contrôle', 'Vitesse du son dépassée.'); }
-        if (!maxqDone && alt >= 13) { maxqDone = true; banner('Max-Q', 'Pression aérodynamique maximale sur la fusée'); radio('Contrôle', 'Max-Q. Pression aérodynamique maximale.'); }
+        if (!machDone && spd >= soundSpeed(alt)) { machDone = true; unlock('mach1'); banner('Mach 1', (EN ? 'You just broke the sound barrier' : 'Tu viens de franchir le mur du son')); radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Speed of sound exceeded.' : 'Vitesse du son dépassée.')); }
+        if (!maxqDone && alt >= 13) { maxqDone = true; banner('Max-Q', (EN ? 'Maximum aerodynamic pressure on the rocket' : 'Pression aérodynamique maximale sur la fusée')); radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Max-Q. Maximum aerodynamic pressure.' : 'Max-Q. Pression aérodynamique maximale.')); }
         while (layerIdx + 1 < LAYERS.length && alt >= LAYERS[layerIdx + 1].at) {
           layerIdx++; const L = LAYERS[layerIdx]; banner(L.name, L.note, L.gold ? 'gold' : ''); chime();
           if (L.at === 100) unlock('karman');
-          if (L.at === 100) radio('Contrôle', 'Ligne de Kármán franchie. Nous sommes dans l\'espace.');
-          if (L.at === 408) radio('ISS', 'Ici la Station spatiale. Nous vous voyons, l\'anneau d\'amarrage est prêt.');
+          if (L.at === 100) radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Kármán line crossed. We are in space.' : 'Ligne de Kármán franchie. Nous sommes dans l\'espace.'));
+          if (L.at === 408) radio('ISS', (EN ? 'This is the Space Station. We can see you, the docking ring is ready.' : 'Ici la Station spatiale. Nous vous voyons, l\'anneau d\'amarrage est prêt.'));
         }
         for (const ev of veh.seq) if (!ev.done && alt >= ev.alt) { ev.done = true; doSeparation(ev); }
         const tA = -SPAWN_Z / Math.max(20, S);
@@ -2563,8 +2573,8 @@ function update(dt) {
         while (travel >= nextCan) { spawnCan(); nextCan += Math.max(S, 40) * rnd(8, 11) * (1 + alt / 600) * (fuel < 40 ? 0.6 : 1); }
         if (alt >= 600) {
           phase = 'tli'; tP = 0;
-          banner('Injection trans-lunaire', 'Cap sur la Lune : 384 400 km', 'gold'); fanfare();
-          radio('Directeur', 'Vous êtes GO pour l\'injection trans-lunaire.');
+          banner((EN ? 'Trans-lunar injection' : 'Injection trans-lunaire'), (EN ? 'Heading for the Moon: 384,400 km' : 'Cap sur la Lune : 384 400 km'), 'gold'); fanfare();
+          radio((EN ? 'Director' : 'Directeur'), (EN ? 'You are GO for trans-lunar injection.' : 'Vous êtes GO pour l\'injection trans-lunaire.'));
           unlock('tli');
           fuel = Math.max(fuel, 60);
         }
@@ -2579,10 +2589,10 @@ function update(dt) {
       S += ((boosting ? 80 : 55) - S) * Math.min(1, dt * 2);
       const dMoon = P.distanceTo(MC) - RM;
       spd = lerp(39000, 3600, sstep(0, 0.85, tr.u)) + 5200 * sstep(0.85, 1, tr.u);
-      const mark = (id, cond, a, b, cls) => { if (cond && !tr.marks.has(id)) { tr.marks.add(id); banner(a, b, cls); chime(); radio('Contrôle', a + '. ' + b + '.'); } };
-      mark('va', tr.u > 0.004, 'Ceintures de Van Allen', 'Traversée rapide de la zone de radiations');
-      mark('mid', tr.u > 0.5, 'Mi-chemin', '192 000 km de la Terre');
-      mark('soi', dMoon < 66000, 'Sphère d\'influence lunaire', 'La Lune t\'attire maintenant');
+      const mark = (id, cond, a, b, cls) => { if (cond && !tr.marks.has(id)) { tr.marks.add(id); banner(a, b, cls); chime(); radio((EN ? 'Control' : 'Contrôle'), a + '. ' + b + '.'); } };
+      mark('va', tr.u > 0.004, (EN ? 'Van Allen belts' : 'Ceintures de Van Allen'), (EN ? 'Quick crossing of the radiation zone' : 'Traversée rapide de la zone de radiations'));
+      mark('mid', tr.u > 0.5, (EN ? 'Halfway' : 'Mi-chemin'), '192 000 km de la Terre');
+      mark('soi', dMoon < 66000, (EN ? 'Lunar sphere of influence' : 'Sphère d\'influence lunaire'), (EN ? 'The Moon is pulling you in now' : 'La Lune t\'attire maintenant'));
       if (tr.u < 0.9) {
         travel += S * dt;
         while (travel >= nextObs) { spawnObstacle(); nextObs += rnd(70, 130); }
@@ -2592,8 +2602,8 @@ function update(dt) {
         startFade(() => {
           clearWorld();
           phase = 'orbit'; tP = 0; mo.phi = -0.75; mo.h = 100;
-          banner('Orbite lunaire', 'Bienvenue autour de la Lune', 'gold'); fanfare();
-          radio('Contrôle', 'Insertion en orbite lunaire confirmée. Bravo !');
+          banner((EN ? 'Lunar orbit' : 'Orbite lunaire'), (EN ? 'Welcome to lunar orbit' : 'Bienvenue autour de la Lune'), 'gold'); fanfare();
+          radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Lunar orbit insertion confirmed. Well done!' : 'Insertion en orbite lunaire confirmée. Bravo !'));
         });
       }
     } else if (phase === 'orbit' || phase === 'descent') {
@@ -2603,7 +2613,7 @@ function update(dt) {
         mo.phi += dt * 0.02;
         spd = 5800;
         if (!gwSpawned && tP > 2) { gwSpawned = true; spawnStation('gateway'); }
-        if (mo.phi >= -0.3) { phase = 'descent'; tP = 0; mo.tau = 0; banner('Descente vers la surface', 'Prépare-toi à alunir'); radio('Directeur', 'Vous êtes GO pour la descente.'); }
+        if (mo.phi >= -0.3) { phase = 'descent'; tP = 0; mo.tau = 0; banner((EN ? 'Descent to the surface' : 'Descente vers la surface'), (EN ? 'Get ready to land' : 'Prépare-toi à alunir')); radio((EN ? 'Director' : 'Directeur'), (EN ? 'You are GO for descent.' : 'Vous êtes GO pour la descente.')); }
       } else {
         power = 0.6;
         mo.tau = Math.min(0.86, mo.tau + dt * (1 / 6) * Math.max(0.15, 1 - mo.tau));
@@ -2628,7 +2638,7 @@ function update(dt) {
       LD.x += LD.vx * dt; LD.y += LD.vy * dt; LD.z += LD.vz * dt;
       const legH = LD.y - veh.legOff;
       for (const [hU, txt] of [[50, '500 mètres.'], [20, '200 mètres.'], [10, '100 mètres. Ralentis.'], [3, '30 mètres. Doucement…']]) {
-        if (legH < hU && !landCalls.has(hU)) { landCalls.add(hU); radio('Contrôle', txt + (-LD.vy * 10 > 3 ? ' Trop rapide !' : '')); }
+        if (legH < hU && !landCalls.has(hU)) { landCalls.add(hU); radio((EN ? 'Control' : 'Contrôle'), txt + (-LD.vy * 10 > 3 ? (EN ? ' Too fast!' : ' Trop rapide !') : '')); }
       }
       if (thrust) emitDust(dt, legH);
       if (legH <= 0) {
@@ -2641,11 +2651,11 @@ function update(dt) {
           unlock('moon'); if (dist < 5) unlock('perfect'); if (lives === 3) unlock('noshield');
           try { const ls = new Set(JSON.parse(localStorage.getItem('fusee-sites-landed') || '[]')); ls.add(siteIdx); localStorage.setItem('fusee-sites-landed', JSON.stringify([...ls])); if (ls.size >= 3) unlock('allsites'); } catch (e) {}
           state = 'win'; tP = 0; LD.vx = LD.vy = LD.vz = 0; LD.thrust = false;
-          banner(dist < 5 ? 'Alunissage parfait !' : 'Alunissage réussi !', dist < 5 ? 'Pile sur la cible' : 'à ' + fmt0(dist * 10) + ' m de la cible', 'ok');
-          radio('Contrôle', 'Contact ! Le module est posé. Félicitations, vous êtes sur la Lune !', true, true);
+          banner(dist < 5 ? (EN ? 'Perfect landing!' : 'Alunissage parfait !') : (EN ? 'Successful landing!' : 'Alunissage réussi !'), dist < 5 ? (EN ? 'Bullseye' : 'Pile sur la cible') : 'à ' + fmt0(dist * 10) + (EN ? ' m from the target' : ' m de la cible'), 'ok');
+          radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Contact! The module has landed. Congratulations, you\'re on the Moon!' : 'Contact ! Le module est posé. Félicitations, vous êtes sur la Lune !'), true, true);
           fanfare();
         } else {
-          die(-LD.vy >= 0.35 ? 'Écrasé sur la Lune : trop rapide' : 'Basculé : trop de vitesse horizontale');
+          die(-LD.vy >= 0.35 ? (EN ? 'Crashed on the Moon: too fast' : 'Écrasé sur la Lune : trop rapide') : (EN ? 'Tipped over: too much sideways speed' : 'Basculé : trop de vitesse horizontale'));
         }
       }
       spd = Math.hypot(LD.vx, LD.vy, LD.vz) * 36;
@@ -2660,7 +2670,7 @@ function update(dt) {
   } else if (state === 'win') {
     vertK = 1; camMode = 'win';
     if (tP > 3 && $('over').hidden) {
-      endMission(true, 'Mission accomplie !', 'Ta fusée s\'est posée sur la Lune. La Terre brille au-dessus de l\'horizon.');
+      endMission(true, (EN ? 'Mission accomplished!' : 'Mission accomplie !'), (EN ? 'Your rocket landed on the Moon. The Earth shines above the horizon.' : 'Ta fusée s\'est posée sur la Lune. La Terre brille au-dessus de l\'horizon.'));
       state = 'win';
       $('over').hidden = false; $('hud').classList.add('off'); $('hint').hidden = true;
       $('againBtn').focus({ preventScroll: true });
@@ -2837,11 +2847,11 @@ function initLanding() {
   LD.x = rnd(-6, 6); LD.y = 120; LD.z = 40; LD.vx = 0; LD.vy = -2.5; LD.vz = -1.25;
   R.x = R.y = R.vx = R.vy = 0;
   fuel = Math.max(fuel, 70);
-  banner('Alunissage manuel', 'Espace pour freiner · Flèches pour viser la cible verte', 'gold');
-  radio('Contrôle', 'Descente manuelle. Freine avant le sol et vise la cible verte.');
+  banner((EN ? 'Manual landing' : 'Alunissage manuel'), (EN ? 'Space to brake · Arrows to aim for the green target' : 'Espace pour freiner · Flèches pour viser la cible verte'), 'gold');
+  radio((EN ? 'Control' : 'Contrôle'), (EN ? 'Manual descent. Brake before the ground and aim for the green target.' : 'Descente manuelle. Freine avant le sol et vise la cible verte.'));
   landCalls = new Set();
   const h = $('hint');
-  h.textContent = coarse ? 'BOOST : freiner · Glisse : viser la cible' : 'Espace : freiner · Flèches : viser la cible · moins de 3 m/s';
+  h.textContent = coarse ? (EN ? 'BOOST: brake · Slide: aim for the target' : 'BOOST : freiner · Glisse : viser la cible') : (EN ? 'Space: brake · Arrows: aim for the target · under 3 m/s' : 'Espace : freiner · Flèches : viser la cible · moins de 3 m/s');
   h.hidden = false; h.style.opacity = 1;
   setTimeout(() => { h.style.opacity = 0; }, 7000);
 }
@@ -2868,11 +2878,11 @@ function updateObjects(dt) {
         bonus += o.station === 'iss' ? 1500 : 2000;
         fuel = 100;
         if (lives < 3) lives++;
-        banner('Amarrage réussi', `Station ${name} : plein de carburant effectué`, 'ok'); fanfare();
-        radio(o.station === 'iss' ? 'ISS' : 'Gateway', 'Amarrage confirmé. Plein de carburant effectué, bouclier réparé.');
+        banner((EN ? 'Docking complete' : 'Amarrage réussi'), (EN ? `${name} station: fuel tanks refilled` : `Station ${name} : plein de carburant effectué`), 'ok'); fanfare();
+        radio(o.station === 'iss' ? 'ISS' : 'Gateway', (EN ? 'Docking confirmed. Fuel tanks full, shield repaired.' : 'Amarrage confirmé. Plein de carburant effectué, bouclier réparé.'));
         for (let k = 0; k < 60; k++) { const th = rnd(0, Math.PI * 2); fire.emit({ x: m.position.x + Math.cos(th) * 2, y: m.position.y + Math.sin(th) * 2, z: 0, vx: Math.cos(th) * 4, vy: Math.sin(th) * 4, vz: S * 0.5, drag: 2, max: 0.6, s0: 0.5, s1: 0.1, a: 1, kind: 1 }); }
       } else {
-        banner('Amarrage manqué', 'Vise le centre de l\'anneau vert', 'warn');
+        banner((EN ? 'Docking missed' : 'Amarrage manqué'), (EN ? 'Aim for the centre of the green ring' : 'Vise le centre de l\'anneau vert'), 'warn');
       }
     }
     if (m.position.z > 18 || Math.abs(m.position.x) > 70) { scene.remove(m); objs.splice(i, 1); continue; }
@@ -3022,26 +3032,26 @@ function updateView(dt, earthPhase) {
 function updateHUD(earthPhase) {
   const set = (id, v) => { const e = $(id); if (e.textContent !== v) e.textContent = v; };
   if (phase === 'landing' || state === 'win') {
-    set('l1', 'Hauteur'); set('v1', fmt0(Math.max(0, (LD.y - veh.legOff) * 10))); set('u1', 'm');
-    set('l2', 'Vitesse verticale'); set('v2', fmt1(LD.vy * 10) + ' m/s');
-    set('l3', 'Cible'); set('v3', fmt0(Math.hypot(LD.x, LD.z) * 10) + ' m');
-    set('layer', -LD.vy * 10 > 3 && LD.y < 40 ? 'Trop rapide : freine !' : 'Alunissage · Mer de la Tranquillité');
+    set('l1', (EN ? 'Height' : 'Hauteur')); set('v1', fmt0(Math.max(0, (LD.y - veh.legOff) * 10))); set('u1', 'm');
+    set('l2', (EN ? 'Vertical speed' : 'Vitesse verticale')); set('v2', fmt1(LD.vy * 10) + ' m/s');
+    set('l3', (EN ? 'Target' : 'Cible')); set('v3', fmt0(Math.hypot(LD.x, LD.z) * 10) + ' m');
+    set('layer', -LD.vy * 10 > 3 && LD.y < 40 ? (EN ? 'Too fast: brake!' : 'Trop rapide : freine !') : (EN ? 'Landing · Sea of Tranquillity' : 'Alunissage · Mer de la Tranquillité'));
   } else if (phase === 'transfer') {
     const dMoon = Math.max(0, P.distanceTo(MC) - RM);
-    set('l1', 'Distance de la Lune'); set('v1', fmt0(dMoon)); set('u1', 'km');
-    set('l2', 'Vitesse'); set('v2', fmt0(spd) + ' km/h');
-    set('l3', 'Jour'); set('v3', 'J+' + fmt1(tr.u * 3));
-    set('layer', 'Transfert Terre–Lune');
+    set('l1', (EN ? 'Distance to the Moon' : 'Distance de la Lune')); set('v1', fmt0(dMoon)); set('u1', 'km');
+    set('l2', (EN ? 'Speed' : 'Vitesse')); set('v2', fmt0(spd) + ' km/h');
+    set('l3', (EN ? 'Day' : 'Jour')); set('v3', 'J+' + fmt1(tr.u * 3));
+    set('layer', (EN ? 'Earth–Moon transfer' : 'Transfert Terre–Lune'));
   } else if (phase === 'orbit' || phase === 'descent') {
-    set('l1', 'Altitude lunaire'); set('v1', fmt1(mo.h)); set('u1', 'km');
-    set('l2', 'Vitesse'); set('v2', fmt0(spd) + ' km/h');
-    set('l3', 'Gravité'); set('v3', '1/6 g');
-    set('layer', phase === 'orbit' ? 'Orbite lunaire' : 'Descente vers la surface');
+    set('l1', (EN ? 'Lunar altitude' : 'Altitude lunaire')); set('v1', fmt1(mo.h)); set('u1', 'km');
+    set('l2', (EN ? 'Speed' : 'Vitesse')); set('v2', fmt0(spd) + ' km/h');
+    set('l3', (EN ? 'Gravity' : 'Gravité')); set('v3', '1/6 g');
+    set('layer', phase === 'orbit' ? (EN ? 'Lunar orbit' : 'Orbite lunaire') : (EN ? 'Descent to the surface' : 'Descente vers la surface'));
   } else {
     set('l1', 'Altitude'); set('v1', fmt1(alt)); set('u1', 'km');
-    set('l2', 'Vitesse'); set('v2', fmt0(state === 'pad' ? vv * 3600 : spd) + ' km/h');
+    set('l2', (EN ? 'Speed' : 'Vitesse')); set('v2', fmt0(state === 'pad' ? vv * 3600 : spd) + ' km/h');
     set('l3', 'Mach'); set('v3', alt < 80 ? fmt1((state === 'pad' ? vv * 3600 : spd) / soundSpeed(alt)) : '—');
-    set('layer', state === 'pad' ? SITES[siteIdx].where : (phase === 'tli' ? 'Injection trans-lunaire' : layerAt(alt).name));
+    set('layer', state === 'pad' ? SITES[siteIdx].where : (phase === 'tli' ? (EN ? 'Trans-lunar injection' : 'Injection trans-lunaire') : layerAt(alt).name));
   }
   const sh = $('shields').querySelectorAll('.shield');
   for (let i = 0; i < sh.length; i++) sh[i].classList.toggle('off', i >= lives);
@@ -3071,7 +3081,7 @@ function missionProgress() {
   if (phase === 'landing') return 0.95 + 0.05 * clamp(1 - LD.y / 200, 0, 1);
   return 0.45 * Math.sqrt(Math.min(alt, 600) / 600);
 }
-const MARKS = [[0, 'Terre'], [0.45 * Math.sqrt(100 / 600), '100 km'], [0.45 * Math.sqrt(408 / 600), 'ISS'], [0.45, 'Départ Lune'], [0.87, 'Orbite lunaire'], [1, 'Lune']];
+const MARKS = [[0, (EN ? 'Earth' : 'Terre')], [0.45 * Math.sqrt(100 / 600), '100 km'], [0.45 * Math.sqrt(408 / 600), 'ISS'], [0.45, (EN ? 'Leaving the Moon' : 'Départ Lune')], [0.87, (EN ? 'Lunar orbit' : 'Orbite lunaire')], [1, (EN ? 'Moon' : 'Lune')]];
 function sunOccluded() {
   const occ = (cx, cy, cz, R) => { const b = SUN.x * cx + SUN.y * cy + SUN.z * cz; if (b <= 0) return false; const px = cx - SUN.x * b, py = cy - SUN.y * b, pz = cz - SUN.z * b; return px * px + py * py + pz * pz < R * R; };
   return occ(-P.x, -P.y, -P.z, RE) || occ(MC.x - P.x, MC.y - P.y, MC.z - P.z, RM);
@@ -3154,8 +3164,8 @@ function drawUI() {
           uctx.globalAlpha = 0.75 + 0.25 * Math.sin(time * 10);
           drawArrow(rx + ux * 70, ry - uy * 70, ux, uy, 80, '#ffd23f');
           uctx.globalAlpha = 1;
-          uctx.strokeText('CARBURANT', rx + ux * 190, ry - uy * 130 - 20); uctx.fillText('CARBURANT', rx + ux * 190, ry - uy * 130 - 20);
-        } else { uctx.strokeText('BIDON DROIT DEVANT', rx, ry - 90); uctx.fillText('BIDON DROIT DEVANT', rx, ry - 90); }
+          uctx.strokeText((EN ? 'FUEL' : 'CARBURANT'), rx + ux * 190, ry - uy * 130 - 20); uctx.fillText((EN ? 'FUEL' : 'CARBURANT'), rx + ux * 190, ry - uy * 130 - 20);
+        } else { uctx.strokeText((EN ? 'FUEL CAN STRAIGHT AHEAD' : 'BIDON DROIT DEVANT'), rx, ry - 90); uctx.fillText((EN ? 'FUEL CAN STRAIGHT AHEAD' : 'BIDON DROIT DEVANT'), rx, ry - 90); }
         uctx.textAlign = 'left';
       }
     }
@@ -3168,7 +3178,7 @@ function drawUI() {
       uctx.globalAlpha = 1;
       uctx.font = '700 15px "Chakra Petch", sans-serif'; uctx.textAlign = 'center'; uctx.textBaseline = 'middle';
       uctx.fillStyle = '#ffcf5a'; uctx.strokeStyle = 'rgba(0,0,0,.7)'; uctx.lineWidth = 4;
-      const lab = 'ESQUIVE ' + (dy > 0 ? '↑' : dy < 0 ? '↓' : dx < 0 ? '←' : '→');
+      const lab = (EN ? 'DODGE ' : 'ESQUIVE ') + (dy > 0 ? '↑' : dy < 0 ? '↓' : dx < 0 ? '←' : '→');
       const lx = rx + dx * 200 + (dy ? 70 : 0), ly = ry - dy * 120 + (dx ? -30 : 0);
       uctx.strokeText(lab, lx, ly); uctx.fillText(lab, lx, ly);
       uctx.textAlign = 'left';
@@ -3187,7 +3197,7 @@ function drawUI() {
   uctx.font = '600 10px "Chakra Petch", sans-serif'; uctx.textBaseline = 'middle';
   for (const [p, label] of MARKS) {
     const yy = sc(p);
-    uctx.fillStyle = label === 'Lune' || label === 'ISS' ? '#ffcf5a' : 'rgba(237,242,250,.65)';
+    uctx.fillStyle = label === (EN ? 'Moon' : 'Lune') || label === 'ISS' ? '#ffcf5a' : 'rgba(237,242,250,.65)';
     uctx.fillRect(x - 4, yy, 8, 1.5);
     uctx.fillText(label, x + 8, yy);
   }
