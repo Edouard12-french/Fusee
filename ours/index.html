@@ -367,7 +367,7 @@ const HALF = 320;
 // Le Royaume sous la Mer (chapitre 4), tout à l'est, après la Lune
 const SEA_X = 4000;
 // L'Île des Nuages (chapitre 5), encore plus loin
-const SKY_X = 7000, MARS_X = 11000, DRAW_X = 15000;
+const SKY_X = 7000, MARS_X = 11000, DRAW_X = 15000, ICE_X = 19000;
 // La Forêt Immense (chapitre 3) est une région à part, loin à l'ouest
 const FOREST_X = -2000;
 const LAKE = { x: 40, z: 72, rx: 46, rz: 36 };
@@ -489,6 +489,7 @@ const REG = {
 };
 const MESAS = [[252, 206, 13, 12], [292, 246, 10, 17], [244, 280, 12, 9], [302, 184, 8, 11], [270, 300, 9, 14]];
 function groundY(x, z) {
+  if (x > 17000) return iceY(x, z);
   if (x > 13000) return dessinY(x, z);
   if (x > 9000) return marsY(x, z);
   if (x > 5500) return cloudY(x, z);
@@ -520,6 +521,7 @@ const FROZEN = PONDS.filter(L => L.frozen);
 const onIce = (x, z) => FROZEN.some(L => ((x - L.x) / L.rx) ** 2 + ((z - L.z) / L.rz) ** 2 < 1.1);
 function deckY(x, z) {
   if (x < -1500) return forestDeck(x, z);
+  if (x > 17000) return iceDeck(x, z);
   if (x > 13000) return dessinDeck(x, z);
   if (x > 9000) return null;
   if (x > 5500) return cloudDeck(x, z);
@@ -550,11 +552,11 @@ function inZone(x, z) {
 }
 
 // ================= Collisions =================
-const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [], gridS = [], gridK = [], gridM = [], gridD = [];
-for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); gridS.push([]); gridK.push([]); gridM.push([]); gridD.push([]); }
+const CELL = 8, NC = Math.ceil((HALF * 2 + 16) / CELL), grid = [], gridF = [], gridS = [], gridK = [], gridM = [], gridD = [], gridI = [];
+for (let i = 0; i < NC * NC; i++) { grid.push([]); gridF.push([]); gridS.push([]); gridK.push([]); gridM.push([]); gridD.push([]); gridI.push([]); }
 const cellOf = v => clamp(Math.floor((v + HALF + 8) / CELL), 0, NC - 1);
 // La forêt a sa propre grille, centrée sur elle
-const gridOf = x => x < -1500 ? gridF : x > 13000 ? gridD : x > 9000 ? gridM : x > 5500 ? gridK : x > 3000 ? gridS : grid, gridOx = x => x < -1500 ? FOREST_X : x > 13000 ? DRAW_X : x > 9000 ? MARS_X : x > 5500 ? SKY_X : x > 3000 ? SEA_X : 0;
+const gridOf = x => x < -1500 ? gridF : x > 17000 ? gridI : x > 13000 ? gridD : x > 9000 ? gridM : x > 5500 ? gridK : x > 3000 ? gridS : grid, gridOx = x => x < -1500 ? FOREST_X : x > 17000 ? ICE_X : x > 13000 ? DRAW_X : x > 9000 ? MARS_X : x > 5500 ? SKY_X : x > 3000 ? SEA_X : 0;
 function addCol(c) {
   const r = c.r || Math.hypot(c.hw, c.hd), gr = gridOf(c.x), ox = gridOx(c.x);
   for (let i = cellOf(c.x - ox - r); i <= cellOf(c.x - ox + r); i++) for (let j = cellOf(c.z - r); j <= cellOf(c.z + r); j++) gr[j * NC + i].push(c);
@@ -590,6 +592,7 @@ function collide(p, r) {
   }
   if (p.x < -1500) { const dx = p.x - FOREST_X, d = Math.hypot(dx, p.z), m = FOREST.r - 4; if (d > m) { p.x = FOREST_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x < 700) { p.x = clamp(p.x, -HALF + 4, HALF - 4); p.z = clamp(p.z, -HALF + 4, HALF - 4); }
+  else if (p.x > 17000) { const dx = p.x - ICE_X, d = Math.hypot(dx, p.z), m = ICE.r - 4; if (d > m) { p.x = ICE_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x > 13000) { const dx = p.x - DRAW_X, d = Math.hypot(dx, p.z), m = DRAW.r - 4; if (d > m) { p.x = DRAW_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x > 9000) { const dx = p.x - MARS_X, d = Math.hypot(dx, p.z), m = MARS.r - 4; if (d > m) { p.x = MARS_X + dx / d * m; p.z = p.z / d * m; } }
   else if (p.x > 5500) { const dx = p.x - SKY_X, d = Math.hypot(dx, p.z), m = KSKY.r - 4; if (d > m) { p.x = SKY_X + dx / d * m; p.z = p.z / d * m; } }
@@ -1873,7 +1876,7 @@ const ITEMS = {
   brochet: { n: (EN ? 'Pike' : 'Brochet'), e: '🐟', sell: 16, fish: 1 }, anguille: { n: (EN ? 'Eel' : 'Anguille'), e: '🐍', sell: 18, fish: 1 }, saumon: { n: (EN ? 'Salmon' : 'Saumon'), e: '🐠', sell: 22, fish: 1 },
   silure: { n: (EN ? 'Catfish' : 'Poisson-chat'), e: '🐡', sell: 26, fish: 1 }, dore: { n: (EN ? 'Goldfish' : 'Poisson doré'), e: '🐠', sell: 60, fish: 1 },
   lait: { n: (EN ? 'Milk' : 'Lait'), e: '🥛', en: 20, sell: 4 }, luge: { n: (EN ? 'Sled' : 'Luge'), e: '🛷', key: 1 }, skis: { n: 'Skis', e: '🎿', key: 1 }, champi: { n: (EN ? 'Mushroom' : 'Champignon'), e: '🍄', en: 15, sell: 5 },
-  pierreZ: { n: (EN ? 'Zoubla Stone' : 'Pierre de Zoubla'), e: '💠', key: 1 }, graineM: { n: (EN ? 'Mother Tree Seed' : 'Graine de l\'Arbre-Mère'), e: '🌰', key: 1 }, dent: { n: (EN ? 'Dinosaur Tooth' : 'Dent de dinosaure'), e: '🦷', key: 1 }, hublot: { n: (EN ? 'Porthole' : 'Hublot'), e: '🪟', key: 1 }, helice: { n: (EN ? 'Propeller' : 'Hélice'), e: '🌀', key: 1 }, joints: { n: (EN ? 'Waterproof Seals' : 'Joints étanches'), e: '🍯', key: 1 }, toile: { n: (EN ? 'Circus Tent Canvas' : 'Toile de chapiteau'), e: '🎪', key: 1 }, corde: { n: (EN ? 'Long Rope' : 'Longue corde'), e: '🪢', key: 1 }, panier: { n: (EN ? 'Big Basket' : 'Grand panier'), e: '🧺', key: 1 }, champiL: { n: (EN ? 'Glowing Mushroom' : 'Champignon lumineux'), e: '🍄', key: 1 }, lanterneM: { n: (EN ? 'Octavia\'s Lantern' : 'Lanterne d\'Octavie'), e: '🏮', key: 1 }, grandePerle: { n: (EN ? 'Great Pearl' : 'Grande Perle'), e: '⚪', key: 1 }, graineR: { n: (EN ? 'Martian Seeds' : 'Graines martiennes'), e: '🌱', key: 1 }, pierreMars: { n: (EN ? 'Mars Pebble' : 'Caillou de Mars'), e: '🔴', key: 1 }, crRouge: { n: (EN ? 'Red Magic Crayon' : 'Crayon Magique rouge'), e: '🖍️', key: 1 }, crJaune: { n: (EN ? 'Yellow Magic Crayon' : 'Crayon Magique jaune'), e: '🖍️', key: 1 }, crBleu: { n: (EN ? 'Blue Magic Crayon' : 'Crayon Magique bleu'), e: '🖍️', key: 1 }, crVert: { n: (EN ? 'Green Magic Crayon' : 'Crayon Magique vert'), e: '🖍️', key: 1 }, crViolet: { n: (EN ? 'Purple Magic Crayon' : 'Crayon Magique violet'), e: '🖍️', key: 1 }, dessinG: { n: (EN ? 'Scribble\'s Drawing' : 'Dessin de Gribouille'), e: '🖼️', key: 1 },
+  pierreZ: { n: (EN ? 'Zoubla Stone' : 'Pierre de Zoubla'), e: '💠', key: 1 }, graineM: { n: (EN ? 'Mother Tree Seed' : 'Graine de l\'Arbre-Mère'), e: '🌰', key: 1 }, dent: { n: (EN ? 'Dinosaur Tooth' : 'Dent de dinosaure'), e: '🦷', key: 1 }, hublot: { n: (EN ? 'Porthole' : 'Hublot'), e: '🪟', key: 1 }, helice: { n: (EN ? 'Propeller' : 'Hélice'), e: '🌀', key: 1 }, joints: { n: (EN ? 'Waterproof Seals' : 'Joints étanches'), e: '🍯', key: 1 }, toile: { n: (EN ? 'Circus Tent Canvas' : 'Toile de chapiteau'), e: '🎪', key: 1 }, corde: { n: (EN ? 'Long Rope' : 'Longue corde'), e: '🪢', key: 1 }, panier: { n: (EN ? 'Big Basket' : 'Grand panier'), e: '🧺', key: 1 }, champiL: { n: (EN ? 'Glowing Mushroom' : 'Champignon lumineux'), e: '🍄', key: 1 }, lanterneM: { n: (EN ? 'Octavia\'s Lantern' : 'Lanterne d\'Octavie'), e: '🏮', key: 1 }, grandePerle: { n: (EN ? 'Great Pearl' : 'Grande Perle'), e: '⚪', key: 1 }, graineR: { n: (EN ? 'Martian Seeds' : 'Graines martiennes'), e: '🌱', key: 1 }, pierreMars: { n: (EN ? 'Mars Pebble' : 'Caillou de Mars'), e: '🔴', key: 1 }, crRouge: { n: (EN ? 'Red Magic Crayon' : 'Crayon Magique rouge'), e: '🖍️', key: 1 }, crJaune: { n: (EN ? 'Yellow Magic Crayon' : 'Crayon Magique jaune'), e: '🖍️', key: 1 }, crBleu: { n: (EN ? 'Blue Magic Crayon' : 'Crayon Magique bleu'), e: '🖍️', key: 1 }, crVert: { n: (EN ? 'Green Magic Crayon' : 'Crayon Magique vert'), e: '🖍️', key: 1 }, crViolet: { n: (EN ? 'Purple Magic Crayon' : 'Crayon Magique violet'), e: '🖍️', key: 1 }, dessinG: { n: (EN ? 'Scribble\'s Drawing' : 'Dessin de Gribouille'), e: '🖼️', key: 1 }, glaconC: { n: (EN ? 'Singing icicle' : 'Glaçon chantant'), e: '🎵', key: 1 }, echarpeG: { n: (EN ? 'Frost\'s scarf' : 'Écharpe de Givre'), e: '🧣', key: 1 },
   p_chassis: { n: (EN ? 'Old Chassis' : 'Vieux châssis'), e: '🛻', key: 1 }, p_roues: { n: (EN ? 'Four Wheels' : 'Quatre roues'), e: '🛞', key: 1 }, p_carrosserie: { n: (EN ? 'Car Body' : 'Carrosserie'), e: '🚐', key: 1 }, p_volant: { n: (EN ? 'Steering Wheel and Seats' : 'Volant et sièges'), e: '🪑', key: 1 }, p_moteur: { n: (EN ? 'Truck Engine' : 'Moteur de camion'), e: '⚙️', key: 1 }, p_phares: { n: (EN ? 'Headlights' : 'Phares'), e: '💡', key: 1 },
   coffre: { n: (EN ? 'Small Chest' : 'Petit coffre'), e: '💰', sell: 70 }, cristal: { n: (EN ? 'Blue Crystal' : 'Cristal bleu'), e: '💎', sell: 80 }, fossile: { n: (EN ? 'Fossil' : 'Fossile'), e: '🦴', sell: 60 }, boussole: { n: (EN ? 'Old Compass' : 'Vieille boussole'), e: '🧭', sell: 45 }, plan: { n: (EN ? 'Plane Blueprint' : 'Plan d\'avion'), e: '📜', key: 1 },
   chapeau: { n: (EN ? 'Hat' : 'Chapeau'), e: '🎩', key: 1 }, manteau: { n: (EN ? 'Coat' : 'Manteau'), e: '🧥', key: 1 }, canne: { n: (EN ? 'Fishing Rod' : 'Canne à pêche'), e: '🎣', key: 1 }, pelle: { n: (EN ? 'Shovel' : 'Pelle'), e: '⛏️', key: 1 },
@@ -2691,6 +2694,7 @@ function talkTo(id) {
   if (seaTalk(id)) return;
   if (skyTalk(id)) return;
   if (marsTalk(id)) return;
+  if (iceTalk(id)) return;
   const st = curStep();
   if (st && st.talk === id) {
     const miss = st.need && st.need();
@@ -3373,7 +3377,7 @@ function buildSkiNPCs() {
   PITCH.marcel = 0.8; PITCH.yvette = 1.35; PITCH.cabriole = 1.55;
 }
 function talkSki(id) {
-  if (skyTalk(id) || marsTalk(id)) return;
+  if (skyTalk(id) || marsTalk(id) || iceTalk(id)) return;
   if (id === 'marcel') {
     const night = S.time >= 21 || S.time < 6.5;
     if (night) { talk([['marcel', 'Zzzz… zzzz…']]); return; }
@@ -3817,7 +3821,7 @@ function updateSide(dt) {
 }
 // ---------- Dialogues ----------
 function talkSide(id) {
-  if (skyTalk(id) || marsTalk(id)) return;
+  if (skyTalk(id) || marsTalk(id) || iceTalk(id)) return;
   if (id === 'gaspard') {
     const s = sqState('marais');
     if (s === undefined) return talk([['gaspard', (EN ? 'Kraaak… Hello, bear. I\'m Gaspard, I\'ve been fishing here for years.' : 'Kraaak… Bonjour, l\'ours. Je suis Gaspard, je pêche ici depuis des années.')], ['gaspard', (EN ? 'But walkers threw rubbish into my marsh. The frogs are sad…' : 'Mais des promeneurs ont jeté des déchets dans mon marais. Les grenouilles sont tristes…')], ['oscar', (EN ? 'I\'ll pick it all up! And if I find a honey pot, I\'m keeping it.' : 'Je vais tout ramasser ! Et si je trouve un pot de miel, je le garde.')], ['gaspard', (EN ? 'There are 6 pieces, near the boardwalks. Thank you!' : 'Il y en a 6, près des passerelles. Merci !')]], () => sqSet('marais', 0));
@@ -4648,6 +4652,8 @@ function updateLaunch(dt) {
   if (G.cine.kind === 'mars') return updateMarsLaunch(dt);
   if (G.cine.kind === 'bhole') return updateBlackHole(dt);
   if (G.cine.kind === 'whole') return updateWhiteHole(dt);
+  if (G.cine.kind === 'ice') return updateIceTrip(dt);
+  if (G.cine.kind === 'aurora') return updateAuroraShow(dt);
   const L = G.cine; L.t += dt; const t = L.t;
   $('quest').style.visibility = 'hidden';
   while (L.cap < CAPTIONS.length && t >= CAPTIONS[L.cap][0]) { status(CAPTIONS[L.cap][1], 'info', 4.5); if (CAPTIONS[L.cap][0] === 10) sfx.takeoff(); L.cap++; }
@@ -5501,6 +5507,8 @@ function skipCine() {
   else if (L.kind === 'mars') skipMarsLaunch();
   else if (L.kind === 'bhole') skipBlackHole();
   else if (L.kind === 'whole') skipWhiteHole();
+  else if (L.kind === 'ice') skipIceTrip();
+  else if (L.kind === 'aurora') skipAuroraShow();
   else if (L.kind === 'home') { L.done = true; fadeTo(() => { if (L.ph === 1) homePhase2(); endHome(); }); }
 }
 function forestTravel(toForest) {
@@ -7563,7 +7571,7 @@ function skipBlackHole() { const L = G.cine; if (!L || L.done || L.t < 3) return
 // Le Roi Crayon a perdu ses 5 Crayons Magiques : sans eux, son royaume perd ses couleurs.
 // Avec Gribouille, Madame Gomme, Capitaine Pinceau et les Taches, Oscar les retrouve pour ouvrir le chemin de la maison.
 const DRAW = { x: DRAW_X, z: 0, r: 170 };
-const onDessin = () => P.x > 13000;
+const onDessin = () => P.x > 13000 && P.x < 17000;
 const DL = (dx, dz) => [DRAW.x + dx, DRAW.z + dz];
 const DLAND = DL(0, 92), DPLAZA = DL(0, 14), DCASTLE = DL(0, -84), DSTAIR = DL(78, -46), DFALL = DL(104, 58), DPOOL = DL(100, 86), DSCRIB = DL(-84, -64), DVILLAGE = DL(64, 14), DUPSIDE = DL(-34, -14), DPORTAL = DL(36, 96);
 const DISLE = { x: DRAW.x - 92, z: 46, r: 22, mo: 31 };
@@ -8127,6 +8135,428 @@ function drawMarsMap() {
   g.restore();
 }
 
+// ================= Chapitre 8 : l'Antarctique =================
+// Un pingouin apporte une lettre de Givre, le cousin ours polaire d'Oscar, parti en voyage tout au sud de la Terre :
+// la glace craque, et les aurores australes ont disparu depuis cent nuits. En Antarctique, Oscar aide Papi Moustache
+// l'éléphant de mer, retrouve les bébés phoques, reconstruit le pont de glace, fait la course avec Neige la pingouine
+// et rallume la Lanterne du Sud. Le camping-car arrive sur ses patins, comme toujours !
+const ICE = { x: ICE_X, z: 0, r: 150 };
+const onPole = () => P.x > 17000;
+const IL = (dx, dz) => [ICE.x + dx, ICE.z + dz];
+const ILAND = IL(0, 84), IVILLAGE = IL(-44, 22), IMOUNT = IL(0, -118), ICAVE = IL(86, -14);
+const IISLE = { x: ICE.x, z: -118, r: 34, mo: 46 };
+const IBRIDGE = { z0: IISLE.z + IISLE.r - 2, z1: IISLE.z + IISLE.mo + 2, x: ICE.x, w: 2.2 };
+const IHOLES = [IL(-20, -38), IL(-4, -26), IL(-36, -22)];
+const IPUPS = [IL(92, 34), IL(112, -44), IL(58, -78)];
+const IBLOCKS = [IL(-92, 62), IL(-116, -12), IL(42, 112), IL(104, 88)];
+const IFLAGS = [IL(-70, -50), IL(-96, -74), IL(-126, -52), IL(-122, -14), IL(-100, 8), IL(-74, -16)];
+const IICICLES = [IL(80, -20), IL(92, -6), IL(86, -26)];
+const IRACE_T = 45;
+function iceY(x, z) {
+  const dx = x - ICE.x, dz = z - ICE.z, d = Math.hypot(dx, dz);
+  const di = Math.hypot(x - IISLE.x, z - IISLE.z);
+  if (di < IISLE.r) { const m = Math.max(0, 1 - di / 30); return 1 + 22 * Math.pow(m, 1.3) - (di < 3 ? 0.6 : 0) + (fbm(dx * 0.06, dz * 0.06, 2) - 0.5) * 0.8; }
+  if (di < IISLE.mo) return -3;
+  if (d > ICE.r) return -3 - sstep(ICE.r, ICE.r + 10, d) * 2;
+  let y = 0.6 + (fbm(dx * 0.03 + 9, dz * 0.03, 3) - 0.5) * 1.6 - sstep(ICE.r - 8, ICE.r, d) * 0.4;
+  const dc = Math.hypot(x - ICAVE[0], z - ICAVE[1]); y = lerp(y, 0.8, sstep(22, 14, dc));
+  for (const [p, r] of [[ILAND, 16], [IVILLAGE, 26]]) y = lerp(y, 0.7, sstep(r, r * 0.6, Math.hypot(x - p[0], z - p[1])));
+  for (const h of IHOLES) { const dh = Math.hypot(x - h[0], z - h[1]); if (dh < 1.6) y -= 0.25 * (1 - dh / 1.6); }
+  return y;
+}
+const iOnBridge = (x, z) => S && S.flags.ibridge && Math.abs(x - IBRIDGE.x) < IBRIDGE.w && z > IBRIDGE.z0 && z < IBRIDGE.z1;
+const iceDeck = (x, z) => iOnBridge(x, z) ? 1.2 : null;
+const iInWater = (x, z) => { const di = Math.hypot(x - IISLE.x, z - IISLE.z); return di > IISLE.r - 0.5 && di < IISLE.mo + 0.5 && !iOnBridge(x, z); };
+// ---------- Modèles ----------
+function recolor(model, map) {
+  // Change les couleurs d'un modèle (pour faire un ours polaire avec un ours brun, par exemple)
+  const done = new Map(), keys = Object.keys(map).map(k => [new T.Color(+k).convertSRGBToLinear(), map[k]]);
+  model.traverse(o => { if (!o.isMesh || !o.material || !o.material.color || o.userData.ink) return; const m = o.material; if (!done.has(m)) { const hit = keys.find(([c]) => Math.abs(c.r - m.color.r) + Math.abs(c.g - m.color.g) + Math.abs(c.b - m.color.b) < 0.02); if (!hit) done.set(m, m); else { const c = m.clone(); c.color.set(hit[1]).convertSRGBToLinear(); done.set(m, c); } } o.material = done.get(m); });
+  return model;
+}
+function makePolarBear() {
+  const g = makeBearQuad(); g.userData.extra && Object.values(g.userData.extra).forEach(h => { h.visible = false; });
+  if (g.userData.ranger) g.userData.ranger.visible = false; if (g.userData.rhat) g.userData.rhat.visible = false;
+  recolor(g, { 0x5b3a2a: 0xf6f3ea, 0x40291e: 0xe2ddd0, 0x9a7256: 0xece6d8 });
+  rangerScarf(g.userData.rig.head, 0, -0.18, -0.12, 0.42, -0.35); recolor(g.userData.rig.head.children[g.userData.rig.head.children.length - 1], { 0x2f7a4c: 0xd8403a });
+  return g;
+}
+function makeElephantSeal() {
+  const g = new T.Group(), f = lam(0xa8765a, { flatShading: false }), d = lam(0x8a5a42, { flatShading: false }), mu = lam(0xd8b090, { flatShading: false }), tusk = lam(0xfff8ea, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, f, 0.95, 0, 0.9, -0.2, 1.1, 0.95, 1.5); ball(body, f, 0.75, 0, 1.4, 0.55, 1, 0.95, 0.95);
+  const head = new T.Group(); head.position.set(0, 1.75, 1.05); body.add(head);
+  ball(head, f, 0.52, 0, 0, 0, 1, 0.92, 0.95); ball(head, mu, 0.36, 0, -0.18, 0.36, 1.3, 0.8, 0.8);
+  for (const s of [-1, 1]) { ball(head, eyeMat, 0.07, s * 0.24, 0.16, 0.38); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.02, s * 0.24 + 0.03, 0.2, 0.44); }
+  ball(head, d, 0.2, 0, -0.08, 0.6, 1, 1.5, 1.2); void tusk;
+  ball(head, M.dark, 0.08, 0, -0.02, 0.62, 1.3, 0.8, 0.8);
+  whiskers(head, 0, -0.2, 0.62, 0.5, 0xf4efe6);
+  for (let k = 0; k < 4; k++) ball(head, lam(0xf4f4f4, { flatShading: false }), 0.06, (k - 1.5) * 0.12, -0.36, 0.62, 1, 1.4, 1);
+  const fl = s => { const p = new T.Group(); p.position.set(s * 0.8, 0.7, 0.6); body.add(p); const m = ball(p, d, 0.3, s * 0.15, -0.3, 0.1, 0.5, 0.2, 1.1); m.rotation.z = s * 0.6; return p; };
+  const tail = new T.Group(); tail.position.set(0, 0.35, -1.5); body.add(tail); for (const s of [-1, 1]) { const fk = ball(tail, d, 0.3, s * 0.26, 0, -0.2, 1, 0.25, 1.4); fk.rotation.y = s * 0.4; }
+  g.userData = { rig: { body, head, tail, armL: fl(-1), armR: fl(1) } };
+  return g;
+}
+function makePenguin(o) {
+  // Un pingouin (les savants disent « manchot ») : dos noir, ventre blanc, joues jaunes, bec et pattes orange
+  o = o || {};
+  const g = new T.Group(), bk = lam(0x22242c, { flatShading: false }), wh = lam(0xfbfaf6, { flatShading: false }), or = lam(0xff8a2a, { flatShading: false }), ye = lam(0xffc83a, { flatShading: false });
+  const body = new T.Group(); g.add(body);
+  ball(body, bk, 0.42, 0, 0.7, -0.04, 0.95, 1.4, 0.9); ball(body, wh, 0.35, 0, 0.62, 0.12, 0.88, 1.3, 0.72);
+  const head = new T.Group(); head.position.set(0, 1.32, 0.02); body.add(head);
+  ball(head, bk, 0.26, 0, 0, 0); ball(head, wh, 0.18, 0, -0.04, 0.12, 1.05, 0.9, 0.7);
+  for (const s of [-1, 1]) { ball(head, ye, 0.08, s * 0.17, 0.02, 0.06, 0.6, 1.2, 0.8); ball(head, eyeMat, 0.045, s * 0.1, 0.07, 0.22); ball(head, new T.MeshBasicMaterial({ color: 0xffffff }), 0.014, s * 0.1 + 0.014, 0.09, 0.26); }
+  const bak = new T.Mesh(new T.ConeGeometry(0.06, 0.24, 6), or); bak.rotation.x = Math.PI / 2; bak.position.set(0, -0.04, 0.32); head.add(bak);
+  const wing = s => { const p = new T.Group(); p.position.set(s * 0.38, 1.0, 0); body.add(p); const w = ball(p, bk, 0.15, s * 0.04, -0.3, 0, 0.3, 1.5, 0.7); w.rotation.z = s * 0.2; return p; };
+  for (const s of [-1, 1]) ball(g, or, 0.1, s * 0.14, 0.04, 0.1, 1, 0.3, 1.5);
+  if (o.hat) { const c = mesh(new T.CylinderGeometry(0.16, 0.2, 0.18, 10), lam(0x3a6ad8), 0, 0.27, 0, head); c.castShadow = true; ball(head, lam(0xf4efe6), 0.06, 0, 0.4, 0); }
+  if (o.scarf) { const r = new T.Mesh(new T.TorusGeometry(0.26, 0.06, 6, 16), lam(o.scarf)); r.rotation.x = Math.PI / 2; r.position.y = 1.12; body.add(r); }
+  g.userData = { rig: { body, head, armL: wing(-1), armR: wing(1) } };
+  if (o.s) g.scale.setScalar(o.s);
+  return g;
+}
+function makePup() { const g = makeSeal(); g.scale.setScalar(0.6); return recolor(g, { 0x8a8e98: 0xfbfbf6, 0x6a6e78: 0xe4e6e0, 0xc8ccd4: 0xffffff }); }
+function makeOrca() {
+  // Une orque : noire et blanche, avec une grande nageoire sur le dos
+  const g = new T.Group(), f = lam(0x1a1c22, { flatShading: false }), w = lam(0xf8f8f4, { flatShading: false });
+  ball(g, f, 1.3, 0, 0, 0, 1, 0.85, 2.5); ball(g, w, 1.05, 0, -0.35, 0.6, 0.85, 0.5, 1.9);
+  for (const s of [-1, 1]) ball(g, w, 0.32, s * 0.78, 0.35, 1.9, 0.4, 0.6, 1);
+  const fin = new T.Mesh(new T.ConeGeometry(0.5, 2.2, 4), f); fin.position.set(0, 1.7, -0.3); fin.scale.z = 0.3; fin.rotation.x = -0.3; g.add(fin);
+  const tail = new T.Group(); tail.position.set(0, 0, -2.8); g.add(tail); for (const s of [-1, 1]) { const fk = ball(tail, f, 0.55, s * 0.55, 0, -0.3, 1, 0.2, 1.3); fk.rotation.y = s * 0.5; }
+  g.userData = { tail };
+  return g;
+}
+function makeIgloo(big) {
+  const g = new T.Group(), sn = lam(0xf4f8fc, { flatShading: false }), ln = lam(0xc8d8e6), s = big ? 1.35 : 1;
+  const dome = new T.Mesh(new T.SphereGeometry(3 * s, 20, 12, 0, 6.283, 0, Math.PI / 2), sn); dome.castShadow = true; dome.receiveShadow = true; g.add(dome);
+  for (let k = 1; k < 4; k++) { const r = new T.Mesh(new T.TorusGeometry(3 * s * Math.cos(k * 0.36), 0.05, 4, 28), ln); r.rotation.x = Math.PI / 2; r.position.y = 3 * s * Math.sin(k * 0.36); g.add(r); }
+  const tun = new T.Mesh(new T.CylinderGeometry(1.2 * s, 1.2 * s, 2.2 * s, 16).rotateX(Math.PI / 2), sn); tun.position.set(0, 0, 3.4 * s); tun.castShadow = true; g.add(tun);
+  mesh(new T.CircleGeometry(0.85 * s, 14, 0, Math.PI), M.dark, 0, 0.02, 4.52 * s, g);
+  return g;
+}
+// Les aurores australes : de grands rubans de lumière verte et violette qui ondulent dans le ciel
+function makeAurora() {
+  const g = new T.Group(), mat = new T.ShaderMaterial({ uniforms: { uT: { value: 0 }, uK: { value: 0 } }, transparent: true, depthWrite: false, side: T.DoubleSide, blending: T.AdditiveBlending, fog: false,
+    vertexShader: 'uniform float uT; varying vec2 vUv; void main(){ vUv = uv; vec3 p = position; p.z += sin(p.x * 0.012 + uT * 0.4) * 30.0 + sin(p.x * 0.031 - uT * 0.7) * 12.0; p.y += sin(p.x * 0.02 + uT) * 6.0 * uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
+    fragmentShader: 'uniform float uT; uniform float uK; varying vec2 vUv; void main(){ float a = smoothstep(0.0, 0.25, vUv.y) * (1.0 - vUv.y) * (0.55 + 0.45 * sin(vUv.x * 40.0 + uT * 2.0)); vec3 c = mix(vec3(0.2, 1.0, 0.55), vec3(0.75, 0.35, 1.0), vUv.y); gl_FragColor = vec4(c, a * uK * 0.85); }' });
+  for (let k = 0; k < 3; k++) { const m = new T.Mesh(new T.PlaneGeometry(700, 90 - k * 15, 120, 1), mat); m.position.set(0, 160 + k * 25, -260 - k * 60); m.rotation.x = 0.25; g.add(m); }
+  g.userData = { mat }; g.frustumCulled = false; g.traverse(o => { o.frustumCulled = false; });
+  return g;
+}
+// ---------- Construction ----------
+let iColony = [], iFishM = [], iPups = [], iBlockM = [], iFlagM = [], iIcicleM = [], iBridgeM = null, iLantern = null, iAurora = null, iNarwhal = null, iFloes = [], iFriends = [], iLast = null, iSea = null;
+function buildBanquise() {
+  const gg = new T.RingGeometry(0.01, ICE.r + 40, 170, 100); gg.rotateX(-Math.PI / 2);
+  const p = gg.attributes.position, col = new Float32Array(p.count * 3), c = new T.Color();
+  const SN = new T.Color(0xe6eef6), SB = new T.Color(0xbcd4ea), CR = new T.Color(0x9ab8d0), RK = new T.Color(0x7a8a9a), IC = new T.Color(0xbfe0f4);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + ICE.x, z = p.getZ(i) + ICE.z, y = iceY(x, z); p.setX(i, x); p.setZ(i, z); p.setY(i, y);
+    c.copy(SN); if (fbm(x * 0.05 + 2, z * 0.05, 2) > 0.52) c.lerp(SB, 0.7);
+    if (Math.abs(fbm(x * 0.02, z * 0.02 + 40, 3) - 0.5) < 0.012) c.lerp(CR, 0.8);
+    if (y < -1) c.lerp(RK, 0.7); else if (y < 0.4) c.lerp(IC, 0.5);
+    const di = Math.hypot(x - IISLE.x, z - IISLE.z); if (di < IISLE.r && y > 8) c.lerp(IC, 0.35);
+    c.convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.computeVertexNormals();
+  const gm = new T.Mesh(gg, groundMat(0.5)); gm.receiveShadow = true; scene.add(gm);
+  // La mer glacée tout autour
+  iSea = new T.Mesh(new T.CircleGeometry(ICE.r + 400, 64), new T.MeshPhongMaterial({ color: colorL(0x2a5a7a), shininess: 90, specular: 0x8ab0c8, transparent: true, opacity: 0.92 })); iSea.rotation.x = -Math.PI / 2; iSea.position.set(ICE.x, -0.9, ICE.z); scene.add(iSea);
+  // Icebergs et morceaux de banquise qui flottent
+  seed = 1717;
+  const berg = aoGeo(mergeCol([[new T.CylinderGeometry(3, 5, 9, 6).translate(0, 4.5, 0), 0xf4fbff], [new T.ConeGeometry(3.2, 6, 6).translate(0.5, 11.5, 0.3), 0xe4f2fb], [new T.CylinderGeometry(2, 3.2, 4, 5).translate(-2.5, 2, 1.5), 0xcfe8f6]]), 0.75), bergs = [];
+  for (let t = 0; t < 400 && bergs.length < 34; t++) { const a = srand() * 6.283, d = ICE.r + srange(12, 140), x = ICE.x + Math.cos(a) * d, z = ICE.z + Math.sin(a) * d; bergs.push([x, -1.5, z, srange(0.7, 2.2), srand() * 6]); }
+  tiledInst(berg, vcMat, bergs, { h: 14, sy: e => e[3] * srange(0.8, 1.3) });
+  for (let k = 0; k < 18; k++) { const a = rand(0, 6.283), d = ICE.r + rand(4, 40), x = ICE.x + Math.cos(a) * d, z = ICE.z + Math.sin(a) * d, m = mesh(new T.CylinderGeometry(rand(2, 5), rand(2, 5), 0.6, 7), lam(0xf2f8fc), x, -0.7, z); m.rotation.y = rand(0, 6); m.castShadow = false; iFloes.push({ m, ph: rand(0, 6) }); }
+  // Petits blocs de glace et bosses de neige sur la banquise
+  const bumps = [];
+  for (let t = 0; t < 4000 && bumps.length < 260; t++) { const x = ICE.x + srange(-ICE.r, ICE.r), z = ICE.z + srange(-ICE.r, ICE.r); if (Math.hypot(x - ICE.x, z - ICE.z) > ICE.r - 6 || Math.hypot(x - IISLE.x, z - IISLE.z) < IISLE.mo + 4) continue; let ok = true; for (const q of [ILAND, IVILLAGE, ICAVE].concat(IHOLES, IPUPS, IBLOCKS, IFLAGS)) if (Math.hypot(x - q[0], z - q[1]) < (q === IVILLAGE ? 26 : q === ILAND ? 18 : q === ICAVE ? 22 : 5)) ok = false; if (!ok) continue; const s = srange(0.5, 1.8); bumps.push([x, iceY(x, z) - s * 0.3, z, s, srand() * 6]); if (s > 1.2) addCircle(x, z, s * 0.7); }
+  tiledInst(new T.IcosahedronGeometry(1, 0), lam(0xffffff), bumps, { h: 2, sy: e => e[3] * 0.55, col: (cc, i) => cc.set([0xf8fbff, 0xe2eef8, 0xcfe4f4][i % 3]).convertSRGBToLinear() });
+  // Le village d'igloos
+  for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283 + 0.4, x = IVILLAGE[0] + Math.cos(a) * 16, z = IVILLAGE[1] + Math.sin(a) * 16, ig = makeIgloo(k === 0); ig.position.set(x, iceY(x, z) - 0.1, z); ig.rotation.y = Math.atan2(IVILLAGE[0] - x, IVILLAGE[1] - z); scene.add(ig); addCircle(x, z, k === 0 ? 4 : 3.1); }
+  sign((EN ? 'IGLOO VILLAGE' : 'VILLAGE DES IGLOOS'), IVILLAGE[0] + 4, IVILLAGE[1] + 26, 0, 2, 0.8, '#3a6a9a');
+  sign((EN ? 'ANTARCTICA' : 'ANTARCTIQUE'), ILAND[0] + 9, ILAND[1] + 6, 0, 2, 0.9, '#3a6a9a');
+  // Les trous de pêche dans la glace
+  const holeMat = new T.MeshPhongMaterial({ color: colorL(0x1a4a6a), shininess: 100 });
+  IHOLES.forEach(([x, z], i) => { const h = mesh(new T.CircleGeometry(1.2, 18), holeMat, x, iceY(x, z) + 0.05, z); h.rotation.x = -Math.PI / 2; h.castShadow = false; const rim = mesh(new T.TorusGeometry(1.25, 0.18, 6, 18), lam(0xe8f2fa), x, iceY(x, z) + 0.05, z); rim.rotation.x = Math.PI / 2; iFishM.push(h);
+    addInter({ x, z, r: 2.6, icon: '🎣', label: () => (EN ? 'Fish in the ice hole' : 'Pêcher dans le trou de glace'), can: () => iqAt(2, 1) && !(S.ifish || []).includes(i), act: () => { S.ifish = S.ifish || []; S.ifish.push(i); iceSplash(x, iceY(x, z), z); sfx.catchFish(); toast('🐟 ' + pick([(EN ? 'A wriggly cod!' : 'Une morue toute frétillante !'), (EN ? 'A silver herring!' : 'Un hareng argenté !'), (EN ? 'A little halibut!' : 'Un petit flétan !')])); iceEvent('ifish'); } }); });
+  // Les bébés phoques perdus sur la banquise
+  IPUPS.forEach(([x, z], i) => { const m = makePup(); m.position.set(x, iceY(x, z), z); m.rotation.y = i * 2; scene.add(m); iPups.push({ m, x, z, home: IL(-30 + i * 6, 46) });
+    addInter({ x, z, r: 2.6, icon: '🦭', label: () => (EN ? 'Bring the baby seal back' : 'Ramener le bébé phoque'), can: () => iqAt(3, 0) && !(S.ipup || []).includes(i), act: () => { S.ipup = S.ipup || []; S.ipup.push(i); sparkle(x, iceY(x, z) + 1, z); sfx.pickup(); toast((EN ? '🦭 The baby seal slides on its tummy back to its mum!' : '🦭 Le bébé phoque glisse sur le ventre jusqu\'à sa maman !')); refreshBanquise(); iceEvent('ipup'); } }); });
+  // Les gros blocs de glace pour le pont
+  IBLOCKS.forEach(([x, z], i) => { const m = mesh(new T.BoxGeometry(1.6, 1.3, 1.6), new T.MeshPhongMaterial({ color: colorL(0xbfe8ff), shininess: 100, transparent: true, opacity: 0.85 }), x, iceY(x, z) + 0.65, z); m.rotation.y = i; m.visible = false; iBlockM.push(m);
+    addInter({ x, z, r: 2.6, icon: '🧊', label: () => (EN ? 'Push the ice block' : 'Pousser le bloc de glace'), can: () => m.visible, act: () => { S.iblock = S.iblock || []; S.iblock.push(i); m.visible = false; sparkle(x, iceY(x, z) + 1, z); sfx.pickup(); iceEvent('iblock'); } }); });
+  // Le pont de glace vers l'Île de la Lanterne
+  { const g = new T.Group(); scene.add(g); iBridgeM = g; const im = new T.MeshPhongMaterial({ color: colorL(0xcfeeff), shininess: 100, transparent: true, opacity: 0.9 });
+    const L = IBRIDGE.z1 - IBRIDGE.z0; mesh(new T.BoxGeometry(IBRIDGE.w * 2, 0.6, L), im, IBRIDGE.x, 0.9, (IBRIDGE.z0 + IBRIDGE.z1) / 2, g);
+    for (const s of [-1, 1]) for (let k = 0; k <= 4; k++) mesh(new T.ConeGeometry(0.25, 1.2, 6), im, IBRIDGE.x + s * IBRIDGE.w, 1.8, IBRIDGE.z0 + k / 4 * L, g); }
+  sign((EN ? 'LANTERN ISLAND' : 'ÎLE DE LA LANTERNE'), IBRIDGE.x + 7, IBRIDGE.z1 + 4, 0, 2, 0.8, '#5a4ab0');
+  // La Lanterne du Sud, tout en haut de la montagne de glace
+  { const [x, z] = IMOUNT, y = iceY(x + 2.5, z), g = new T.Group(); g.position.set(x + 2.5, y, z); scene.add(g); addCircle(x + 2.5, z, 1.3);
+    mesh(new T.CylinderGeometry(0.9, 1.2, 1.2, 8), lam(0x9aa8b8), 0, 0.6, 0, g);
+    for (let k = 0; k < 4; k++) { const a = k / 4 * 6.283; mesh(new T.CylinderGeometry(0.08, 0.08, 2.4, 5), M.metal, Math.cos(a) * 0.7, 2.4, Math.sin(a) * 0.7, g); }
+    mesh(new T.ConeGeometry(1.1, 1, 8), lam(0x5a6a8a), 0, 4.1, 0, g);
+    const core = mesh(new T.OctahedronGeometry(0.6, 0), new T.MeshPhongMaterial({ color: 0x8aa0b0, emissive: colorL(0x3affa0), emissiveIntensity: 0, shininess: 100, transparent: true, opacity: 0.9 }), 0, 2.4, 0, g); core.scale.y = 1.4;
+    const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0x7affc0, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); gl.scale.set(14, 14, 1); gl.position.y = 2.4; g.add(gl);
+    iLantern = { g, core, gl };
+    addInter({ x: x + 2.5, z: z + 2.4, r: 3, icon: '✨', label: () => (EN ? 'Relight the Southern Lantern with the singing icicles' : 'Rallumer la Lanterne du Sud avec les glaçons chantants'), can: () => iqAt(7, 0), act: () => { S.flags.ilantern = 1; for (let k = 0; k < 3; k++) take('glaconC'); refreshBanquise(); sfx.fanfare(); confetti(P.x, P.y + 3, P.z); iceEvent('ilantern'); startAuroraShow(); } }); }
+  // La grotte de glace : un cercle de grands cristaux bleus, et les glaçons chantants à l'intérieur
+  { const cm = new T.MeshPhongMaterial({ color: colorL(0x9fd8ff), emissive: colorL(0x2a6a9a), emissiveIntensity: 0.25, shininess: 100, transparent: true, opacity: 0.82 });
+    for (let k = 0; k < 22; k++) { const a = k / 22 * 6.283; if (Math.abs(((a - 2.2) + 6.283) % 6.283) < 0.45) continue; const x = ICAVE[0] + Math.cos(a) * 15, z = ICAVE[1] + Math.sin(a) * 15, h = rand(6, 12), m = mesh(new T.ConeGeometry(rand(1.6, 2.4), h, 6), cm, x, iceY(x, z) + h / 2 - 0.4, z); m.rotation.z = rand(-0.15, 0.15); addCircle(x, z, 2); }
+    sign((EN ? 'ICE CAVE' : 'GROTTE DE GLACE'), ICAVE[0] - 14, ICAVE[1] + 18, 0.6, 2, 0.8, '#3a8ab0');
+    IICICLES.forEach(([x, z], i) => { const g = new T.Group(); g.position.set(x, iceY(x, z), z); scene.add(g); for (let j = 0; j < 3; j++) { const m = mesh(new T.ConeGeometry(0.22 - j * 0.04, 1.6 - j * 0.3, 6), new T.MeshPhongMaterial({ color: [0xa0e0ff, 0xc0a0ff, 0xa0ffd0][i], emissive: colorL([0x3a8ac0, 0x6a3ac0, 0x3ac08a][i]), emissiveIntensity: 0.5, shininess: 100 }), (j - 1) * 0.3, 0.8 - j * 0.1, 0, g); m.castShadow = false; } g.visible = false; iIcicleM.push(g);
+      addInter({ x, z, r: 2.4, icon: '🎵', label: () => (EN ? 'Pick the singing icicle' : 'Cueillir le glaçon chantant'), can: () => g.visible, act: () => { S.iicicle = S.iicicle || []; S.iicicle.push(i); g.visible = false; give('glaconC', true); sfx.ring(); setTimeout(() => sfx.ring(), 180); sparkle(x, iceY(x, z) + 1, z); toast((EN ? '🎵 The icicle sings a pretty note: "' : '🎵 Le glaçon chante une jolie note : « ') + ['Do', 'Mi', 'Sol'][i] + ' » !'); iceEvent('iicicle'); } }); }); }
+  // Les drapeaux de la course de Neige
+  IFLAGS.forEach(([x, z], i) => { const g = new T.Group(); g.position.set(x, iceY(x, z), z); scene.add(g); mesh(new T.CylinderGeometry(0.08, 0.08, 3, 5), M.dark, 0, 1.5, 0, g); mesh(new T.BoxGeometry(1.1, 0.7, 0.05), lam(i === IFLAGS.length - 1 ? 0xffd84d : 0xd8403a), 0.55, 2.6, 0, g); g.visible = false; iFlagM.push(g); });
+  // Les habitants
+  addNPC('givre', { name: (EN ? 'Frost, the polar bear cousin' : 'Givre, le cousin ours polaire'), col: '#5a8ab0', model: makePolarBear(), x: ILAND[0] - 12, z: ILAND[1] - 12, rot: 0.6, head: 2.6 });
+  addNPC('moustache', { name: (EN ? 'Grandpa Whiskers the elephant seal' : 'Papi Moustache l\'éléphant de mer'), col: '#8a5a42', model: makeElephantSeal(), x: IVILLAGE[0] + 4, z: IVILLAGE[1] + 6, rot: 0.3, head: 2.8 });
+  addNPC('neige', { name: (EN ? 'Snowy the penguin' : 'Neige la pingouine'), col: '#3a6ad8', model: makePenguin({ scarf: 0xd8403a, s: 1.1 }), x: IFLAGS[0][0] + 4, z: IFLAGS[0][1] + 6, rot: 2.6, head: 1.6 });
+  addNPC('pikou', { name: (EN ? 'Pikou, the penguin chief' : 'Pikou, le chef des pingouins'), col: '#ff8a2a', model: makePenguin({ hat: true, s: 1.35 }), x: IVILLAGE[0] - 8, z: IVILLAGE[1] - 4, rot: 0.8, head: 1.8 });
+  [['koko', (EN ? 'Koko the penguin' : 'Koko le pingouin'), -2, -10], ['pipa', (EN ? 'Pipa the penguin' : 'Pipa la pingouine'), -12, 8]].forEach(([id, nm, dx, dz]) => addNPC(id, { name: nm, col: '#ff8a2a', model: makePenguin({ s: 1 }), x: IVILLAGE[0] + dx, z: IVILLAGE[1] + dz, rot: rand(0, 6), head: 1.5 }));
+  for (const id of ['givre', 'moustache', 'neige', 'pikou', 'koko', 'pipa']) { const n = NPCS[id]; addInter({ get x() { return n.x; }, get z() { return n.z; }, r: id === 'moustache' ? 4 : 3.2, icon: '💬', label: () => (EN ? 'Talk to ' : 'Parler à ') + n.name.split(',')[0], can: () => !n.hidden, act: () => talkIce(id) }); }
+  iNarwhal = makeOrca(); scene.add(iNarwhal);
+  // Une grande colonie de pingouins qui se dandinent sur la glace
+  for (let k = 0; k < 30; k++) { const a = rand(0, 6.283), d = rand(3, 15), x = IL(70, 60)[0] + Math.cos(a) * d, z = IL(70, 60)[1] + Math.sin(a) * d, m = makePenguin({ s: rand(1.1, 1.45) }); m.position.set(x, iceY(x, z), z); m.rotation.y = rand(0, 6); scene.add(m); iColony.push({ m, x, z, ph: rand(0, 6), sp: rand(0.6, 1.4) }); }
+  for (let k = 0; k < 6; k++) { const a = rand(0, 6.283), d = rand(2, 11), x = IL(70, 60)[0] + Math.cos(a) * d, z = IL(70, 60)[1] + Math.sin(a) * d, m = makePenguin({ s: 0.65 }); recolor(m, { 0x22242c: 0x8a8a90, 0xfbfaf6: 0xcfcfd2 }); m.position.set(x, iceY(x, z), z); scene.add(m); iColony.push({ m, x, z, ph: rand(0, 6), sp: 2 }); }
+  sign((EN ? 'PENGUIN COLONY' : 'COLONIE DES PINGOUINS'), IL(70, 60)[0] - 6, IL(70, 60)[1] + 28, 0.2, 2, 0.8, '#3a6ad8');
+  // Les amis
+  MOON_FRIENDS.forEach(([id, name, colr, mk], i) => { const m = mk(), a = 2.9 + i / MOON_FRIENDS.length * 3.0, x = ILAND[0] + Math.cos(a) * 12, z = ILAND[1] + Math.sin(a) * 8; addNPC('li_' + id, { name, col: colr, model: m, x, z, rot: Math.atan2(ILAND[0] - x, ILAND[1] - z), head: 2.2 }); const n = NPCS['li_' + id]; iFriends.push(n); addInter({ get x() { return n.x; }, get z() { return n.z; }, r: 3, icon: '💬', label: () => (EN ? 'Talk to ' : 'Parler à ') + name.split(' (')[0], can: () => !n.hidden, act: () => talkIceFriend(id) }); });
+  iAurora = makeAurora(); scene.add(iAurora);
+  // Voyages
+  addInter({ x: POI.base[0] + 16, z: POI.base[1] + 4, r: 5, icon: '❄️', label: () => (EN ? 'Go to Antarctica' : 'Aller en Antarctique'), can: () => !!S.flags.ch8 && P.x > -1500 && P.x < 700, act: () => iceTravel(true) });
+  addInter({ get x() { return C.x; }, get z() { return C.z; }, r: 4.5, icon: '🏡', label: () => (EN ? 'Go back to Pine Park' : 'Rentrer au parc des Pins'), can: () => onPole() && !!S.flags.ch8 && !(S.iq === 8 && S.istep === 1), act: () => iceTravel(false) });
+}
+function iceSplash(x, y, z) { for (let k = 0; k < 14; k++) emit(x, y + 0.2, z, rand(-1.5, 1.5), rand(2, 4), rand(-1.5, 1.5), 1, 0.25, 0.7, 0.9, 1, -9); }
+// ---------- Les missions du chapitre 8 ----------
+const iCount = k => () => (S[k] || []).length;
+const iqAt = (k, st) => S && S.iq === k && S.istep === st;
+const IQ = [
+  { title: (EN ? 'A letter from the South Pole' : 'Une lettre du pôle Sud'), steps: [
+    { t: (EN ? 'Max got a letter for you: go and see him at his workshop' : 'Max a reçu une lettre pour toi : va le voir à son atelier'), talk: 'max', at: () => POI.max, lines: [
+      ['max', (EN ? 'Oscar! A penguin brought me a letter for you! He arrived sliding on his tummy. The letter is ice-cold!' : 'Oscar ! Un pingouin m\'a apporté une lettre pour toi ! Il est arrivé en glissant sur le ventre. La lettre est toute froide !')],
+      ['oscar', (EN ? '"Dear cousin Oscar, it\'s Frost, your polar bear cousin. I travelled all the way to the bottom of the Earth, to Antarctica, to see the penguins. But the ice is cracking, the baby seals are getting lost, and the southern lights have been gone for a hundred nights. Come quickly! Frosty kisses."' : '« Cher cousin Oscar, c\'est Givre, ton cousin ours polaire. Je suis parti en voyage tout au sud de la Terre, en Antarctique, chez les pingouins. Mais la glace craque, les bébés phoques se perdent, et les aurores australes ont disparu depuis cent nuits. Viens vite ! Bisous givrés. »')],
+      ['oscar', (EN ? 'My cousin Frost! He\'s all white, he loves fish and he sleeps in the snow. I prefer my bed of leaves. But I\'m going!' : 'Mon cousin Givre ! Il est tout blanc, il adore le poisson et il dort dans la neige. Moi, je préfère mon lit de feuilles. Mais j\'y vais !')],
+      ['max', (EN ? 'Antarctica? It\'s the coldest continent in the world! I\'ll put skis under the camper and a big heater. Everyone grab your scarf: we\'re leaving right now!' : 'L\'Antarctique ? C\'est le continent le plus froid du monde ! J\'installe des patins sous le camping-car et un gros chauffage. Tout le monde prend son écharpe : on part tout de suite !')],
+    ], done: () => startIceTrip() }] },
+  { title: (EN ? 'Cousin Frost' : 'Cousin Givre'), steps: [
+    { t: (EN ? 'A big white bear is waving at you near the camper' : 'Un grand ours tout blanc te fait signe près du camping-car'), ev: 'igivre', at: () => [NPCS.givre.x, NPCS.givre.z] },
+    { t: (EN ? 'Talk to your cousin Frost' : 'Parle à ton cousin Givre'), talk: 'givre', at: () => [NPCS.givre.x, NPCS.givre.z], lines: [
+      ['givre', (EN ? 'COUSIN! You came! Come here for an icy hug!' : 'COUSIN ! Tu es venu ! Viens que je te fasse un câlin glacé !')],
+      ['oscar', (EN ? 'Brrrr! You\'re freezing! And all white! Did you fall into the flour?' : 'Brrrr ! Tu es tout froid ! Et tout blanc ! Tu es tombé dans la farine ?')],
+      ['givre', (EN ? 'Hahaha, still so funny. Polar bears normally live in the north… but I wanted to see the penguins! Listen: the ice is in trouble. Grandpa Whiskers the elephant seal has no more fish, and three baby seals got lost.' : 'Hahaha, toujours aussi rigolo. Normalement, les ours polaires vivent au nord… mais moi, je voulais voir les pingouins ! Écoute : la glace va mal. Papi Moustache l\'éléphant de mer n\'a plus de poisson, et trois bébés phoques se sont perdus.')],
+      ['givre', (EN ? 'And worst of all, the Southern Lantern went out, at the very top of Lantern Island. Without it, there are no more southern lights in the sky. They\'re magic lights, like the northern lights, but at the South Pole.' : 'Et surtout, la Lanterne du Sud s\'est éteinte, tout en haut de l\'Île de la Lanterne. Sans elle, plus d\'aurores australes dans le ciel. Ce sont des lumières magiques, comme les aurores boréales, mais au pôle Sud.')],
+      ['oscar', (EN ? 'We\'ll fix everything! Start by showing me this Grandpa Whiskers. I hope he hasn\'t eaten all the fish.' : 'On va tout arranger ! Commence par me montrer ce Papi Moustache. J\'espère qu\'il n\'a pas mangé tout le poisson.')],
+    ] }] },
+  { title: (EN ? 'Grandpa Whiskers\' fishing' : 'La pêche de Papi Moustache'), steps: [
+    { t: (EN ? 'Go and see Grandpa Whiskers the elephant seal in the igloo village' : 'Va voir Papi Moustache l\'éléphant de mer au village des igloos'), talk: 'moustache', at: () => [NPCS.moustache.x, NPCS.moustache.z], lines: [
+      ['moustache', (EN ? 'Hrrmpf… Hello, little brown bear. The ice has become so thick that I can\'t fish any more. My big nose is too tired.' : 'Hrrmpf… Bonjour, petit ours brun. La glace est devenue si épaisse que je n\'arrive plus à pêcher. Mon gros nez est trop fatigué.')],
+      ['moustache', (EN ? 'There are three fishing holes right next to the village. Could you catch a fish in each one for my family?' : 'Il y a trois trous de pêche, juste à côté du village. Tu veux bien attraper un poisson dans chacun pour ma famille ?')],
+      ['oscar', (EN ? 'Three fish for you… and zero for me. OK. But I\'ll be staring at them very hard.' : 'Trois poissons pour vous… et zéro pour moi. C\'est d\'accord. Mais je les regarde très fort.')],
+    ] },
+    { t: (EN ? 'Catch a fish in each of the 3 ice holes, near the village' : 'Pêche un poisson dans chacun des 3 trous de glace, près du village'), ev: 'ifish', n: 3, count: iCount('ifish'), at: () => nearestOf(IHOLES, S.ifish || []) || IVILLAGE },
+    { t: (EN ? 'Bring the fish to Grandpa Whiskers' : 'Rapporte les poissons à Papi Moustache'), talk: 'moustache', at: () => [NPCS.moustache.x, NPCS.moustache.z], lines: [
+      ['moustache', (EN ? 'Three lovely fish! My family will have a feast. Here, keep the fish tail. It\'s the best bit.' : 'Trois beaux poissons ! Ma famille va se régaler. Tiens, garde la queue du poisson. C\'est le meilleur morceau.')],
+      ['oscar', (EN ? 'Thanks… It\'s very… slimy. Thanks anyway.' : 'Merci… C\'est très… gluant. Merci quand même.')],
+      ['moustache', (EN ? 'Hrrmpf, one more thing: the baby seals slid too far across the ice, to the east and south. Their mums are crying.' : 'Hrrmpf, une chose encore : les bébés phoques ont glissé trop loin sur la glace, vers l\'est et le sud. Leurs mamans pleurent.')],
+    ] }] },
+  { title: (EN ? 'The baby seals' : 'Les bébés phoques'), steps: [
+    { t: (EN ? 'Find the 3 baby seals lost on the ice and bring them back' : 'Retrouve les 3 bébés phoques perdus sur la banquise et ramène-les'), ev: 'ipup', n: 3, count: iCount('ipup'), at: () => nearestOf(IPUPS, S.ipup || []) || IVILLAGE, done: () => { setTimeout(() => talk([['givre', (EN ? 'All three babies are home! The seal mums are kissing everyone.' : 'Les trois bébés sont rentrés ! Les mamans phoques font des bisous à tout le monde.')], ['oscar', (EN ? 'Even me? … Oh yes. It\'s a bit wet.' : 'Même à moi ? … Ah oui. Ça mouille un peu.')]]), 600); } }] },
+  { title: (EN ? 'The ice bridge' : 'Le pont de glace'), steps: [
+    { t: (EN ? 'Go back to Frost near the camper' : 'Retourne voir Givre près du camping-car'), talk: 'givre', at: () => [NPCS.givre.x, NPCS.givre.z], lines: [
+      ['givre', (EN ? 'To reach the Southern Lantern, we have to cross the water. There used to be an ice bridge… but it melted.' : 'Pour aller jusqu\'à la Lanterne du Sud, il faut traverser l\'eau. Avant, il y avait un pont de glace… mais il a fondu.')],
+      ['givre', (EN ? 'Push 4 big blue ice blocks for me. Then I\'ll blow on them really hard and, POOF, they freeze!' : 'Pousse-moi 4 gros blocs de glace bleue. Ensuite, je souffle dessus très fort, et HOP, ça gèle !')],
+      ['oscar', (EN ? 'Blow really hard? I can do that. I blow on my soup every day.' : 'Souffler très fort ? Ça, je sais faire. Je souffle sur ma soupe tous les jours.')],
+    ] },
+    { t: (EN ? 'Find the 4 big blue ice blocks on the ice' : 'Trouve les 4 gros blocs de glace bleue sur la banquise'), ev: 'iblock', n: 4, count: iCount('iblock'), at: () => nearestOf(IBLOCKS, S.iblock || []) || ILAND },
+    { t: (EN ? 'Go back to Frost to build the bridge' : 'Retourne voir Givre pour construire le pont'), talk: 'givre', at: () => [NPCS.givre.x, NPCS.givre.z], lines: [
+      ['givre', (EN ? 'The blocks are by the water. Ready? One, two, three… FFFFFFFFFFFF!' : 'Les blocs sont au bord de l\'eau. Prêt ? Un, deux, trois… FFFFFFFFFFFF !')],
+      ['oscar', (EN ? 'FFFFFFFFF! … I think I blew harder than you.' : 'FFFFFFFFF ! … Je crois que j\'ai soufflé plus fort que toi.')],
+      ['givre', (EN ? 'Hahaha! Look: the ice bridge is back! But careful, the island\'s mountain is very slippery.' : 'Hahaha ! Regarde : le pont de glace est revenu ! Mais attention, la montagne de l\'île est très glissante.')],
+    ], done: () => { S.flags.ibridge = 1; refreshBanquise(); sfx.fanfare(); } }] },
+  { title: (EN ? 'Snowy\'s race' : 'La course de Neige'), steps: [
+    { t: (EN ? 'Snowy the penguin wants to talk to you, near the flags to the west' : 'Neige la pingouine veut te parler, près des drapeaux à l\'ouest'), talk: 'neige', at: () => [NPCS.neige.x, NPCS.neige.z], lines: [
+      ['neige', (EN ? 'Kweek! You want to know where the singing icicles are hiding? I know! But first… beat me in a race! I slide on my tummy. It\'s very fast.' : 'Kwiik ! Tu veux savoir où se cachent les glaçons chantants ? Moi, je sais ! Mais d\'abord… bats-moi à la course ! Moi, je glisse sur le ventre. C\'est très rapide.')],
+      ['neige', (EN ? 'Go through the 6 red flags, in order, in less than ' : 'Passe par les 6 drapeaux rouges, dans l\'ordre, en moins de ') + IRACE_T + (EN ? ' seconds. The last one is yellow. Talk to me to start!' : ' secondes. Le dernier est jaune. Parle-moi pour partir !')],
+      ['oscar', (EN ? 'A race against a penguin? Easy! You have tiny little feet. … Why are you laughing?' : 'Une course contre un pingouin ? Facile ! Tu as des toutes petites pattes. … Pourquoi tu rigoles ?')],
+    ] },
+    { t: (EN ? 'Talk to Snowy to start the race, then go through the 6 flags' : 'Parle à Neige pour lancer la course, puis passe par les 6 drapeaux'), ev: 'irace', at: () => G.irace ? IFLAGS[G.irace.i] : [NPCS.neige.x, NPCS.neige.z] },
+    { t: (EN ? 'Go back to Snowy' : 'Retourne voir Neige'), talk: 'neige', at: () => [NPCS.neige.x, NPCS.neige.z], lines: [
+      ['neige', (EN ? 'Kweek! You beat me! Nobody slides as fast as me… usually.' : 'Kwiik ! Tu m\'as battue ! Personne ne glisse aussi vite que moi… d\'habitude.')],
+      ['neige', (EN ? 'The singing icicles grow in the ice cave, to the east. When you touch them, they sing a musical note!' : 'Les glaçons chantants poussent dans la grotte de glace, à l\'est. Quand on les touche, ils chantent une note de musique !')],
+    ] }] },
+  { title: (EN ? 'The singing icicles' : 'Les glaçons chantants'), steps: [
+    { t: (EN ? 'Pick the 3 singing icicles in the ice cave, to the east' : 'Cueille les 3 glaçons chantants dans la grotte de glace, à l\'est'), ev: 'iicicle', n: 3, count: iCount('iicicle'), at: () => nearestOf(IICICLES, S.iicicle || []) || ICAVE },
+    { t: (EN ? 'Show the singing icicles to Pikou, the penguin chief, in the village' : 'Montre les glaçons chantants à Pikou, le chef des pingouins, au village'), talk: 'pikou', at: () => [NPCS.pikou.x, NPCS.pikou.z], lines: [
+      ['pikou', (EN ? 'Kwaaak! Singing icicles! Do, Mi, Sol… It\'s the song of the auroras! My grandma used to sing it.' : 'Kwaaak ! Des glaçons chantants ! Do, Mi, Sol… C\'est la chanson des aurores ! Ma grand-mère la chantait.')],
+      ['pikou', (EN ? 'Put the three icicles in the Southern Lantern, at the very top of the island. It will light up again, and the auroras will come back!' : 'Mets les trois glaçons dans la Lanterne du Sud, tout en haut de l\'île. Elle se rallumera, et les aurores reviendront !')],
+      ['oscar', (EN ? 'Do, Mi, Sol… I only know the song "I\'m hungry". It has just one note.' : 'Do, Mi, Sol… Moi, je ne connais que la chanson « J\'ai faim ». Elle n\'a qu\'une note.')],
+    ] }] },
+  { title: (EN ? 'The Southern Lantern' : 'La Lanterne du Sud'), steps: [
+    { t: (EN ? 'Cross the ice bridge, climb the mountain and relight the Southern Lantern' : 'Traverse le pont de glace, grimpe la montagne et rallume la Lanterne du Sud'), ev: 'ilantern', at: () => [IMOUNT[0] + 2.5, IMOUNT[1]] }] },
+  { title: (EN ? 'Goodbye, Antarctica' : 'Au revoir, l\'Antarctique'), steps: [
+    { t: (EN ? 'Go and say goodbye to Frost' : 'Va dire au revoir à Givre'), talk: 'givre', at: () => [NPCS.givre.x, NPCS.givre.z], lines: [
+      ['givre', (EN ? 'Did you see that sky, cousin? The auroras are back! All the penguins are dancing.' : 'Tu as vu ce ciel, cousin ? Les aurores sont revenues ! Tous les pingouins dansent.')],
+      ['givre', (EN ? 'Here, this is my favourite scarf. It smells a bit fishy, but it\'s very warm.' : 'Tiens, c\'est mon écharpe préférée. Elle sent un peu le poisson, mais elle tient très chaud.')],
+      ['oscar', (EN ? 'Thanks, cousin. Come and see me at Pine Park! I\'ll let you taste honey. The real stuff, the best.' : 'Merci, cousin. Viens me voir au parc des Pins ! Je te ferai goûter le miel. Le vrai, le meilleur.')],
+    ], done: () => give('echarpeG') },
+    { t: (EN ? 'Meet Max at the camper to go home' : 'Rejoins Max au camping-car pour rentrer à la maison'), talk: 'li_max', at: () => [C.x, C.z], lines: [
+      ['li_max', (EN ? 'Skis greased, heater on full… We\'re going back to Pine Park!' : 'Patins graissés, chauffage à fond… On rentre au parc des Pins !')],
+      ['li_plume', (EN ? 'Hoo hoo… I\'ll never forget those green and purple lights in the sky.' : 'Hou hou… Je n\'oublierai jamais ces lumières vertes et violettes dans le ciel.')],
+      ['oscar', (EN ? 'Goodbye Grandpa Whiskers, Snowy, Pikou! Goodbye penguins and baby seals! Goodbye cousin Frost!' : 'Au revoir Papi Moustache, Neige, Pikou ! Au revoir les pingouins et les bébés phoques ! Au revoir cousin Givre !')],
+    ], done: () => endIceChapter() }] },
+];
+const iStep = () => { const q = IQ[S.iq]; return q ? q.steps[S.istep] : null; };
+function iceEvent(ev) {
+  if (!S || !S.flags.ch7done || S.flags.ch8done || S.iq === undefined) return;
+  const st = iStep(); if (!st || st.ev !== ev) { updateQuestUI(); saveGame(); return; }
+  const n = st.count ? st.count() : (S.icnt = (S.icnt || 0) + 1);
+  if (st.n && n < st.n) { toast(IQ[S.iq].title + ' : ' + n + ' / ' + st.n); updateQuestUI(); saveGame(); return; }
+  if (st.done) st.done();
+  iceAdvance();
+}
+function iceAdvance() {
+  S.istep++; S.icnt = 0;
+  if (S.istep >= IQ[S.iq].steps.length) { S.iq++; S.istep = 0; if (IQ[S.iq]) { banner((EN ? 'Chapter 8' : 'Chapitre 8'), IQ[S.iq].title); sfx.quest(); } }
+  else sfx.step();
+  const st = iStep(); if (st && st.ev && st.count && st.count() >= st.n) return iceAdvance();
+  refreshBanquise(); updateQuestUI(); saveGame();
+}
+function iceTalk(id) {
+  if (!S || !S.flags.ch7done || S.flags.ch8done) return false;
+  if (S.iq === undefined) { S.iq = 0; S.istep = 0; S.icnt = 0; }
+  const st = iStep(); if (!st || st.talk !== id) return false;
+  talk(st.lines, () => { if (st.done) st.done(); iceAdvance(); });
+  return true;
+}
+function talkIce(id) {
+  if (iceTalk(id)) return;
+  if (id === 'neige' && iqAt(5, 1)) { if (G.irace) return; G.irace = { i: 0, t: 0 }; refreshBanquise(); status((EN ? '🏁 Go! Pass the 6 flags in less than ' : '🏁 Partez ! Passe par les 6 drapeaux en moins de ') + IRACE_T + (EN ? ' seconds!' : ' secondes !'), 'info', 4); sfx.quest(); return; }
+  const done = !!S.flags.ilantern, L = {
+    givre: done ? [(EN ? 'The auroras dance every night now. Thanks to you, cousin!' : 'Les aurores dansent toutes les nuits, maintenant. Grâce à toi, cousin !'), (EN ? 'Want to do a tummy slide? That\'s how we get around here.' : 'Tu veux faire une glissade sur le ventre ? C\'est comme ça qu\'on avance, ici.')] : [(EN ? 'Brrr, aren\'t you cold with your brown fur?' : 'Brrr, tu n\'as pas froid avec ta fourrure marron ?'), (EN ? 'Here we eat fish for breakfast, lunch and dinner.' : 'Ici, on mange du poisson au petit-déjeuner, au déjeuner et au dîner.')],
+    moustache: [(EN ? 'Hrrmpf. I\'m a hundred years old. And I still have all my whiskers.' : 'Hrrmpf. J\'ai cent ans. Et toutes mes moustaches.'), (EN ? 'When I was young, I swam faster than an orca.' : 'Quand j\'étais jeune, je nageais plus vite qu\'une orque.')],
+    neige: [(EN ? 'Kweek! Penguins can\'t fly… but underwater, we fly like rockets!' : 'Kwiik ! Les pingouins ne savent pas voler… mais sous l\'eau, on vole comme des fusées !'), (EN ? 'Another race? I slide on my tummy every day.' : 'On refait une course ? Je glisse sur le ventre tous les jours.')],
+    pikou: [(EN ? 'Kwaaak! Scientists say "emperor penguins". We just say "penguins". And you say "hello"!' : 'Kwaaak ! Les savants disent « manchots ». Nous, on dit « pingouins ». Et toi, tu dis « bonjour » !'), (EN ? 'My grandma knitted my blue hat.' : 'Mon bonnet bleu, c\'est ma grand-mère qui l\'a tricoté.')],
+    koko: [(EN ? 'Kwak! I caught ten fish in my beak at once! Well… nine.' : 'Kwak ! J\'ai attrapé dix poissons dans mon bec en même temps ! Bon… neuf.')], pipa: [(EN ? 'Kweek! You\'re the first brown bear I\'ve ever seen. You\'re all brown, how funny!' : 'Kwiik ! Tu es le premier ours brun que je vois. Tu es tout marron, c\'est rigolo !')],
+  };
+  talk([[id, pick(L[id] || [(EN ? 'Kwak!' : 'Kwak !')])]]);
+}
+function talkIceFriend(id) {
+  if (iceTalk('li_' + id)) return;
+  const L = { max: (EN ? 'The camper\'s skis glide wonderfully! I should have invented them sooner.' : 'Les patins du camping-car glissent à merveille ! J\'aurais dû les inventer plus tôt.'), lulu: (EN ? 'The water is freezing… but I still dived in. Just once. Very quickly.' : 'L\'eau est glacée… mais j\'ai quand même plongé. Une seule fois. Très vite.'), raflex: (EN ? 'Yo! A singing icicle for my museum would be so cool. Or a penguin feather. Nah, just kidding.' : 'Yo ! Un glaçon chantant pour mon musée, ce serait trop stylé. Ou une plume de pingouin. Non, je rigole.'), donovan: (EN ? 'Quack… My feet are frozen. I\'m racing to warm up!' : 'Coin… Mes pattes sont gelées. Je fais la course pour me réchauffer !'), noisette: (EN ? 'Not a single tree here… I hide my hazelnuts in the snow. The penguins keep finding them.' : 'Pas un seul arbre ici… Je cache mes noisettes dans la neige. Les pingouins les trouvent tout le temps.'), blaireau: (EN ? 'The cold keeps you young, kiddo. Look at me!' : 'Le froid, petit, ça garde jeune. Regarde-moi !'), plume: (EN ? 'Hoo hoo! Birds that don\'t fly! Penguins are very strange. Very cute, but strange.' : 'Hou hou ! Des oiseaux qui ne volent pas ! Les pingouins sont très bizarres. Très mignons, mais bizarres.'), maurice: (EN ? 'Woof! My wrinkles are full of snow. Brrr.' : 'Wouf ! Mes plis sont pleins de neige. Brrr.'), praline: (EN ? 'Woof! I made a snowman that looks like me!' : 'Ouaf ! J\'ai fait un bonhomme de neige qui me ressemble !'), roquette: (EN ? 'A race on the ice? I slide on my bottom, it\'s even faster!' : 'Une course sur la glace ? Je glisse sur les fesses, c\'est encore plus rapide !'), filou: (EN ? 'Riddle: I\'m white, I fall from the sky and I melt in the sun… A snowflake!' : 'Devinette : je suis blanc, je tombe du ciel et je fonds au soleil… Le flocon de neige !') };
+  talk([['li_' + id, L[id]]]);
+}
+function refreshBanquise() {
+  if (!S) return;
+  iPups.forEach((p, i) => { const home = (S.ipup || []).includes(i) || S.iq > 3; const at = home ? p.home : [p.x, p.z]; p.m.position.set(at[0], iceY(at[0], at[1]), at[1]); });
+  iBlockM.forEach((m, i) => { m.visible = iqAt(4, 1) && !(S.iblock || []).includes(i); });
+  if (iBridgeM) iBridgeM.visible = !!S.flags.ibridge;
+  iFlagM.forEach((g, i) => { g.visible = !!G.irace && i >= G.irace.i; });
+  iIcicleM.forEach((g, i) => { g.visible = iqAt(6, 0) && !(S.iicicle || []).includes(i); });
+  if (iLantern) { const on = !!S.flags.ilantern; iLantern.core.material.emissiveIntensity = on ? 1.4 : 0; iLantern.core.material.color.set(on ? 0xc8ffe8 : 0x8aa0b0); iLantern.gl.material.opacity = on ? 0.9 : 0; }
+  for (const n of iFriends) { n.hidden = !S.flags.ch8; n.model.visible = !!S.flags.ch8; }
+}
+// ---------- Ambiance ----------
+function iceFog() {
+  _c1.set(0xd8eaf6).lerp(_c2.set(0x0a1630), nightK * 0.92);
+  scene.fog.color.copy(_c1); scene.background.copy(_c1).lerp(_c2.set(0x9ac8ec).multiplyScalar(1 - nightK * 0.85), 0.45);
+  hemi.color.set(0xeaf4ff); hemi.groundColor.set(0x8aa0b8); hemi.intensity = lerp(0.56, 0.3, nightK); sun.color.setRGB(1, 0.95, 0.86); sun.intensity = lerp(0.62, 0.14, nightK);
+  if (G.cine) return [150, 900, 1200];
+  return [120, 380, 420];
+}
+function updateBanquise(dt) {
+  const on = onPole() && G.state === 'play';
+  if (iAurora) { const k = (on || (G.cine && G.cine.kind === 'aurora')) && S && S.flags.ilantern ? clamp(0.25 + nightK, 0, 1) : 0; iAurora.visible = k > 0.01; if (iAurora.visible) { iAurora.position.set(camera.position.x, 0, camera.position.z); iAurora.userData.mat.uniforms.uT.value += dt; iAurora.userData.mat.uniforms.uK.value = k; } }
+  if (iSea) iSea.visible = on || (G.cine && /ice/.test(G.cine.kind || ''));
+  if (!on) return;
+  // Flocons de neige qui tombent doucement
+  if (Math.random() < dt * 25) emit(P.x + rand(-26, 26), P.y + rand(10, 16), P.z + rand(-22, 14), rand(-0.4, 0.4), -rand(1, 2), rand(-0.4, 0.4), 7, rand(0.12, 0.22), 1, 1, 1, 0);
+  for (const f of iFloes) { f.ph += dt; f.m.position.y = -0.75 + Math.sin(f.ph) * 0.12; f.m.rotation.y += dt * 0.02; }
+  if (iNarwhal) { const a = G.t * 0.05, r = ICE.r + 22; iNarwhal.position.set(ICE.x + Math.cos(a) * r, -1.2 + Math.sin(G.t * 1.3) * 0.4, ICE.z + Math.sin(a) * r); iNarwhal.rotation.y = -a; iNarwhal.userData.tail.rotation.y = Math.sin(G.t * 3) * 0.4; if (Math.random() < dt * 0.6) iceSplash(iNarwhal.position.x, -0.8, iNarwhal.position.z); }
+  for (const p of iPups) p.m.rotation.y += Math.sin(G.t * 2 + p.x) * dt * 0.5;
+  for (const c of iColony) { c.ph += dt * c.sp; c.m.rotation.z = Math.sin(c.ph * 4) * 0.12; c.m.position.y = iceY(c.x, c.z) + Math.abs(Math.sin(c.ph * 4)) * 0.06; if (Math.sin(c.ph * 0.3) > 0.95) c.m.rotation.y += dt * 2; }
+  for (const id of ['pikou', 'koko', 'pipa']) { const n = NPCS[id]; if (n) n.dy = Math.abs(Math.sin(G.t * 3 + n.x)) * 0.2; }
+  if (iLantern && S.flags.ilantern) { iLantern.core.rotation.y += dt; iLantern.gl.material.opacity = 0.7 + Math.sin(G.t * 2) * 0.2; }
+  // Givre fait signe, la course de Neige, l'eau glacée
+  const gv = NPCS.givre; if (gv && iqAt(1, 0) && Math.hypot(gv.x - P.x, gv.z - P.z) < 12 && !G.talking) iceEvent('igivre');
+  if (G.irace) { const R = G.irace; R.t += dt; const f = IFLAGS[R.i]; if (Math.hypot(P.x - f[0], P.z - f[1]) < 3.2) { R.i++; sfx.ring(); refreshBanquise(); if (R.i >= IFLAGS.length) { G.irace = null; refreshBanquise(); banner((EN ? 'Finish!' : 'Arrivée !'), R.t.toFixed(1).replace('.', ',') + ' s'); sfx.fanfare(); iceEvent('irace'); } else toast((EN ? '🚩 Flag ' : '🚩 Drapeau ') + R.i + ' / ' + IFLAGS.length); } else if (R.t > IRACE_T) { G.irace = null; refreshBanquise(); status((EN ? '⏱️ Too slow! Talk to Snowy to try again.' : '⏱️ Trop lent ! Parle à Neige pour recommencer.'), 'info', 4); } }
+  if (P.mode === 'walk') { if (iInWater(P.x, P.z) && iLast) { P.x = iLast[0]; P.z = iLast[1]; P.vx = P.vz = 0; if (!G.edgeSaid || G.t - G.edgeSaid > 6) { G.edgeSaid = G.t; oscarSay(S.flags.ibridge ? (EN ? 'The water is freezing! I\'ll take the bridge, thanks.' : 'L\'eau est glacée ! Je prends le pont, merci.') : (EN ? 'Brrr! The water is far too cold to swim. I need a bridge.' : 'Brrr ! L\'eau est beaucoup trop froide pour nager. Il me faut un pont.'), 3.5); } } else iLast = [P.x, P.z]; }
+}
+// ---------- Voyages et cinématiques ----------
+const ICE_CAP = [[0.5, (EN ? 'Max: Skis on, heater on full! Next stop, the South Pole!' : 'Max : Patins installés, chauffage à fond ! Direction le pôle Sud !')], [5, (EN ? 'The camper flies over the ocean, far to the south…' : 'Le camping-car vole au-dessus de l\'océan, tout au sud…')], [10, (EN ? 'It\'s getting colder and colder… Here\'s Antarctica!' : 'Il fait de plus en plus froid… Voilà l\'Antarctique !')]];
+function startIceTrip() {
+  fadeTo(() => { G.cine = { kind: 'ice', t: 0, cap: 0 }; P.mode = 'cine'; P.model.visible = false; G.wanted = 0; if (P.disguise) setDisguise(false); P.x = ILAND[0]; P.z = ILAND[1]; camera.far = 3000; camera.updateProjectionMatrix(); showCamperParts(); sfx.takeoff(); });
+}
+function updateIceTrip(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  while (L.cap < ICE_CAP.length && t >= ICE_CAP[L.cap][0]) { status(ICE_CAP[L.cap][1], 'info', 4); L.cap++; }
+  const k = clamp(t / 14, 0, 1), e = k * k * (3 - 2 * k), ex = ILAND[0] + 16, ez = ILAND[1] + 2;
+  C.x = ex; C.z = lerp(ez + 420, ez, e); C.y = lerp(60, iceY(ex, ez) + 0.8, Math.pow(e, 1.5)); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0.05 * (1 - k), Math.PI, Math.sin(t) * 0.05 * (1 - k));
+  const u = C.model.userData; if (u.prop) u.prop.rotation.z += dt * 30;
+  camera.position.set(C.x + 22, C.y + 10, C.z + 30); camera.lookAt(lerp(ICE.x, C.x, e), lerp(5, C.y + 2, e), lerp(ICE.z, C.z, e));
+  if (Math.random() < dt * 30) emit(C.x + rand(-14, 14), C.y + rand(-4, 10), C.z + rand(-14, 14), 0, -2, 0, 2, 0.2, 1, 1, 1, 0);
+  if (k >= 1 && t > 15 && !L.done) { L.done = true; puff(C.x, C.y, C.z, 30, [1, 1, 1], 3); fadeTo(endIceTrip); }
+}
+function endIceTrip() {
+  G.cine = null; $('quest').style.visibility = '';
+  C.x = ILAND[0] + 16; C.z = ILAND[1] + 2; C.rot = Math.PI; C.y = iceY(C.x, C.z); C.model.rotation.set(0, C.rot, 0); C.model.position.set(C.x, C.y, C.z);
+  P.mode = 'walk'; P.model.visible = true; P.x = ILAND[0] + 2; P.z = ILAND[1] + 4; P.y = iceY(P.x, P.z); iLast = [P.x, P.z]; snapCamera();
+  S.flags.ch8 = 1; refreshBanquise(); updateQuestUI(); saveGame();
+  banner((EN ? 'Chapter 8' : 'Chapitre 8'), (EN ? 'Antarctica 🐧' : 'L\'Antarctique 🐧'));
+  setTimeout(() => talk([['li_max', (EN ? 'Ice landing successful! Skis are great.' : 'Atterrissage sur la glace réussi ! Les patins, c\'est génial.')], ['li_praline', (EN ? 'Woof! Penguins! Loads of penguins! Can I hug one?' : 'Ouaf ! Des pingouins ! Plein de pingouins ! Je peux en faire un câlin ?')], ['oscar', (EN ? 'Brrr… It\'s so cold my fur has tiny icicles. I\'m a bear sorbet.' : 'Brrr… Il fait si froid que mes poils ont des petits glaçons. Je suis un ours-sorbet.')], ['li_plume', (EN ? 'Hoo hoo… Look, among the penguins, a big white bear is waving at us!' : 'Hou hou… Regardez, au milieu des pingouins, un grand ours tout blanc nous fait signe !')]]), 2400);
+}
+function skipIceTrip() { const L = G.cine; if (!L || L.done || L.t < 3) return; L.done = true; fadeTo(endIceTrip); }
+// Quand la Lanterne se rallume, on lève les yeux vers les aurores
+function startAuroraShow() {
+  setTimeout(() => { fadeTo(() => { G.cine = { kind: 'aurora', t: 0 }; P.mode = 'cine'; S.time = 22.5; status((EN ? '✨ The southern lights are back!' : '✨ Les aurores australes sont revenues !'), 'info', 5); }); }, 1200);
+}
+function updateAuroraShow(dt) {
+  const L = G.cine; L.t += dt; const t = L.t;
+  $('quest').style.visibility = 'hidden';
+  const a = t * 0.08; camera.position.set(P.x + Math.sin(a) * 10, P.y + 3, P.z + Math.cos(a) * 10); camera.lookAt(P.x - Math.sin(a) * 60, P.y + 70, P.z - Math.cos(a) * 60 - 120);
+  if (t > 9 && !L.done) { L.done = true; fadeTo(endAuroraShow); }
+}
+function endAuroraShow() {
+  G.cine = null; $('quest').style.visibility = ''; P.mode = 'walk'; snapCamera(); updateQuestUI(); saveGame();
+  setTimeout(() => talk([['oscar', (EN ? 'Wow… The sky is dancing! Green, purple, blue… It\'s even prettier than a honey pot.' : 'Waouh… Le ciel danse ! Vert, violet, bleu… C\'est encore plus beau qu\'un pot de miel.')], ['oscar', (EN ? '… Almost.' : '… Presque.')]]), 600);
+}
+function skipAuroraShow() { const L = G.cine; if (!L || L.done || L.t < 2) return; L.done = true; fadeTo(endAuroraShow); }
+function endIceChapter() {
+  fadeTo(() => {
+    S.flags.ch8done = 1; S.coins += 700; updateHUD();
+    C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; C.y = groundY(C.x, C.z); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, 0, 0);
+    P.mode = 'walk'; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; P.y = walkY(P.x, P.z); snapCamera(); refreshBanquise(); updateQuestUI(); saveGame();
+    banner((EN ? 'Chapter 8 complete!' : 'Chapitre 8 terminé !'), (EN ? 'The southern lights shine again 🐧✨' : 'Les aurores australes brillent de nouveau 🐧✨'));
+    setTimeout(() => talk([['max', (EN ? 'Phew, it\'s warm in Pine Park! I never thought I\'d say that.' : 'Ouf, il fait chaud au parc des Pins ! Je n\'aurais jamais cru dire ça.')], ['oscar', (EN ? 'I\'m keeping Frost\'s scarf. It smells of fish… but that\'s my cousin\'s smell.' : 'Je garde l\'écharpe de Givre. Elle sent le poisson… mais c\'est l\'odeur de mon cousin.')]]), 2400);
+  });
+}
+function iceTravel(go) {
+  fadeTo(() => {
+    G.wanted = 0; if (P.disguise) setDisguise(false);
+    if (go) { C.x = ILAND[0] + 16; C.z = ILAND[1] + 2; C.rot = Math.PI; P.x = ILAND[0] + 2; P.z = ILAND[1] + 4; iLast = [P.x, P.z]; status((EN ? '🐧 The camper glides all the way to Antarctica…' : '🐧 Le camping-car glisse jusqu\'en Antarctique…'), 'info', 4); }
+    else { C.x = POI.base[0]; C.z = POI.base[1]; C.rot = 0; P.x = POI.base[0] + 2; P.z = POI.base[1] + 10; status((EN ? '🏡 Back to Pine Park!' : '🏡 Retour au parc des Pins !'), 'info', 4); }
+    C.y = groundY(C.x, C.z); C.model.position.set(C.x, C.y, C.z); C.model.rotation.set(0, C.rot, 0);
+    P.mode = 'walk'; P.hop = 0; P.hv = 0; P.y = walkY(P.x, P.z); snapCamera(); refreshBanquise(); updateQuestUI(); saveGame();
+  });
+}
+function drawIceMap() {
+  const cv = $('mapCv'), g = cv.getContext('2d'), Wm = cv.width, R = ICE.r + 20, k = Wm / (R * 2);
+  const X = x => (x - ICE.x + R) * k, Z = z => (z - ICE.z + R) * k;
+  g.fillStyle = '#2a5a7a'; g.fillRect(0, 0, Wm, Wm);
+  g.fillStyle = '#eef6fc'; g.beginPath(); g.arc(X(ICE.x), Z(ICE.z), ICE.r * k, 0, 6.283); g.fill();
+  g.fillStyle = '#2a5a7a'; g.beginPath(); g.arc(X(IISLE.x), Z(IISLE.z), IISLE.mo * k, 0, 6.283); g.fill();
+  g.fillStyle = '#cfe4f4'; g.beginPath(); g.arc(X(IISLE.x), Z(IISLE.z), IISLE.r * k, 0, 6.283); g.fill();
+  if (S.flags.ibridge) { g.strokeStyle = '#9fd8ff'; g.lineWidth = 8; g.beginPath(); g.moveTo(X(IBRIDGE.x), Z(IBRIDGE.z0)); g.lineTo(X(IBRIDGE.x), Z(IBRIDGE.z1)); g.stroke(); }
+  g.fillStyle = '#9fd8ff'; g.beginPath(); g.arc(X(ICAVE[0]), Z(ICAVE[1]), 15 * k, 0, 6.283); g.fill();
+  g.font = '700 18px Nunito, sans-serif'; g.textAlign = 'center';
+  for (const [t, p] of [[(EN ? 'Camper' : 'Camping-car'), [ILAND[0], ILAND[1] + 12]], [(EN ? 'Igloo village' : 'Village des igloos'), [IVILLAGE[0], IVILLAGE[1] - 22]], [(EN ? 'Penguin colony' : 'Colonie des pingouins'), [IL(70, 60)[0], IL(70, 60)[1] - 26]], [(EN ? 'Lantern Island' : 'Île de la Lanterne'), [IISLE.x, IISLE.z]], [(EN ? 'Ice cave' : 'Grotte de glace'), [ICAVE[0], ICAVE[1] - 20]], [(EN ? 'Fishing holes' : 'Trous de pêche'), [IHOLES[1][0], IHOLES[1][1] - 6]], [(EN ? 'Snowy\'s race' : 'Course de Neige'), [IFLAGS[2][0] + 10, IFLAGS[2][1] + 14]]]) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#1a3a5a'; g.fillText(t, X(p[0]), Z(p[1])); }
+  const st = S.flags.ch8done ? null : iStep(), tgt = st && st.at && st.at();
+  if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
+  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
+  g.fillStyle = '#8e3b46'; g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+  g.restore();
+}
+
 // ================= Nuages =================
 // Des nuages tout ronds qui dérivent (leur ombre glisse sur le sol) et une mer de nuages au bord du monde.
 const clouds = [];
@@ -8374,6 +8804,7 @@ const OSCAR_SEA = [(EN ? 'I\'m a bear-fish! A fishbear!' : 'Je suis un ours-pois
 const OSCAR_SKY = [(EN ? 'I\'m walking on a cloud! … No, on an island. But it\'s almost the same.' : 'Je marche sur un nuage ! … Non, sur une île. Mais c\'est presque pareil.'), (EN ? 'If I jump really hard, will I touch the sun? … Ouch, no.' : 'Si je saute très fort, je touche le soleil ? … Aïe, non.'), (EN ? 'The Fluffballs are all round. Like me after snack time.' : 'Les Plumeaux sont tout ronds. Comme moi après le goûter.'), (EN ? 'I\'m not looking down. I\'m very brave, but I\'m not looking down.' : 'Je ne regarde pas en bas. Je suis très courageux, mais je ne regarde pas en bas.'), (EN ? 'BOING! I love trampoline-clouds!' : 'BOING ! J\'adore les trampolines-nuages !')];
 const OSCAR_MARS = [(EN ? 'Everything is red here. Even my thoughts are red.' : 'Tout est rouge ici. Même mes pensées sont rouges.'), (EN ? 'I\'m jumping like on the Moon, but redder!' : 'Je saute comme sur la Lune, mais en plus rouge !'), (EN ? 'If I find a giant strawberry, I\'m eating it. That\'s the rule.' : 'Si je trouve une fraise géante, je la mange. C\'est la règle.'), (EN ? 'The Marsies have antenna ears. Maybe I can pick up the radio?' : 'Les Marsous ont des oreilles en antenne. Je capte peut-être la radio ?')];
 const OSCAR_DRAW = [(EN ? 'I have black lines all around me. It gives me a nice outline.' : 'J\'ai des traits noirs autour de moi. Ça me fait une jolie silhouette.'), (EN ? 'If anyone has an eraser, keep it away from me!' : 'Si quelqu\'un a une gomme, qu\'il ne s\'approche pas de moi !'), (EN ? 'I\'m a drawing of a bear. A drawing of a very clever bear.' : 'Je suis un dessin d\'ours. Un dessin d\'ours très malin.'), (EN ? 'Fish fly, water goes up into the sky… Normal. Well, normal here.' : 'Les poissons volent, l\'eau monte au ciel… Normal. Enfin, normal ici.'), (EN ? 'I wonder if my honey is drawn too.' : 'Je me demande si mon miel est dessiné aussi.')];
+const OSCAR_ICE = [(EN ? 'Brrr… My fur has icicles. I\'m a bear sorbet.' : 'Brrr… Mes poils ont des glaçons. Je suis un ours-sorbet.'), (EN ? 'Penguins walk like me when I\'ve eaten too much. I love them.' : 'Les pingouins marchent comme moi quand j\'ai trop mangé. Je les adore.'), (EN ? 'If I slide on my tummy, I go faster! … Ouch, my nose.' : 'Si je glisse sur le ventre, je vais plus vite ! … Aïe, mon nez.'), (EN ? 'Snow is like icing sugar. But it has no taste. What a letdown.' : 'La neige, c\'est comme du sucre glace. Mais ça n\'a aucun goût. Quelle déception.')];
 const OSCAR_MOON = [(EN ? 'I\'m jumping as high as a kangaroo! A hairy kangaroo.' : 'Je saute haut comme un kangourou ! Un kangourou poilu.'), (EN ? 'There\'s no honey on the Moon. What a strange planet.' : 'Il n\'y a pas de miel, sur la Lune. Quelle drôle de planète.'), (EN ? 'I\'m going to plant a flag! … I forgot the flag.' : 'Je vais planter un drapeau ! … J\'ai oublié le drapeau.')];
 function oscarSay(t, dur) { if (G.talking || G.cine) return; OSAY.txt = t; OSAY.t = dur || 4; OSAY.cd = rand(16, 26); }
 function updateOscar(dt) {
@@ -8389,9 +8820,10 @@ function updateOscar(dt) {
   if (OSAY.bump > 1.2) { oscarSay(pick(OSCAR_BUMP)); OSAY.bump = 0; }
   else if (swimNow) oscarSay(pick(OSCAR_SWIM));
   else if (OSAY.run > 6) { oscarSay(pick(OSCAR_RUN)); OSAY.run = 0; }
-  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 13000 ? OSCAR_DRAW : P.x > 9000 ? OSCAR_MARS : P.x > 5500 ? OSCAR_SKY : P.x > 3000 ? OSCAR_SEA : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
+  else if (OSAY.idle > 12) { oscarSay(pick(P.x < -1500 ? OSCAR_FOREST.concat(OSCAR_IDLE) : P.x > 17000 ? OSCAR_ICE : P.x > 13000 ? OSCAR_DRAW : P.x > 9000 ? OSCAR_MARS : P.x > 5500 ? OSCAR_SKY : P.x > 3000 ? OSCAR_SEA : P.x > 1500 ? OSCAR_MOON : nightK > 0.5 ? OSCAR_NIGHT.concat(OSCAR_IDLE) : OSCAR_IDLE), 5); OSAY.idle = 0; }
   else if (P.x < -1500 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_FOREST), 4.5);
-  else if (P.x > 13000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_DRAW), 4.5);
+  else if (P.x > 17000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_ICE), 4.5);
+  else if (P.x > 13000 && P.x < 17000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_DRAW), 4.5);
   else if (P.x > 9000 && P.x < 13000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_MARS), 4.5);
   else if (P.x > 5500 && P.x < 9000 && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_SKY), 4.5);
   else if (onSea() && Math.random() < dt * 0.02) oscarSay(pick(OSCAR_SEA), 4.5);
@@ -8612,6 +9044,7 @@ function updateHUD() {
   $('starN').textContent = (S.stars || 0) + ' / ' + STARS_MAX;
 }
 function updateQuestUI() {
+  if (S.flags.ch7done && !S.flags.ch8done && (onPole() || !QUESTS[S.q])) { if (S.iq === undefined) { S.iq = 0; S.istep = 0; S.icnt = 0; } const iq = IQ[S.iq], is = iStep(); if (iq && is) { $('qTitle').textContent = (EN ? 'Chapter 8 · ' : 'Chapitre 8 · ') + iq.title; $('qText').textContent = is.t + (is.n ? ' (' + (is.count ? is.count() : S.icnt || 0) + ' / ' + is.n + ')' : ''); return; } }
   if (S.flags.ch7 && !S.flags.ch7done && (onDessin() || !QUESTS[S.q])) { if (S.dq === undefined) { S.dq = 0; S.dstep = 0; S.dcnt = 0; } const dq = DQ[S.dq], ds = dStep(); if (dq && ds) { $('qTitle').textContent = (EN ? 'Chapter 7 · ' : 'Chapitre 7 · ') + dq.title; $('qText').textContent = ds.t + (ds.n ? ' (' + (ds.count ? ds.count() : S.dcnt || 0) + ' / ' + ds.n + ')' : ''); return; } }
   if (S.flags.ch5done && !S.flags.ch6done && (onMars() || !QUESTS[S.q])) { if (S.rq === undefined) { S.rq = 0; S.rstep = 0; S.rcnt = 0; } const rq = RQ[S.rq], rs = rStep(); if (rq && rs) { $('qTitle').textContent = (EN ? 'Chapter 6 · ' : 'Chapitre 6 · ') + rq.title; $('qText').textContent = rs.t + (rs.n ? ' (' + (rs.count ? rs.count() : S.rcnt || 0) + ' / ' + rs.n + ')' : ''); return; } }
   if (S.flags.ch4done && !S.flags.ch5done && (onCloud() || !QUESTS[S.q])) { if (S.kq === undefined) { S.kq = 0; S.kstep = 0; S.kcnt = 0; } const kq = KQ[S.kq], ks = kStep(); if (kq && ks) { $('qTitle').textContent = (EN ? 'Chapter 5 · ' : 'Chapitre 5 · ') + kq.title; $('qText').textContent = ks.t + (ks.n ? ' (' + (ks.count ? ks.count() : S.kcnt || 0) + ' / ' + ks.n + ')' : ''); return; } }
@@ -8771,6 +9204,7 @@ function openJournal() {
     [S.flags.carnetDone, (EN ? '📖 Elliot\'s wild notebook: ' : '📖 Carnet sauvage d\'Elliot : ') + nw + ' / ' + WILD.length, S.flags.carnet ? (EN ? 'Walk up to wild animals to write them down.' : 'Approche-toi des animaux sauvages pour les noter.') : (EN ? 'Elliot the moose is waiting for you at the forest lake, to the west.' : 'Elliot l\'élan t\'attend au lac de la forêt, à l\'ouest.')],
   ];
   if (S.flags.moon) { const hm = document.createElement('div'); hm.innerHTML = (EN ? '<b>🌙 Chapter 2: the Zooblies</b><p></p>' : '<b>🌙 Chapitre 2 : les Zoublis</b><p></p>'); hm.querySelector('p').textContent = S.flags.ch2done ? (EN ? 'Complete! The Zooblies went home.' : 'Terminé ! Les Zoublis sont rentrés chez eux.') : (MQ[S.mq] ? MQ[S.mq].title + ' — ' + mStep().t : ''); L.appendChild(hm); }
+  if (S.flags.ch7done) { const h8 = document.createElement('div'); h8.innerHTML = (EN ? '<b>🐧 Chapter 8: Antarctica</b><p></p>' : '<b>🐧 Chapitre 8 : l\'Antarctique</b><p></p>'); h8.querySelector('p').textContent = S.flags.ch8done ? (EN ? 'Done! The Southern Lantern is shining and the southern lights are back.' : 'Terminé ! La Lanterne du Sud brille et les aurores australes sont revenues.') : IQ[S.iq || 0] ? IQ[S.iq || 0].title + ' — ' + IQ[S.iq || 0].steps[S.iq === undefined ? 0 : S.istep].t : ''; L.appendChild(h8); }
   if (S.flags.ch6done) { const h7 = document.createElement('div'); h7.innerHTML = (EN ? '<b>✏️ Chapter 7: the Drawn World</b><p></p>' : '<b>✏️ Chapitre 7 : le Monde Dessiné</b><p></p>'); h7.querySelector('p').textContent = S.flags.ch7done ? (EN ? 'Complete! The colours came back and everyone went home to the park.' : 'Terminé ! Les couleurs sont revenues et tout le monde est rentré au parc.') : DQ[S.dq || 0] ? DQ[S.dq || 0].title + ' — ' + DQ[S.dq || 0].steps[S.dq === undefined ? 0 : S.dstep].t : ''; L.appendChild(h7); }
   if (S.flags.ch5done) { const h6 = document.createElement('div'); h6.innerHTML = (EN ? '<b>🔴 Chapter 6: the planet Mars</b><p></p>' : '<b>🔴 Chapitre 6 : la planète Mars</b><p></p>'); h6.querySelector('p').textContent = S.flags.ch6done ? (EN ? 'Complete! The Marsies are saved… and a black hole sucked you in!' : 'Terminé ! Les Marsous sont sauvés… et un trou noir vous a aspirés !') : RQ[S.rq || 0] ? RQ[S.rq || 0].title + ' — ' + RQ[S.rq || 0].steps[S.rq === undefined ? 0 : S.rstep].t : ''; L.appendChild(h6); }
   if (S.flags.ch4done) { const h5 = document.createElement('div'); h5.innerHTML = (EN ? '<b>☁️ Chapter 5: Cloud Island</b><p></p>' : '<b>☁️ Chapitre 5 : l\'Île des Nuages</b><p></p>'); h5.querySelector('p').textContent = S.flags.ch5done ? (EN ? 'Complete! Cloud Island rose back towards the sun.' : 'Terminé ! L\'Île des Nuages est remontée vers le soleil.') : KQ[S.kq || 0] ? KQ[S.kq || 0].title + ' — ' + KQ[S.kq || 0].steps[S.kq === undefined ? 0 : S.kstep].t : ''; L.appendChild(h5); }
@@ -8800,6 +9234,7 @@ function drawMoonMap() {
 }
 function openMap() { drawMap(); openPanel('pMap'); }
 function drawMap() {
+  if (P.x > 17000) { drawIceMap(); return; }
   if (P.x > 13000) { drawDessinMap(); return; }
   if (P.x > 9000) { drawMarsMap(); return; }
   if (P.x > 5500) { drawCloudMap(); return; }
@@ -8831,7 +9266,7 @@ function drawMap() {
   g.font = '700 16px Nunito, sans-serif'; g.textAlign = 'center';
   for (const [t, p] of labels) { g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, X(p[0]), Z(p[1])); g.fillStyle = '#3a2e2a'; g.fillText(t, X(p[0]), Z(p[1])); }
   if (has('carte')) TREASURES.forEach((t, i) => { if (S.dug.includes(i)) return; g.strokeStyle = '#d84a3a'; g.lineWidth = 4; const x = X(t[0]), z = Z(t[1]); g.beginPath(); g.moveTo(x - 8, z - 8); g.lineTo(x + 8, z + 8); g.moveTo(x + 8, z - 8); g.lineTo(x - 8, z + 8); g.stroke(); });
-  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), cs4 = S.flags.ch3done && !S.flags.ch4done && S.cq !== undefined && cStep(), ks5 = S.flags.ch4done && !S.flags.ch5done && S.kq !== undefined && kStep(), rs6 = S.flags.ch5done && !S.flags.ch6done && !S.flags.ch6 && S.rq !== undefined && rStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : rs6 && rs6.at ? rs6.at() : cs4 && cs4.at ? cs4.at() : ks5 && ks5.at ? ks5.at() : mapTarget();
+  const st = curStep(), fs = S.flags.ch3 && !S.flags.ch3done && fStep(), cs4 = S.flags.ch3done && !S.flags.ch4done && S.cq !== undefined && cStep(), ks5 = S.flags.ch4done && !S.flags.ch5done && S.kq !== undefined && kStep(), rs6 = S.flags.ch5done && !S.flags.ch6done && !S.flags.ch6 && S.rq !== undefined && rStep(), is8 = S.flags.ch7done && !S.flags.ch8done && !S.flags.ch8 && S.iq !== undefined && iStep(), tgt = fs && fs.ev === 'plant' ? SEED_SPOT : is8 && is8.at ? is8.at() : rs6 && rs6.at ? rs6.at() : cs4 && cs4.at ? cs4.at() : ks5 && ks5.at ? ks5.at() : mapTarget();
   const stg = sideTarget(); if (stg && stg !== tgt) { g.fillStyle = '#8a5ad0'; g.beginPath(); g.arc(X(stg[0]), Z(stg[1]), 9, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   if (tgt) { g.fillStyle = '#ff7a2f'; g.beginPath(); g.arc(X(tgt[0]), Z(tgt[1]), 10, 0, 6.283); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
   g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.rot + Math.PI);
@@ -8888,7 +9323,7 @@ function applyState() {
   showMuseum(false); showNuts(); nutMeshes.forEach((m, i) => { m.visible = qid() === 'noisette' && S.step === 1 && !S.nuts.includes(i); }); G.race = null; raceGates.forEach(g => { g.visible = false; });
   coneMeshes.forEach((m, i) => { m.visible = !S.cones.includes(i); });
   for (const b of berryBushes) setBerries(b, true);
-  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500 && P.x < 3000) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (onSea()) { C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; } if (onCloud()) { C.x = KLAND[0] + 24; C.z = KLAND[1] - 4; C.rot = Math.PI; kLast = [P.x, P.z]; } if (onMars()) { C.x = RLAND[0] + 16; C.z = RLAND[1] + 2; C.rot = Math.PI; } if (onDessin()) { C.x = DLAND[0] + 16; C.z = DLAND[1] + 2; C.rot = Math.PI; dLast = [P.x, P.z]; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); refreshSea(); refreshCloud(); refreshMars(); refreshDessin(); G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
+  showMushrooms(); refreshSide(); showCamperParts(); if (P.x > 1500 && P.x < 3000) { C.x = MCAMP[0] + 16; C.z = MCAMP[1] + 4; C.rot = Math.PI; } if (onSea()) { C.x = SCAMP[0] + 14; C.z = SCAMP[1] - 2; C.rot = -1; } if (onCloud()) { C.x = KLAND[0] + 24; C.z = KLAND[1] - 4; C.rot = Math.PI; kLast = [P.x, P.z]; } if (onMars()) { C.x = RLAND[0] + 16; C.z = RLAND[1] + 2; C.rot = Math.PI; } if (onDessin()) { C.x = DLAND[0] + 16; C.z = DLAND[1] + 2; C.rot = Math.PI; dLast = [P.x, P.z]; } if (onPole()) { C.x = ILAND[0] + 16; C.z = ILAND[1] + 2; C.rot = Math.PI; iLast = [P.x, P.z]; } if (P.x < -1500) { C.x = FCAMP[0] + 14; C.z = FCAMP[1] - 2; C.rot = 2.4; } refreshMoon(); refreshForest(); refreshSea(); refreshCloud(); refreshMars(); refreshDessin(); refreshBanquise(); G.irace = null; G.rocket = null; G.praFound = false; refreshMail(); showRocket(); if (planeM) planeM.visible = false; planeRings.forEach(r => { r.visible = false; }); PL.route = null; BT.x = PONTOONS[0].x + 4; BT.z = PONTOONS[0].z + 9; BT.spd = 0; if (passenger) passenger.visible = false; if (typeof sqState('praline') !== 'number' || sqState('praline') >= PRALINE_SPOTS.length) homePraline(); endRocketQuiet();
   setDisguise(false);
   updateHats(); updateHUD(); updateQuestUI();
 }
@@ -9069,7 +9504,7 @@ function step(dt) {
     else if (P.mode === 'cine') updateLaunch(dt);
     if (P.mode !== 'walk' && P.mode !== 'fish' && P.mode !== 'dig' && P.mode !== 'tree') { P.model.position.set(P.x, P.y, P.z); }
     else { P.model.position.set(P.x, P.y, P.z); P.model.rotation.y = P.rot; }
-    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateSea(dt); updateCloud(dt); updateMars(dt); updateDessin(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
+    updateAnimals(dt); updateMoon(dt); updateForest(dt); updateSea(dt); updateCloud(dt); updateMars(dt); updateDessin(dt); updateBanquise(dt); updateOscar(dt); updateWild(dt); updateSide(dt); updateFriends(dt); updateJobs(dt); updateLifts(dt); updateRegions(dt); updateSkiers(dt); updateSnowfall(dt); updateFireworks(dt); updateRace(dt); updateGuide();
     if (G.chestT > 0) { G.chestT -= dt; museumChest.userData.lid.rotation.x = -1.9 * (1 - Math.max(0, G.chestT) / 1.2); }
     updateCamper(dt);
     if (P.mode === 'drive' || P.mode === 'fly') sfx.engineSpeed(C.spd, P.mode === 'fly');
@@ -9101,7 +9536,7 @@ function step(dt) {
   const space = G.state === 'play' && ((P.x > 1500 && P.x < 3000) || (G.cine && G.cine.space));
   if (space) { scene.background.set(0x05060c); scene.fog.color.set(0x05060c); hemi.intensity = 0.42; hemi.color.set(0xcfd8ff); hemi.groundColor.set(0x404050); sun.intensity = 0.95; sun.color.setRGB(1, 1, 1); winMat.emissiveIntensity = 0.6; }
   else if (G.spaceK > 0) { _c1.set(0x05060c); scene.background.lerp(_c1, G.spaceK); scene.fog.color.lerp(_c1, G.spaceK); }
-  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : G.state === 'play' && !space && onSea() ? seaFog() : G.state === 'play' && !space && onCloud() ? cloudFog() : G.state === 'play' && !space && onMars() ? marsFog() : G.state === 'play' && !space && onDessin() ? dessinFog() : null;
+  const ff = G.state === 'play' && !space && P.x < -1500 ? forestFog() : G.state === 'play' && !space && onSea() ? seaFog() : G.state === 'play' && !space && onCloud() ? cloudFog() : G.state === 'play' && !space && onMars() ? marsFog() : G.state === 'play' && !space && onDessin() ? dessinFog() : G.state === 'play' && !space && onPole() ? iceFog() : null;
   const fogN = space ? 260 : ff ? ff[0] : G.cine ? 2500 : 140, fogF = space ? 900 : ff ? ff[1] : G.cine ? 6000 : 340, far = space ? 6000 : ff ? ff[2] : G.cine ? 6000 : 380;
   scene.fog.near = fogN; scene.fog.far = fogF; if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
   if (G.state === 'play' && P.x > 700 && P.x < 1500) { scene.background.set(0x2a1e1a); scene.fog.color.set(0x2a1e1a); hemi.intensity = 0.55; sun.intensity = 0.3; winMat.emissiveIntensity = 0.9; }
@@ -9154,6 +9589,7 @@ buildSea();
 buildCloud();
 buildMars();
 buildDessin();
+buildBanquise();
 buildExtraInteractions();
 buildMoreInteractions();
 buildHomeInteractions();
@@ -9163,7 +9599,7 @@ applyState();
 applyQuality();
 refreshTitle();
 requestAnimationFrame(frame);
-window.__ours = { RPAD, RMETAL, RVENTS, RQ, rStep, marsEvent, refreshMars, RLAND, RVILLAGE, ROLY, RDUNES, RPANELS, RWHEELS, RPLANTERS, RHONEY, RGARAGE, RSERRE, MARS, marsY, startMarsLaunch, startBlackHole, DQ, dStep, dessinEvent, refreshDessin, DLAND, DPLAZA, DCASTLE, DSTAIR, DPLAT, DISLE, DBRIDGE, DPOOL, DSCRIB, DVILLAGE, DHIDE, DLOST, DCRAY, DRAW, dessinY, DCOL, startWhiteHole, INTER, waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, ptMesh, pts, mountains, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
+window.__ours = { IQ, iStep, iceEvent, refreshBanquise, ICE, ILAND, IVILLAGE, IMOUNT, ICAVE, IISLE, IBRIDGE, IHOLES, IPUPS, IBLOCKS, IFLAGS, IICICLES, iceY, startIceTrip, RPAD, RMETAL, RVENTS, RQ, rStep, marsEvent, refreshMars, RLAND, RVILLAGE, ROLY, RDUNES, RPANELS, RWHEELS, RPLANTERS, RHONEY, RGARAGE, RSERRE, MARS, marsY, startMarsLaunch, startBlackHole, DQ, dStep, dessinEvent, refreshDessin, DLAND, DPLAZA, DCASTLE, DSTAIR, DPLAT, DISLE, DBRIDGE, DPOOL, DSCRIB, DVILLAGE, DHIDE, DLOST, DCRAY, DRAW, dessinY, DCOL, startWhiteHole, INTER, waterDepth, pathDist, get S() { return S; }, P, C, G, NPCS, BABIES, TH: treehouses, step: (n, d) => { for (let i = 0; i < n; i++) step(d); }, start: startGame, questEvent, advance, talkTo, takeOff, enterCamper, keys, IN, setDisguise, nextLine, QUESTS, enterHome, leaveHome, HOME, POI, groundY, scene, renderer, camera, liftData, boardLift, ANIMALS, MQ, SHIP, refreshMoon, ptMesh, pts, mountains, KQ, kStep, skyEvent, KLAND, KVILLAGE, KMILLS, KBLADES, KPADS, kOrbs, KISLETS, KBRIDGES, KL, KSKY, startBalloon, refreshCloud, cloudY, CQ, cStep, seaEvent, SCAMP, SVILLAGE, SPEARLS, STRASH, STRAIL, SWRECKP, SBALL, SRESIN, DENT_SPOT, SCAVE, SL, startDive, refreshSea, seaY, SEA, OSAY, squirrels, perched, geese, swans, duckFam, FQ, FSPOTS, FCAMP, FMOTHER, FPARTS, FLANTERNS, FOREST, FL, SEED_SPOT, startCrash, refreshForest, forestEvent, fStep, forestY, MCRYSTALS, MICE, MSCOPES, MCAMP, startLaunch, HOUSES, PL, BT, planeRings, PONTOONS, pontoonEnd, rocketParts, treeCover, SIDEQ, CHICKENS, WX, startRain, sideFollowers, refreshSide, startSki, stopSki, startSlalom, slalomGates, give, get act() { return actNow && actNow.label(); } };
 
 })();
 </script>

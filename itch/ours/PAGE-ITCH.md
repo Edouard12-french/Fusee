@@ -10,7 +10,7 @@
 
 1. Sur itch.io, clique sur **« Upload new project »**.
 2. **Title** : `Ours Malin`
-3. **Short description or tagline** : `Aide Oscar, un ours gourmand et têtu, à sauver son parc, va sur la Lune retrouve tes amis dans la Forêt Immense plonge au fond de la mer et monte jusqu'à l'Île des Nuages, sur Mars et dans le Monde Dessiné !`
+3. **Short description or tagline** : `Aide Oscar, un ours gourmand et têtu, à sauver son parc, va sur la Lune retrouve tes amis dans la Forêt Immense plonge au fond de la mer et monte jusqu'à l'Île des Nuages, sur Mars, dans le Monde Dessiné et en Antarctique !`
 4. **Kind of project** : **HTML**.
 5. **Uploads** : envoie `ours-malin-itch.zip` et coche **« This file will be played in the browser »**.
 6. **Embed options** : 1280 × 720, coche **« Mobile friendly »** (orientation : **Landscape**) et **« Fullscreen button »**.
@@ -23,7 +23,7 @@
 
 ## Important
 
-Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, Zib et les Zoublis, Brume, Splash, Nacre, Octavie, Galet, Crabos, le village des Coquillages, les Plumeaux, Pompon, Cumulus, Grondin, l'Île des Nuages, les Marsous, Pito, Mamie Rouille, Boulon, Gribouille, le Roi Crayon, Madame Gomme, Capitaine Pinceau, les Taches, le Monde Dessiné, l'Arbre-Mère, la Forêt Immense, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
+Ours Malin est un jeu **original** : Oscar, Max, Lulu, Madame Plume, Papi Blaireau, Raflex, Donovan, Noisette, Gérard, Gisèle, M. Béton, Cabriole, Elliot, Marcel, Yvette, Gaspard, Josette, Bernard, Maurice, Praline, Roquette, Filou, Fernand, Hélène, Loïc, Zib et les Zoublis, Brume, Splash, Nacre, Octavie, Galet, Crabos, le village des Coquillages, les Plumeaux, Pompon, Cumulus, Grondin, l'Île des Nuages, les Marsous, Pito, Mamie Rouille, Boulon, Gribouille, le Roi Crayon, Madame Gomme, Capitaine Pinceau, les Taches, le Monde Dessiné, Givre, Pikou, Neige la pingouine, Papi Moustache, la Lanterne du Sud, l'Arbre-Mère, la Forêt Immense, le Pic Grizzly et le parc des Pins ont été inventés pour ce jeu. Ne mets pas le nom d'un autre jeu dans le titre, la description ou les tags (par exemple un jeu Apple Arcade), sinon itch.io peut retirer la page.
 
 Pour les dons : un parent doit t'aider pour le compte de paiement. Après la publication, tu peux mettre l'adresse de ta page dans `ours/index.html` (ligne `const SUPPORT_URL = '';`).
 
@@ -53,6 +53,7 @@ Le méchant Monsieur Béton veut raser le parc des Pins pour construire un centr
 - **Chapitre 4 : le Royaume sous la Mer !** Max transforme le camping-car en sous-marin. Plonge au fond de la mer, rencontre Splash le dauphin, Nacre la tortue, Octavie la pieuvre et Galet le phoque, rallume le village des Coquillages et découvre pourquoi Crabos le grand crabe a pris la Grande Perle… 15 nouvelles missions !
 - **Chapitre 6 : la planète Mars !** Un camping-car qui roule… au miel ! Sur Mars, aide les Marsous : creuse les dunes, nettoie les panneaux solaires, retrouve les roues du rover, allume le phare du Mont Olympe et plante les premières fleurs de Mars. Puis le moteur tombe en panne : coincés sur Mars, construisez la Fusée Fraise pendant 4 jours… jusqu'à l'arrivée d'un trou noir !
 - **Chapitre 7 : le Monde Dessiné !** Le trou noir vous recrache dans un monde dessiné au crayon où les couleurs s'effacent. Avec Gribouille et le Roi Crayon, retrouve les 5 Crayons Magiques pour rendre ses couleurs au monde et rentrer à la maison.
+- **Chapitre 8 : l'Antarctique !** Le camping-car met des patins et vole jusqu'au pôle Sud. Retrouve Givre, le cousin ours polaire d'Oscar, au milieu d'une colonie de pingouins. Pêche, sauve les bébés phoques, refais le pont de glace, fais la course contre Neige la pingouine et rallume la Lanterne du Sud pour faire revenir les aurores australes !
 - **En français et en anglais** (bouton sur l'écran titre).
 - **Oscar pense tout haut** : il fonce dans les arbres (et il insiste !), rêve de miel, se croit le plus malin et dit des bêtises qui font rire.
 - **Une nature pleine de vie** : écureuils qui grimpent aux arbres, oiseaux qui s'envolent, oies en V, cygnes, canetons, feuilles mortes, lys et nénuphars, rivières qui coulent, barques, canoë et tas de bûches.

@@ -49,7 +49,7 @@ Pour y jouer en local, ouvre `escadron/index.html`.
 
 ## Jeu : Ours Malin
 
-Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
+Aventure 3D en 8 chapitres (et ce n'est pas fini), tout en douceur, dans le parc des Pins, avec Oscar, un ours un peu bête, très drôle et têtu. Le but : sauver le parc que M. Béton veut raser, en gagnant 7 étoiles du parc. Oscar l'ours chipe des pique-niques, se déguise, pêche, ramasse les déchets, sauve des bébés animaux, répare le village des cabanes dans les arbres, puis construit un camping-car avec Max (6 pièces à trouver chez les amis et dans le parc : châssis, roues, carrosserie, volant et sièges, moteur, phares) et le fait voler pour montrer le parc à la maire.
 
 - 14 missions qui se suivent, avec Max le castor, Lulu la loutre, Raflex le raton laveur (son musée), Donovan le canard (course contre la montre), Noisette l'écureuil, Madame Plume la chouette et Papi Blaireau.
 - Une ligne blanche au sol guide vers l'objectif pendant les deux premières missions.
@@ -120,6 +120,14 @@ Aventure 3D en 5 chapitres, tout en douceur, dans le parc des Pins, avec Oscar, 
   - joue à cache-cache avec les Taches pour le crayon violet ;
   - met les 5 crayons dans le Grand Taille-Crayon : les couleurs reviennent petit à petit dans tout le monde, et un passage arc-en-ciel ramène tout le monde au parc pour une grande fête.
   Ce sont des personnages inventés pour le jeu.
+- Chapitre 8, l'Antarctique (9 missions) : un pingouin apporte une lettre de Givre, le cousin ours polaire d'Oscar. Max met des patins et un gros chauffage sur le camping-car, et toute la bande s'envole tout au sud de la Terre. Il y a une colonie de 30 pingouins avec leurs petits, un village d'igloos, des icebergs, une orque et des bébés phoques. Avec Givre, Pikou le chef des pingouins, Neige la pingouine et Papi Moustache l'éléphant de mer, Oscar :
+  - pêche 3 poissons dans les trous de glace ;
+  - ramène 3 bébés phoques perdus à leurs mamans ;
+  - pousse 4 blocs de glace pour refaire le pont de glace ;
+  - fait la course contre Neige (6 drapeaux en moins de 45 secondes) ;
+  - cueille 3 glaçons chantants (Do, Mi, Sol) dans la grotte de glace ;
+  - rallume la Lanterne du Sud en haut de l'île : les aurores australes reviennent danser dans le ciel.
+  Givre lui donne son écharpe, et tout le monde rentre au parc des Pins.
 - La Forêt Immense : arbres géants et séquoias de plus de 30 mètres, lianes, racines, rivière avec des ponts en troncs, lac des Brumes, ruines anciennes, champignons géants et petits champignons qui brillent la nuit, arbres à lanternes, rayons de soleil entre les arbres, brume qui flotte, lucioles, cerfs et lapins. La caméra passe sous les grands arbres.
 - Oscar a du caractère : c'est un ours un peu bête, très drôle et têtu. Il est gourmand, il se croit le plus malin et il ne veut jamais avoir tort. Il pense tout haut dans une petite bulle : quand il reste sans bouger, quand il fonce dans un arbre (il insiste !), quand il nage, court, mange des baies, se promène la nuit, dans la forêt ou sur la Lune.
 - Encore plus de nature :
