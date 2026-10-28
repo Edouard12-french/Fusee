@@ -3,7 +3,8 @@
 ## Ce qu'il y a dans ce dossier
 
 - `ours-malin-itch.zip` : le jeu à envoyer (`index.html` + `three.min.js`). Envoie-le tel quel, sans l'ouvrir.
-- `couverture-630x500.png` : l'image de couverture.
+- `couverture-630x500.png` : l'image de couverture (un collage des 8 mondes avec le titre).
+- `presentation/` (et `images-presentation.zip`, toutes les images d'un coup) : les images de présentation. `12-tous-les-mondes.png` et `13-plein-d-aventures.png` sont des collages à mettre en premier dans les captures. `14-banniere-itch.png` (960×300) peut servir de bannière en haut de la page (Edit theme → Banner).
 - `captures/` : les captures d'écran pour la page.
 
 ## Étapes
