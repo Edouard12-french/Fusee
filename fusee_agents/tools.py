@@ -3,9 +3,10 @@ import asyncio
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
-from . import browser, db, integrations, mailbox
+from . import browser, budget, db, integrations, mailbox, workflow
 from .agents import BY_NAME, OWNER
 from .config import ALLOW_CODE_EXEC, WORKSPACE
 from .notify import notify
@@ -20,6 +21,9 @@ S = {"type": "string"}
 N = {"type": "number"}
 I = {"type": "integer"}
 LIST = {"type": "array", "items": S}
+AGENT = {"type": "string", "enum": list(BY_NAME)}
+STEPS = {"type": "array", "items": {"type": "object", "properties": {"agent": AGENT, "instruction": S},
+                                    "required": ["agent", "instruction"], "additionalProperties": False}}
 
 CLIENT_TOOLS: dict[str, dict] = {
     # --- équipe ---------------------------------------------------------------
@@ -151,6 +155,74 @@ CLIENT_TOOLS: dict[str, dict] = {
             "status": {"type": "string", "enum": ["nouveau", "en discussion", "intéressé", "client", "perdu"]},
         }),
     },
+    # --- coordination : routage, workflows ----------------------------------
+    "route_to": {
+        "description": "Confie une demande à un agent (il est réveillé avec ta consigne). Consigne claire et autonome.",
+        "input_schema": _schema({"agent": AGENT, "instruction": S}),
+    },
+    "start_sequence": {
+        "description": ("Lance un workflow SÉQUENTIEL : chaque étape est confiée à un agent, qui reçoit les résultats "
+                        "des étapes précédentes. Tu es réveillé à la fin pour la synthèse."),
+        "input_schema": _schema({"title": S, "steps": STEPS}),
+    },
+    "start_parallel": {
+        "description": ("Lance un workflow PARALLÈLE : toutes les tâches partent en même temps vers leurs agents. "
+                        "Tu es réveillé quand tout est revenu, pour fusionner les résultats."),
+        "input_schema": _schema({"title": S, "tasks": STEPS}),
+    },
+    "complete_task": {
+        "description": "Termine une tâche de workflow qui t'est confiée, avec un résultat complet et autonome.",
+        "input_schema": _schema({"task_id": I, "result": S, "success": {"type": "boolean"}}),
+    },
+    "list_jobs": {
+        "description": "Liste les workflows (séquentiels et parallèles) avec l'état et le résultat de chaque tâche.",
+        "input_schema": _schema({"only_active": {"type": "boolean"}}),
+    },
+    "cancel_job": {
+        "description": "Annule un workflow en cours.",
+        "input_schema": _schema({"job_id": I}),
+    },
+    # --- boîte à outils & compétences ---------------------------------------
+    "list_toolbox": {
+        "description": "Liste les outils de la boîte à outils de l'équipe (workspace/outils/), avec leur description.",
+        "input_schema": _schema({}),
+    },
+    "run_tool": {
+        "description": "Lance un outil de la boîte à outils (nom sans .py) avec ses arguments ; renvoie sa sortie.",
+        "input_schema": _schema({"name": S, "args": LIST}),
+    },
+    "list_skills": {
+        "description": "Liste les fiches de savoir-faire de l'équipe (workspace/competences/).",
+        "input_schema": _schema({}),
+    },
+    "read_skill": {
+        "description": "Lit une fiche de savoir-faire (nom sans .md).",
+        "input_schema": _schema({"name": S}),
+    },
+    # --- lien avec Patron (agent humain) ------------------------------------
+    "ask_owner": {
+        "description": (f"Pose une question à {OWNER} (notification + réponse dans l'appli). options : réponses "
+                        "proposées en boutons (liste vide = réponse libre)."),
+        "input_schema": _schema({"question": S, "context": S, "options": LIST}),
+    },
+    "add_owner_task": {
+        "description": f"Ajoute une tâche à la liste « À faire » de {OWNER}, avec des étapes numérotées très concrètes.",
+        "input_schema": _schema({"title": S, "steps": S,
+                                 "priority": {"type": "string", "enum": ["haute", "normale", "basse"]}}),
+    },
+    "list_owner_items": {
+        "description": f"Questions et tâches en attente chez {OWNER} (et réponses récentes).",
+        "input_schema": _schema({}),
+    },
+    # --- budget & stratégie -------------------------------------------------
+    "budget_status": {
+        "description": f"Budget réel de {OWNER} : départ, dépenses IA, autres dépenses, revenus, reste disponible.",
+        "input_schema": _schema({}),
+    },
+    "write_strategy": {
+        "description": f"Enregistre la stratégie d'investissement personnalisée de {OWNER} (markdown, remplace l'ancienne).",
+        "input_schema": _schema({"content": S}),
+    },
     # --- trading simulé -----------------------------------------------------
     "paper_trade": {
         "description": "Passe un ordre SIMULÉ (aucun argent réel) dans le portefeuille fictif.",
@@ -174,14 +246,20 @@ SERVER_TOOLS = {
     "web_search": {"type": "web_search_20260209", "name": "web_search", "max_uses": 8},
     "web_fetch": {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": 8, "max_content_tokens": 30000},
 }
+# Les versions « 20260209 » (filtrage dynamique) existent sur Opus/Sonnet récents ; les autres modèles ont les basiques.
+BASIC_SERVER_TOOLS = {
+    "web_search": {"type": "web_search_20250305", "name": "web_search", "max_uses": 5},
+    "web_fetch": {"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 5, "max_content_tokens": 20000},
+}
 
 
-def tool_defs(names: list[str]) -> list[dict]:
+def tool_defs(names: list[str], model: str = "") -> list[dict]:
+    server = SERVER_TOOLS if ("opus" in model or "sonnet" in model or not model) else BASIC_SERVER_TOOLS
     out = []
     for n in names:
         if n in SERVER_TOOLS:
-            out.append(SERVER_TOOLS[n])
-        elif n == "run_python" and not ALLOW_CODE_EXEC:
+            out.append(server[n])
+        elif n in ("run_python", "run_tool") and not ALLOW_CODE_EXEC:
             continue
         else:
             out.append({"name": n, "strict": True, **CLIENT_TOOLS[n]})
@@ -210,6 +288,24 @@ def _clean_attachments(paths: list[str]) -> list[str]:
 def _attach_json(attachments: list[str], links: list[str]) -> str:
     links = [l for l in links[:8] if re.match(r"^https?://", l)]
     return json.dumps({"files": _clean_attachments(attachments), "links": links}, ensure_ascii=False)
+
+
+def _describe(p: Path) -> str:
+    for line in p.read_text(errors="replace").splitlines():
+        line = line.strip().strip('#"\' ').strip()
+        if line and not line.startswith(("!", "-*-", "coding")):
+            return line[:160]
+    return ""
+
+
+def toolbox() -> list[tuple[str, str]]:
+    d = WORKSPACE / "outils"
+    return [(p.stem, _describe(p)) for p in sorted(d.glob("*.py"))] if d.exists() else []
+
+
+def skills() -> list[tuple[str, str]]:
+    d = WORKSPACE / "competences"
+    return [(p.stem, _describe(p)) for p in sorted(d.glob("*.md"))] if d.exists() else []
 
 
 MENTION_RE = re.compile(r"(?:^|\s)@(\w+)")
@@ -277,6 +373,11 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         pending = db.q("SELECT id FROM approvals WHERE status='en attente' AND title=?", (args["title"],))
         if pending:
             return f"Une demande identique (#{pending[0]['id']}) attend déjà la réponse de {OWNER}."
+        if args["amount_eur"] > 0:
+            free = budget.summary()["free_to_spend_eur"]
+            if args["amount_eur"] > free:
+                return (f"Refusé : {args['amount_eur']:.2f} € dépasse l'argent disponible hors IA ({free:.2f} €). "
+                        "Trouve une option moins chère ou gratuite.")
         att = _attach_json(args["attachments"], args["links"])
         i = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, payload) "
                  "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?)",
@@ -427,6 +528,74 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
             notify("client", f"🔥 Prospect chaud : {who} ({score}/100)",
                    f"Intéressé par : {args['interest']}\nRessenti : {args['sentiment']}\n{args['potential']}", priority="high")
         return "Fiche mise à jour."
+    # --- coordination -------------------------------------------------------
+    if name == "route_to":
+        if args["agent"] == agent:
+            return "Erreur : tu ne peux pas te router une demande à toi-même."
+        db.post_message(agent, f"➡️ @{args['agent']} : {args['instruction']}")
+        wake(args["agent"], f"demande routée par {agent} : {args['instruction'][:1500]}")
+        return f"Demande confiée à {args['agent']}."
+    if name in ("start_sequence", "start_parallel"):
+        steps = args["steps"] if name == "start_sequence" else args["tasks"]
+        if not 1 <= len(steps) <= 8:
+            return "Erreur : entre 1 et 8 étapes."
+        job_id = workflow.start(agent, "séquence" if name == "start_sequence" else "parallèle",
+                                args["title"], steps, wake)
+        return f"Workflow #{job_id} lancé. Tu seras réveillé à la fin pour la synthèse."
+    if name == "complete_task":
+        return workflow.complete(agent, args["task_id"], args["result"], args["success"], wake)
+    if name == "list_jobs":
+        where = "WHERE status='en cours'" if args["only_active"] else ""
+        jobs = db.q(f"SELECT * FROM jobs {where} ORDER BY id DESC LIMIT 10")
+        return "\n\n".join(workflow.describe(j) for j in jobs) or "Aucun workflow."
+    if name == "cancel_job":
+        return workflow.cancel(args["job_id"], agent)
+    # --- boîte à outils & compétences ---------------------------------------
+    if name == "list_toolbox":
+        return "\n".join(f"- {n} : {d}" for n, d in toolbox()) or "Boîte à outils vide (demande à @Forge)."
+    if name == "run_tool":
+        p = (WORKSPACE / "outils" / f"{Path(args['name']).stem}.py")
+        if not p.is_file():
+            return "Erreur : outil inconnu. Vois list_toolbox."
+        return await execute(agent, "run_python", {"path": f"outils/{p.name}", "args": args["args"]}, wake)
+    if name == "list_skills":
+        return "\n".join(f"- {n} : {d}" for n, d in skills()) or "Aucune fiche pour l'instant (demande à @Sage)."
+    if name == "read_skill":
+        p = WORKSPACE / "competences" / f"{Path(args['name']).stem}.md"
+        return p.read_text(errors="replace")[:30000] if p.is_file() else "Erreur : fiche inconnue. Vois list_skills."
+    # --- lien avec Patron ---------------------------------------------------
+    if name == "ask_owner":
+        dup = db.q("SELECT id FROM owner_questions WHERE answer IS NULL AND question=?", (args["question"],))
+        if dup:
+            return f"Cette question (#{dup[0]['id']}) attend déjà la réponse de {OWNER}."
+        i = db.x("INSERT INTO owner_questions (ts, agent, question, context, options) VALUES (?,?,?,?,?)",
+                 (time.time(), agent, args["question"], args["context"], json.dumps(args["options"][:6], ensure_ascii=False)))
+        db.post_message(agent, f"❓ Question #{i} pour @{OWNER} : {args['question']}")
+        notify("validation", f"Question de {agent}", args["question"], priority="default")
+        return f"Question #{i} posée. Tu seras réveillé avec la réponse."
+    if name == "add_owner_task":
+        i = db.x("INSERT INTO owner_tasks (ts, agent, title, steps, priority) VALUES (?,?,?,?,?)",
+                 (time.time(), agent, args["title"], args["steps"], args["priority"]))
+        db.post_message(agent, f"📝 Nouvelle tâche pour @{OWNER} : {args['title']}")
+        if args["priority"] == "haute":
+            notify("alerte", f"À faire : {args['title']}", args["steps"][:1500], priority="high")
+        return f"Tâche #{i} ajoutée à la liste de {OWNER}."
+    if name == "list_owner_items":
+        qs = db.q("SELECT id, agent, question, answer FROM owner_questions WHERE answer IS NULL OR answered_ts > ? "
+                  "ORDER BY id DESC LIMIT 20", (time.time() - 3 * 86400,))
+        ts = db.q("SELECT id, agent, title, priority, done, ts FROM owner_tasks WHERE done=0 OR done_ts > ? "
+                  "ORDER BY id DESC LIMIT 20", (time.time() - 3 * 86400,))
+        return json.dumps({"questions": qs, "taches": ts}, ensure_ascii=False)
+    # --- budget & stratégie -------------------------------------------------
+    if name == "budget_status":
+        s = budget.summary()
+        return json.dumps({k: round(v, 2) if isinstance(v, float) else v for k, v in s.items()}, ensure_ascii=False)
+    if name == "write_strategy":
+        db.set_setting("strategy", args["content"][:30000])
+        db.set_setting("strategy_ts", str(time.time()))
+        db.post_message(agent, f"📈 Stratégie d'investissement de @{OWNER} mise à jour (onglet Argent).")
+        notify("rapport", "Ta stratégie d'investissement est à jour", args["content"][:800])
+        return "Stratégie enregistrée."
     # --- trading simulé -----------------------------------------------------
     if name == "paper_trade":
         qty, price = float(args["quantity"]), float(args["price"])

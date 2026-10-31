@@ -14,12 +14,12 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import db, integrations, mailbox
+from . import budget, db, integrations, mailbox, workflow
 from .agents import OWNER, TEAM
-from .config import DAILY_BUDGET_USD, MODEL, PUBLIC_URL, WORKSPACE
+from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
 from .notify import notify
 from .scheduler import scheduler
-from .tools import _safe_path, deliver_reply, mentions
+from .tools import _safe_path, deliver_reply, mentions, skills, toolbox
 
 STATIC = Path(__file__).parent / "static"
 PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
@@ -91,15 +91,19 @@ def _msg(m: dict) -> dict:
 @app.get("/api/state")
 def state(after: int = 0):
     states = db.get_states()
-    agents = [{"name": a.name, "title": a.title, "emoji": a.emoji, "color": a.color,
-               "interval_min": a.interval_min, **{k: v for k, v in states.get(a.name, {}).items() if k != "agent"}}
+    agents = [{"name": a.name, "kind": a.kind, "title": a.title, "emoji": a.emoji, "color": a.color,
+               "tier": a.tier, "model": model_for(a.tier)[0], "interval_min": a.interval_min,
+               **{k: v for k, v in states.get(a.name, {}).items() if k != "agent"}}
               for a in TEAM]
+    b = budget.summary()
     return {
         "agents": agents,
         "messages": [_msg(m) for m in db.recent_messages(200, after)],
-        "cost_today": db.cost_today(),
-        "budget": DAILY_BUDGET_USD,
-        "model": MODEL,
+        "plan": PLAN,
+        "budget": {k: b[k] for k in ("remaining_eur", "initial_eur", "api_today_eur", "api_daily_cap_eur",
+                                     "api_spent_eur", "api_budget_eur")},
+        "open_questions": db.q("SELECT COUNT(*) n FROM owner_questions WHERE answer IS NULL")[0]["n"],
+        "open_owner_tasks": db.q("SELECT COUNT(*) n FROM owner_tasks WHERE done=0")[0]["n"],
         "paused": scheduler.paused,
         "directive": db.get_setting("directive", ""),
         "pending_approvals": db.q("SELECT COUNT(*) n FROM approvals WHERE status='en attente'")[0]["n"],
@@ -237,7 +241,7 @@ def send(msg: Msg):
     if not text:
         raise HTTPException(400, "message vide")
     db.post_message(OWNER, text)
-    targets = mentions(text) or ["Atlas"]  # sans mention, le directeur répond
+    targets = mentions(text) or ["Nexus"]  # sans mention, le routeur aiguille la demande
     for t in targets:
         scheduler.wake(t, f"message de {OWNER} : {text[:500]}")
     return {"ok": True, "woken": targets}
@@ -308,6 +312,12 @@ async def decide(aid: int, d: Decision):
     if a["status"] != "en attente":
         raise HTTPException(409, "déjà décidée")
     status = "acceptée" if d.approve else "refusée"
+    if d.approve and (a["amount_eur"] or 0) > 0:
+        free = budget.summary()["free_to_spend_eur"]
+        if a["amount_eur"] > free:
+            raise HTTPException(400, f"Cette dépense ({a['amount_eur']} €) dépasse ton argent disponible ({free:.2f} €).")
+        db.x("INSERT INTO ledger (ts, kind, amount_eur, label, source, approval_id) VALUES (?,?,?,?,?,?)",
+             (time.time(), "dépense", a["amount_eur"], a["title"], f"validation #{aid}", aid))
     if a["kind"] == "réponse client" and d.approve:
         try:
             await deliver_reply(json.loads(a["payload"])["contact_id"], a["details"], a["agent"])
@@ -384,3 +394,128 @@ def chat_poll(session: str, after: int = 0):
     rows = db.q("SELECT id, ts, direction, content FROM conv WHERE contact_id=? AND channel='chat' AND id>? "
                 "ORDER BY id", (c[0]["id"], after))
     return {"messages": rows}
+
+
+# --- pour Patron : questions & tâches ------------------------------------------
+@app.get("/api/owner")
+def owner_items():
+    qs = db.q("SELECT * FROM owner_questions ORDER BY (answer IS NULL) DESC, id DESC LIMIT 60")
+    for x in qs:
+        x["options"] = json.loads(x["options"] or "[]")
+    ts = db.q("SELECT * FROM owner_tasks ORDER BY done, CASE priority WHEN 'haute' THEN 0 WHEN 'normale' THEN 1 "
+              "ELSE 2 END, id DESC LIMIT 80")
+    return {"questions": qs, "tasks": ts}
+
+
+class Answer(BaseModel):
+    answer: str
+
+
+@app.post("/api/questions/{qid}")
+def answer_question(qid: int, a: Answer):
+    rows = db.q("SELECT * FROM owner_questions WHERE id=?", (qid,))
+    if not rows or not a.answer.strip():
+        raise HTTPException(400)
+    qrow = rows[0]
+    db.x("UPDATE owner_questions SET answer=?, answered_ts=? WHERE id=?", (a.answer.strip()[:4000], time.time(), qid))
+    db.post_message(OWNER, f"💬 Réponse à la question #{qid} ({qrow['question'][:120]}) : {a.answer.strip()}")
+    scheduler.wake(qrow["agent"], f"{OWNER} a répondu à ta question #{qid} « {qrow['question'][:200]} » : {a.answer[:1000]}")
+    return {"ok": True}
+
+
+@app.post("/api/owner_tasks/{tid}")
+def toggle_task(tid: int, done: bool):
+    rows = db.q("SELECT * FROM owner_tasks WHERE id=?", (tid,))
+    if not rows:
+        raise HTTPException(404)
+    db.x("UPDATE owner_tasks SET done=?, done_ts=? WHERE id=?", (1 if done else 0, time.time() if done else None, tid))
+    if done:
+        db.post_message(OWNER, f"✔️ Fait : {rows[0]['title']}")
+        scheduler.wake(rows[0]["agent"], f"{OWNER} a fait la tâche #{tid} « {rows[0]['title']} »")
+    return {"ok": True}
+
+
+# --- workflows, boîte à outils, compétences ------------------------------------
+@app.get("/api/jobs")
+def jobs():
+    out = db.q("SELECT * FROM jobs ORDER BY (status='en cours') DESC, id DESC LIMIT 40")
+    for j in out:
+        j["tasks"] = db.q("SELECT * FROM tasks WHERE job_id=? ORDER BY idx", (j["id"],))
+    return out
+
+
+@app.get("/api/toolbox")
+def toolbox_api():
+    return {"tools": [{"name": n, "desc": d, "path": f"outils/{n}.py"} for n, d in toolbox()],
+            "skills": [{"name": n, "desc": d, "path": f"competences/{n}.md"} for n, d in skills()]}
+
+
+# --- argent : budget, dépenses, profil investisseur, stratégie -----------------
+@app.get("/api/budget")
+async def budget_api():
+    stripe_eur = 0.0
+    if integrations.STRIPE_KEY:
+        if time.time() - _sales_cache["ts"] > 300:
+            try:
+                _sales_cache["data"] = await asyncio.to_thread(integrations.sales_summary)
+                _sales_cache["ts"] = time.time()
+            except Exception:  # noqa: BLE001
+                pass
+        stripe_eur = (_sales_cache["data"] or {}).get("total_eur", 0.0)
+    strategy = db.get_setting("strategy", "")
+    if not strategy and (Path(__file__).parent.parent / "STRATEGIE.md").is_file():
+        strategy = (Path(__file__).parent.parent / "STRATEGIE.md").read_text()
+    return {"summary": budget.summary(stripe_eur), "ledger": db.q("SELECT * FROM ledger ORDER BY id DESC LIMIT 100"),
+            "profile": budget.investor_profile(), "strategy": strategy,
+            "strategy_ts": float(db.get_setting("strategy_ts", "0") or 0), "usd_eur": USD_EUR}
+
+
+class BudgetSettings(BaseModel):
+    initial_eur: float
+    api_budget_eur: float
+    api_days: float
+
+
+@app.post("/api/budget/settings")
+def budget_settings(b: BudgetSettings):
+    if b.initial_eur < 0 or b.api_budget_eur < 0 or b.api_days < 1 or b.api_budget_eur > b.initial_eur:
+        raise HTTPException(400, "valeurs invalides (la part IA doit être ≤ au budget total)")
+    db.set_setting("budget_initial_eur", str(b.initial_eur))
+    db.set_setting("api_budget_eur", str(b.api_budget_eur))
+    db.set_setting("api_days", str(b.api_days))
+    db.post_message(OWNER, f"💰 Budget mis à jour : {b.initial_eur:.0f} € au total, dont {b.api_budget_eur:.0f} € "
+                           f"pour l'IA sur {b.api_days:.0f} jours.")
+    return {"ok": True}
+
+
+class LedgerEntry(BaseModel):
+    kind: str
+    amount_eur: float
+    label: str
+
+
+@app.post("/api/ledger")
+def add_ledger(e: LedgerEntry):
+    if e.kind not in ("dépense", "revenu") or e.amount_eur <= 0 or not e.label.strip():
+        raise HTTPException(400)
+    db.x("INSERT INTO ledger (ts, kind, amount_eur, label, source) VALUES (?,?,?,?,?)",
+         (time.time(), e.kind, e.amount_eur, e.label.strip()[:200], OWNER))
+    return {"ok": True}
+
+
+@app.delete("/api/ledger/{lid}")
+def del_ledger(lid: int):
+    db.x("DELETE FROM ledger WHERE id=? AND source=?", (lid, OWNER))
+    return {"ok": True}
+
+
+@app.post("/api/profile")
+async def save_profile(request: Request):
+    data = await request.json()
+    if not isinstance(data, dict):
+        raise HTTPException(400)
+    clean = {str(k)[:60]: str(v)[:500] for k, v in data.items() if str(v).strip()}
+    db.set_setting("investor_profile", json.dumps(clean, ensure_ascii=False))
+    db.post_message(OWNER, "🧾 J'ai rempli mon profil investisseur. @Wolf, mets à jour ma stratégie.")
+    scheduler.wake("Wolf", f"{OWNER} a rempli son profil investisseur : rédige ou mets à jour sa stratégie (write_strategy)")
+    return {"ok": True}

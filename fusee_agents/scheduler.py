@@ -25,9 +25,14 @@ class Scheduler:
 
     async def _loop(self, name: str, first_delay: float) -> None:
         agent = BY_NAME[name]
-        interval = agent.interval_min * 60 * INTERVAL_MULTIPLIER
+        interval = agent.interval_min * 60 * INTERVAL_MULTIPLIER  # 0 = seulement à la demande
         await asyncio.sleep(first_delay)
         reason = "démarrage"
+        if not interval:  # agent « à la demande » : attend d'être appelé
+            await self.events[name].wait()
+            self.events[name].clear()
+            pending, self.reasons[name] = self.reasons[name], []
+            reason = " | ".join(pending[-5:]) or "appel"
         while True:
             if not self.paused:
                 async with self.sem:
@@ -37,7 +42,8 @@ class Scheduler:
             if not self.reasons[name]:
                 self.events[name].clear()
             try:
-                await asyncio.wait_for(self.events[name].wait(), timeout=max(0, interval - agent.min_gap_s))
+                await asyncio.wait_for(self.events[name].wait(),
+                                       timeout=max(0, interval - agent.min_gap_s) if interval else None)
             except asyncio.TimeoutError:
                 pass
             self.events[name].clear()
@@ -47,7 +53,7 @@ class Scheduler:
     def start(self) -> None:
         for i, a in enumerate(TEAM):
             db.set_state(a.name, status="en attente")
-            self.tasks.append(asyncio.create_task(self._loop(a.name, first_delay=i * 20)))
+            self.tasks.append(asyncio.create_task(self._loop(a.name, first_delay=i * 30)))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(
             lambda ids: self.wake("Iris", f"nouvel(s) e-mail(s) de contact(s) {ids}"))))
 

@@ -94,7 +94,7 @@ nav#bottom{display:none}
 <header>
   <h1><img src="/icon-192.png" alt="">Fusée</h1>
   <span class="pill hide-m" id="model"></span>
-  <span class="pill">💸 <span id="cost"></span><span class="bar"><i id="costbar"></i></span></span>
+  <span class="pill" title="Argent restant · dépense IA du jour">💶 <span id="cost"></span><span class="bar"><i id="costbar"></i></span></span>
   <span style="flex:1"></span>
   <button id="installBtn" hidden>📲<span class="lbl"> Installer l'app</span></button>
   <button id="browserBtn" title="Autoriser les agents à naviguer sur internet avec un vrai navigateur"></button>
@@ -130,8 +130,9 @@ const api = (u, opt) => fetch(u, opt).then(r => r.json());
 const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
 let S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
-const TABS = {agent:"🤖 Agent", approvals:"✅ Validations", contacts:"👥 Prospects", vitrine:"🖼️ Vitrine", sales:"💶 Ventes",
-  ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse", notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
+const TABS = {agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", contacts:"👥 Prospects", money:"💰 Argent",
+  vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse",
+  notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
 const emojiOf = n => (S.agents.find(a => a.name === n) || {}).emoji || "👤";
 const SENT = {"très positif":"😍", "positif":"🙂", "neutre":"😐", "hésitant":"🤔", "négatif":"😠", "inconnu":"❔"};
@@ -151,7 +152,8 @@ function renderAgents() {
     const st = a.status || "en attente", cls = st === "travaille" ? "on" : st.startsWith("erreur") || st.startsWith("budget") ? "err" : "";
     return `<div class="agent ${selected===a.name?"sel":""}" data-n="${a.name}">
       <div class="av" style="background:${a.color}33">${a.emoji}</div>
-      <div style="min-width:0"><b>${a.name}</b><small>${esc(a.title)}</small>
+      <div style="min-width:0"><b>${a.name}</b><small>${esc(a.kind)} · ${esc(a.title)}</small>
+      <small><span class="tag">${a.model.replace("claude-","").replace(/-(\d)-(\d)$/," $1.$2")}</span> <span class="tag">${a.interval_min ? "toutes les " + a.interval_min + " min" : "à la demande"}</span></small>
       <small><span class="dot ${cls}"></span>${esc(st)}</small>
       <small title="${esc(a.task)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.task || "—")}</small>
       <small>${a.cycles||0} cycles · ${(a.cost_usd||0).toFixed(2)} $</small></div></div>`;
@@ -174,22 +176,23 @@ async function poll() {
     const r = await api("/api/state?after=" + lastId);
     S = r;
     if (!selected) selected = r.agents[0]?.name;
-    $("#model").textContent = r.model;
-    $("#cost").textContent = `${r.cost_today.toFixed(2)} / ${r.budget.toFixed(0)} $`;
-    $("#costbar").style.width = Math.min(100, 100 * r.cost_today / r.budget) + "%";
+    $("#model").textContent = "plan " + r.plan;
+    $("#cost").textContent = `${r.budget.remaining_eur.toFixed(2)} € · IA ${r.budget.api_today_eur.toFixed(2)}/${r.budget.api_daily_cap_eur.toFixed(2)} €`;
+    $("#costbar").style.width = Math.min(100, 100 * r.budget.api_today_eur / Math.max(r.budget.api_daily_cap_eur, 0.01)) + "%";
     $("#pauseBtn").innerHTML = r.paused ? "▶️<span class=lbl> Reprendre</span>" : "⏸️<span class=lbl> Pause</span>";
     $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
     $("#browserBtn").classList.toggle("on", r.browser_enabled);
     renderAgents(); addMessages(r.messages);
-    const sig = [r.pending_approvals, r.unread_notifications, r.waiting_contacts].join("/");
-    if (sig !== lastSig) { lastSig = sig; renderTabs(); if (["approvals","contacts"].includes(tab)) renderPane(true); }
-    if (tab === "agent" || tab === "feed" || (tab === "contacts" && openContact)) renderPane(true);
-    const n = r.pending_approvals + r.waiting_contacts; $("#moreBtn").innerHTML = "📋<br>Suivi" + (n ? ` <span class="badge">${n}</span>` : "");
+    const sig = [r.pending_approvals, r.unread_notifications, r.waiting_contacts, r.open_questions, r.open_owner_tasks].join("/");
+    if (sig !== lastSig) { lastSig = sig; renderTabs(); if (["approvals","contacts","owner"].includes(tab)) renderPane(true); }
+    if (["agent", "feed", "flows"].includes(tab) || (tab === "contacts" && openContact)) renderPane(true);
+    const n = r.pending_approvals + r.waiting_contacts + r.open_questions; $("#moreBtn").innerHTML = "📋<br>Suivi" + (n ? ` <span class="badge">${n}</span>` : "");
   } catch (e) { console.error(e); }
 }
 
 function renderTabs() {
-  const b = {approvals: S.pending_approvals, notifs: S.unread_notifications, contacts: S.waiting_contacts};
+  const b = {approvals: S.pending_approvals, notifs: S.unread_notifications, contacts: S.waiting_contacts,
+    owner: (S.open_questions || 0) + (S.open_owner_tasks || 0)};
   $("#tabs").innerHTML = Object.entries(TABS).map(([k, v]) => `<button class="${tab===k?"sel":""}" data-t="${k}">${v}${b[k] ? ` <span class="badge">${b[k]}</span>` : ""}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(x => x.onclick = () => { tab = x.dataset.t; openContact = null; renderTabs(); renderPane(); });
 }
@@ -259,15 +262,69 @@ async function renderPane(soft) {
         `<h4>Captures, pubs et vidéos</h4><div class="grid">${v.media.map(m => m.type === "video"
           ? `<video src="${wpath(m.path)}#t=1" controls playsinline preload="metadata" title="${esc(m.path)}"></video>`
           : `<img src="${wpath(m.path)}" loading="lazy" title="${esc(m.path)}" alt="">`).join("") || "<p class=muted>Rien encore.</p>"}</div>`;
-    } else if (tab === "sales") {
+    } else if (tab === "owner") {
+      const d = await api("/api/owner");
+      if (soft && pane.querySelector("input:focus, textarea:focus")) return;
+      const openQ = d.questions.filter(q => !q.answer), doneQ = d.questions.filter(q => q.answer);
+      const todo = d.tasks.filter(t => !t.done), done = d.tasks.filter(t => t.done);
+      pane.innerHTML = `<p class="muted">Ce que l'équipe attend de toi. Clara regroupe les questions et prépare tes tâches pas à pas.</p>
+        <h4>❓ Questions (${openQ.length})</h4>` + (openQ.map(q => `<div class="card pending"><b>${esc(q.question)}</b>
+          ${q.context ? `<div class="muted">${esc(q.context)}</div>` : ""}<div class="muted">de ${q.agent} · ${time(q.ts)}</div>
+          <div style="margin-top:6px">${q.options.map(o => `<button onclick='answerQ(${q.id}, ${JSON.stringify(o).replace(/'/g, "&#39;")})'>${esc(o)}</button> `).join("")}</div>
+          <div class="send" style="display:flex;gap:6px;margin-top:6px"><input id="qa${q.id}" placeholder="Ta réponse…" style="flex:1"><button class="primary" onclick="answerQ(${q.id})">Répondre</button></div></div>`).join("") || "<p class=muted>Aucune question.</p>") +
+        `<h4>📝 À faire (${todo.length})</h4>` + (todo.map(t => `<div class="card ${t.priority === "haute" ? "pending" : ""}">
+          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" onchange="doneTask(${t.id}, this.checked)" style="margin-top:4px">
+          <div><b>${esc(t.title)}</b> <span class="tag">${esc(t.priority)}</span><div class="md">${md(t.steps)}</div><div class="muted">par ${t.agent} · ${time(t.ts)}</div></div></label></div>`).join("") || "<p class=muted>Rien à faire pour l'instant 🎉</p>") +
+        (done.length ? `<details class="card"><summary>Tâches faites (${done.length})</summary>${done.map(t => `<div class="act">✔️ ${esc(t.title)}</div>`).join("")}</details>` : "") +
+        (doneQ.length ? `<details class="card"><summary>Questions répondues (${doneQ.length})</summary>${doneQ.map(q => `<div class="act">${esc(q.question)}<br><b>→ ${esc(q.answer)}</b></div>`).join("")}</details>` : "");
+    } else if (tab === "flows") {
+      const jobs = await api("/api/jobs");
+      pane.innerHTML = `<p class="muted">⛓️ Séquentiel : chaque agent reçoit le résultat du précédent. 🐙 Parallèle : plusieurs agents en même temps, puis synthèse.</p>` +
+        (jobs.map(j => `<details class="card" ${j.status === "en cours" ? "open" : ""}><summary><b>${j.mode === "séquence" ? "⛓️" : "🐙"} #${j.id} ${esc(j.title)}</b> <span class="tag">${esc(j.status)}</span> <span class="muted">par ${j.owner} · ${time(j.ts)}</span></summary>
+          ${j.tasks.map(t => `<div class="act ${t.status === "terminée" ? "fichier" : t.status === "en cours" ? "outil" : t.status === "échouée" ? "erreur" : ""}">
+            <b>${j.mode === "séquence" ? (t.idx + 1) + ". " : ""}${emojiOf(t.agent)} ${t.agent}</b> <span class="tag">${esc(t.status)}</span><br>${esc(t.instruction)}
+            ${t.output ? `<details><summary class="muted">résultat</summary><div class="md">${md(t.output)}</div></details>` : ""}</div>`).join("")}</details>`).join("") || "<p class=muted>Aucun workflow pour l'instant.</p>");
+    } else if (tab === "box") {
       if (soft) return;
-      const s = await api("/api/sales"), cap = S.capabilities;
-      pane.innerHTML = `<div class="card"><h4>💶 Argent réellement encaissé</h4>
-          ${s.stripe ? `<div class="big pos">${s.stripe.total_eur.toFixed(2)} €</div><div class="muted">${s.stripe.count} paiement(s) Stripe</div>
-            ${s.stripe.recent.map(x => `<div class="act"><span class="muted">${time(x.ts)}</span> <b>${x.amount.toFixed(2)} ${x.currency.toUpperCase()}</b> ${esc(x.description)} <span class="muted">${esc(x.email || "")}</span></div>`).join("")}`
-            : cap.stripe ? `<p class="muted">${esc(s.stripe_error || "Chargement…")}</p>` : `<p class="muted">Stripe pas encore connecté (STRIPE_SECRET_KEY dans .env).</p>`}</div>
-        <div class="card"><h4>💳 Liens de paiement</h4>${s.payment_links.map(l => `<div class="act">${esc(l.name)} — <b>${l.price_eur} €</b> <a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a><div class="muted">par ${l.agent} · validation #${l.approval_id}</div></div>`).join("") || "<p class=muted>Aucun.</p>"}</div>
-        <div class="card"><h4>🌍 Sites en ligne</h4>${s.deployments.map(d => `<div class="act">${esc(d.site)} <a class="lnk" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.url)}</a></div>`).join("") || "<p class=muted>Aucun.</p>"}</div>`;
+      const b = await api("/api/toolbox");
+      pane.innerHTML = `<div class="card"><h4>🛠️ Boîte à outils (par Forge)</h4>${b.tools.map(t => `<div class="act"><a href="${wpath(t.path)}" target="_blank"><b>${esc(t.name)}</b></a><br><span class="muted">${esc(t.desc)}</span></div>`).join("") || "<p class=muted>Vide pour l'instant.</p>"}</div>
+        <div class="card"><h4>📚 Compétences (par Sage)</h4>${b.skills.map(t => `<div class="act"><a href="${wpath(t.path)}" target="_blank"><b>${esc(t.name)}</b></a><br><span class="muted">${esc(t.desc)}</span></div>`).join("") || "<p class=muted>Aucune fiche pour l'instant.</p>"}</div>`;
+    } else if (tab === "money") {
+      if (soft) return;
+      const [b, s] = await Promise.all([api("/api/budget"), api("/api/sales")]), m = b.summary, p = b.profile || {};
+      const eur = v => v.toFixed(2).replace(".", ",") + " €";
+      const PF = [["age", "Âge", ["Moins de 18 ans", "18-25 ans", "26-40 ans", "Plus de 40 ans"]],
+        ["objectif", "Objectif principal", ["Gagner un revenu rapidement", "Faire grossir un capital sur plusieurs années", "Apprendre sans prendre de risque"]],
+        ["horizon", "Horizon", ["Moins d'1 an", "1 à 5 ans", "Plus de 5 ans"]],
+        ["risque", "Si tu perdais 30 % d'un placement", ["Je vends tout, je ne supporte pas", "J'attends que ça remonte", "J'en rachète"]],
+        ["experience", "Expérience en bourse/crypto", ["Aucune", "Un peu", "Régulière"]],
+        ["epargne_mensuelle", "Combien peux-tu ajouter chaque mois ?", ["0 €", "10-30 €", "30-100 €", "Plus de 100 €"]],
+        ["comptes", "Comptes déjà ouverts", ["Aucun", "Livret A", "PEA / compte-titres", "Plateforme crypto"]]];
+      pane.innerHTML = `<div class="card"><h4>💶 Ton argent</h4>
+          <div class="big ${m.remaining_eur >= m.initial_eur ? "pos" : ""}">${eur(m.remaining_eur)}</div><div class="muted">restants sur ${eur(m.initial_eur)} de départ</div>
+          <table style="margin-top:8px"><tr><td>🤖 IA dépensée</td><td>${eur(m.api_spent_eur)} / ${eur(m.api_budget_eur)} (aujourd'hui ${eur(m.api_today_eur)} / ${eur(m.api_daily_cap_eur)})</td></tr>
+          <tr><td>🧾 Autres dépenses</td><td>${eur(m.expenses_eur)}</td></tr><tr><td>💶 Revenus</td><td class="pos">${eur(m.revenues_eur)}${m.stripe_eur ? ` (dont Stripe ${eur(m.stripe_eur)})` : ""}</td></tr>
+          <tr><td>🛒 Dispo pour dépenser (hors IA)</td><td>${eur(m.free_to_spend_eur)}</td></tr></table>
+          <div class="score"><i style="width:${Math.min(100, 100 * m.api_spent_eur / Math.max(m.api_budget_eur, 0.01))}%;background:var(--accent)"></i></div>
+          <details style="margin-top:6px"><summary>Régler le budget</summary>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;align-items:center">
+            <span>Budget total (€)</span><input id="bi" type="number" min="0" value="${m.initial_eur}">
+            <span>Dont IA (€)</span><input id="ba" type="number" min="0" value="${m.api_budget_eur}">
+            <span>IA étalée sur (jours)</span><input id="bd" type="number" min="1" value="${m.api_days}"></div>
+            <button class="primary" style="margin-top:6px" onclick="saveBudget()">Enregistrer</button></details></div>
+        <div class="card"><h4>📈 Ta stratégie d'investissement</h4>${b.strategy ? `<div class="md">${md(b.strategy)}</div>${b.strategy_ts ? `<div class="muted">mise à jour par Wolf le ${time(b.strategy_ts)}</div>` : ""}` : `<p class="muted">Remplis ton profil ci-dessous : Wolf rédigera ta stratégie personnalisée.</p>`}</div>
+        <details class="card" ${Object.keys(p).length ? "" : "open"}><summary><b>🧾 Ton profil investisseur</b> ${Object.keys(p).length ? '<span class="tag">rempli</span>' : '<span class="badge">à remplir</span>'}</summary>
+          ${PF.map(([k, label, opts]) => `<div style="margin-top:8px"><div>${label}</div><select id="pf_${k}" style="width:100%"><option value="">—</option>${opts.map(o => `<option ${p[k] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`).join("")}
+          <div style="margin-top:8px"><div>Autre chose à savoir (projets, contraintes…)</div><textarea id="pf_notes" rows="2" style="width:100%">${esc(p.notes || "")}</textarea></div>
+          <button class="primary" style="margin-top:8px" onclick="saveProfile()">Enregistrer et demander ma stratégie à Wolf</button></details>
+        <div class="card"><h4>🧾 Dépenses et revenus</h4>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><select id="lk"><option>dépense</option><option>revenu</option></select><input id="la" type="number" step="0.01" placeholder="€" style="width:80px"><input id="ll" placeholder="ex. nom de domaine" style="flex:1"><button onclick="addLedger()">Ajouter</button></div>
+          ${b.ledger.map(l => `<div class="act"><span class="muted">${time(l.ts)}</span> <b class="${l.kind === "revenu" ? "pos" : "neg"}">${l.kind === "revenu" ? "+" : "−"}${eur(l.amount_eur)}</b> ${esc(l.label)} <span class="muted">${esc(l.source)}</span>${l.source === "Patron" ? ` <a href="#" onclick="delLedger(${l.id});return false">✕</a>` : ""}</div>`).join("") || "<p class=muted>Rien pour l'instant.</p>"}</div>
+        <div class="card"><h4>💳 Ventes & liens de paiement</h4>
+          ${s.stripe ? `<div><b class="pos">${eur(s.stripe.total_eur)}</b> encaissés (${s.stripe.count} paiements Stripe)</div>${s.stripe.recent.map(x => `<div class="act"><span class="muted">${time(x.ts)}</span> <b>${x.amount.toFixed(2)} ${x.currency.toUpperCase()}</b> ${esc(x.description)} <span class="muted">${esc(x.email || "")}</span></div>`).join("")}`
+            : `<p class="muted">${S.capabilities.stripe ? esc(s.stripe_error || "Chargement…") : "Stripe pas encore connecté (STRIPE_SECRET_KEY dans .env)."}</p>`}
+          ${s.payment_links.map(l => `<div class="act">${esc(l.name)} — <b>${l.price_eur} €</b> <a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>`).join("")}
+          ${s.deployments.map(d => `<div class="act">🌍 ${esc(d.site)} <a class="lnk" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.url)}</a></div>`).join("")}</div>`;
     } else if (tab === "ideas") {
       const ideas = await api("/api/ideas");
       pane.innerHTML = ideas.map(i => `<div class="card"><h4>#${i.id} ${esc(i.title)}</h4>
@@ -305,6 +362,25 @@ async function renderPane(soft) {
   } finally { busy = false; }
 }
 
+async function answerQ(id, value) {
+  const answer = value ?? ($("#qa" + id) || {}).value ?? "";
+  if (!answer.trim()) return;
+  await post("/api/questions/" + id, {answer}); await poll(); renderPane();
+}
+async function doneTask(id, done) { await post(`/api/owner_tasks/${id}?done=${done}`); await poll(); renderPane(); }
+async function saveBudget() {
+  const r = await post("/api/budget/settings", {initial_eur: +$("#bi").value, api_budget_eur: +$("#ba").value, api_days: +$("#bd").value});
+  if (!r.ok) alert("Erreur : " + (await r.text())); renderPane();
+}
+async function saveProfile() {
+  const p = {}; document.querySelectorAll("[id^=pf_]").forEach(el => { if (el.value.trim()) p[el.id.slice(3)] = el.value.trim(); });
+  await post("/api/profile", p); alert("Profil enregistré : Wolf prépare ta stratégie."); renderPane();
+}
+async function addLedger() {
+  const r = await post("/api/ledger", {kind: $("#lk").value, amount_eur: +$("#la").value, label: $("#ll").value});
+  if (!r.ok) alert("Montant et libellé obligatoires"); renderPane();
+}
+async function delLedger(id) { await fetch("/api/ledger/" + id, {method: "DELETE"}); renderPane(); }
 async function decide(id, approve) {
   const comment = ($("#c" + id) || {}).value || "";
   const r = await post("/api/approvals/" + id, {approve, comment});

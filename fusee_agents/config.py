@@ -12,9 +12,34 @@ def _bool(name: str, default: bool) -> bool:
     return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "oui")
 
 
-MODEL = os.getenv("FUSEE_MODEL", "claude-opus-5-5")
-EFFORT = os.getenv("FUSEE_EFFORT", "medium")
-DAILY_BUDGET_USD = float(os.getenv("DAILY_BUDGET_USD", "10"))
+# --- Modèles : un « plan » choisit le modèle et l'effort de chaque niveau d'agent -----------------
+# Niveaux : lead (orchestrateur), worker (agents qui produisent), coord (agents de coordination).
+PLANS = {
+    "max":       {"lead": ("claude-opus-5-5", "high"), "worker": ("claude-opus-5-5", "medium"),
+                  "coord": ("claude-opus-5-5", "low")},
+    "equilibre": {"lead": ("claude-opus-5-5", "medium"), "worker": ("claude-sonnet-5-5", "medium"),
+                  "coord": ("claude-haiku-5-5", "low")},
+    "eco":       {"lead": ("claude-sonnet-5-5", "medium"), "worker": ("claude-haiku-5-5", "medium"),
+                  "coord": ("claude-haiku-5-5", "low")},
+}
+PLAN = os.getenv("FUSEE_PLAN", "max").strip().lower()
+if PLAN not in PLANS:
+    PLAN = "max"
+FORCE_MODEL = os.getenv("FUSEE_MODEL", "").strip()     # si défini : ce modèle pour tous les agents
+FORCE_EFFORT = os.getenv("FUSEE_EFFORT", "").strip()   # si défini : cet effort pour tous les agents
+
+
+def model_for(tier: str) -> tuple[str, str]:
+    model, effort = PLANS[PLAN].get(tier, PLANS[PLAN]["worker"])
+    return FORCE_MODEL or model, FORCE_EFFORT or effort
+
+
+# --- Budget réel de Patron (modifiable ensuite dans l'appli, onglet Argent) ----------------------
+BUDGET_INITIAL_EUR = float(os.getenv("BUDGET_INITIAL_EUR", "100"))
+API_BUDGET_EUR = float(os.getenv("API_BUDGET_EUR", "50"))      # part du budget réservée à l'IA
+API_BUDGET_DAYS = float(os.getenv("API_BUDGET_DAYS", "30"))    # étalée sur ce nombre de jours
+USD_EUR = float(os.getenv("USD_EUR", "0.92"))                  # taux de conversion approximatif
+DAILY_BUDGET_USD = float(os.getenv("DAILY_BUDGET_USD", "0") or 0)  # plafond dur optionnel (0 = aucun)
 INTERVAL_MULTIPLIER = float(os.getenv("INTERVAL_MULTIPLIER", "1"))
 ALLOW_CODE_EXEC = _bool("ALLOW_CODE_EXEC", True)
 MAX_PARALLEL_AGENTS = int(os.getenv("MAX_PARALLEL_AGENTS", "2"))

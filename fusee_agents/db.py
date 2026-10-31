@@ -38,6 +38,16 @@ CREATE TABLE IF NOT EXISTS deployments (id INTEGER PRIMARY KEY, ts REAL, agent T
     url TEXT, approval_id INTEGER);
 CREATE TABLE IF NOT EXISTS payment_links (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, name TEXT, price_eur REAL,
     url TEXT, stripe_id TEXT, approval_id INTEGER);
+CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY, ts REAL, owner TEXT, mode TEXT, title TEXT,
+    status TEXT DEFAULT 'en cours', ended_ts REAL);
+CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY, job_id INTEGER, idx INTEGER, agent TEXT, instruction TEXT,
+    status TEXT DEFAULT 'en attente', output TEXT, started_ts REAL, ended_ts REAL);
+CREATE TABLE IF NOT EXISTS owner_questions (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, question TEXT, context TEXT,
+    options TEXT, answer TEXT, answered_ts REAL);
+CREATE TABLE IF NOT EXISTS owner_tasks (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, title TEXT, steps TEXT,
+    priority TEXT, done INTEGER DEFAULT 0, done_ts REAL);
+CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY, ts REAL, kind TEXT, amount_eur REAL, label TEXT,
+    source TEXT, approval_id INTEGER);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )
@@ -102,6 +112,10 @@ def add_cost(agent: str, usd: float) -> None:
     x("INSERT OR IGNORE INTO usage (day, cost_usd) VALUES (?, 0)", (today,))
     x("UPDATE usage SET cost_usd = cost_usd + ? WHERE day=?", (usd, today))
     x("UPDATE agent_state SET cost_usd = cost_usd + ? WHERE agent=?", (usd, agent))
+
+
+def cost_total() -> float:
+    return q("SELECT COALESCE(SUM(cost_usd), 0) s FROM usage")[0]["s"]
 
 
 def cost_today() -> float:

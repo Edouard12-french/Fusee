@@ -5,18 +5,17 @@ from datetime import datetime
 
 import anthropic
 
-from . import db, integrations, mailbox
+from . import budget, db, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
-from .config import (PUBLIC_URL, DAILY_BUDGET_USD, EFFORT, MAX_STEPS_PER_CYCLE, MODEL, PRICING,
-                     WEB_SEARCH_COST)
-from .tools import execute, tool_defs
+from .config import MAX_STEPS_PER_CYCLE, PRICING, PUBLIC_URL, WEB_SEARCH_COST, model_for
+from .tools import execute, skills, tool_defs, toolbox
 
 client = anthropic.AsyncAnthropic(max_retries=4)
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
-def _cost(usage) -> float:
-    pin, pout, pread, pwrite = PRICING.get(MODEL, PRICING["claude-opus-5-5"])
+def _cost(usage, model: str) -> float:
+    pin, pout, pread, pwrite = PRICING.get(model, PRICING["claude-opus-5-5"])
     c = (usage.input_tokens * pin + usage.output_tokens * pout
          + (usage.cache_read_input_tokens or 0) * pread
          + (usage.cache_creation_input_tokens or 0) * pwrite) / 1e6
@@ -45,7 +44,27 @@ def build_context(agent: Agent, reason: str) -> str:
     appr_txt = "\n".join(
         f"#{a['id']} [{a['status']}] ({a['kind']}, par {a['agent']}) {a['title']}"
         + (f" — commentaire de {OWNER} : {a['response']}" if a["response"] else "") for a in appr) or "(aucune)"
-    spent = db.cost_today()
+    b = budget.summary()
+    budget_txt = (f"Argent de {OWNER} : {b['remaining_eur']:.2f} € restants sur {b['initial_eur']:.0f} € de départ "
+                  f"(revenus : {b['revenues_eur']:.2f} €, dépenses validées : {b['expenses_eur']:.2f} €). "
+                  f"IA : {b['api_spent_eur']:.2f} € dépensés sur {b['api_budget_eur']:.0f} € prévus "
+                  f"(aujourd'hui {b['api_today_eur']:.2f} / {b['api_daily_cap_eur']:.2f} €). "
+                  f"Disponible pour de vraies dépenses (hors IA) : {b['free_to_spend_eur']:.2f} €.")
+    my_tasks = workflow.agent_context(agent.name)
+    tb = ", ".join(n for n, _ in toolbox()) or "(vide)"
+    sk = ", ".join(n for n, _ in skills()) or "(aucune)"
+    answers = db.q("SELECT id, agent, question, answer FROM owner_questions WHERE answered_ts > ? ORDER BY id DESC LIMIT 8",
+                   (time.time() - 3 * 86400,))
+    answers_txt = "\n".join(f"#{a['id']} ({a['agent']}) {a['question']} → {a['answer']}" for a in answers) or "(aucune)"
+    profile = ""
+    if agent.name in ("Wolf", "Atlas", "Clara"):
+        prof = budget.investor_profile()
+        profile = ("\n\n## Profil investisseur de " + OWNER + "\n"
+                   + ("\n".join(f"- {k} : {v}" for k, v in prof.items()) if prof else
+                      "(pas encore rempli — il peut le remplir dans l'onglet Argent, ou @Clara peut lui demander)"))
+        if agent.name == "Wolf":
+            strat = db.get_setting("strategy", "")
+            profile += "\n\n## Stratégie actuelle\n" + (strat[:4000] if strat else "(aucune — à rédiger)")
     caps = "\n".join([
         f"- Navigateur web (browse, captures d'URL) : {'AUTORISÉ' if db.get_setting('browser_enabled', '0') == '1' else f'non autorisé par {OWNER} pour le moment'}",
         f"- Mise en ligne de sites (publish_site) : {'disponible' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
@@ -63,13 +82,23 @@ def build_context(agent: Agent, reason: str) -> str:
     hot_txt += f"\n{waiting} contact(s) attendent une réponse." if waiting else ""
     return f"""# Nouveau cycle — {JOURS[datetime.now().weekday()]} {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Raison du réveil : {reason}
-Budget API du jour : {spent:.2f} $ utilisés sur {DAILY_BUDGET_USD:.2f} $ — sois efficace.
+
+## Budget
+{budget_txt}
 
 ## Consigne permanente de {OWNER}
 {owner_directive or "(aucune — objectif général : faire gagner de l'argent légalement)"}
 
+## Tes tâches en cours (workflows)
+{my_tasks or "(aucune)"}
+
 ## Capacités disponibles
 {caps}
+- Boîte à outils (run_tool) : {tb}
+- Fiches de savoir-faire (read_skill) : {sk}
+
+## Réponses récentes de {OWNER} à vos questions
+{answers_txt}{profile}
 
 ## Ta mémoire
 {db.get_memory(agent.name) or "(vide — premier cycle : présente-toi brièvement au groupe et établis ton plan)"}
@@ -93,13 +122,19 @@ Travaille maintenant sur ton rôle. Agis avec les outils, puis termine en mettan
 
 
 async def run_cycle(agent: Agent, reason: str, wake) -> None:
-    if db.cost_today() >= DAILY_BUDGET_USD:
-        db.set_state(agent.name, status="budget atteint")
+    if budget.api_exhausted():
+        db.set_state(agent.name, status="budget IA épuisé")
         return
+    if budget.today_exhausted():
+        db.set_state(agent.name, status="budget du jour atteint")
+        return
+    model, effort = model_for(agent.tier)
     db.set_state(agent.name, status="travaille", last_run=time.time())
     db.log(agent.name, "cycle", f"début du cycle ({reason[:200]})")
 
-    tools = tool_defs(agent.tools)
+    tools = tool_defs(agent.tools, model)
+    extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+             if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
     system = [{"type": "text", "text": system_prompt(agent), "cache_control": {"type": "ephemeral"}}]
     messages: list = [{"role": "user", "content": build_context(agent, reason)}]
     cycle_cost = 0.0
@@ -107,18 +142,17 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
     try:
         for _ in range(MAX_STEPS_PER_CYCLE):
             resp = await client.beta.messages.create(
-                model=MODEL,
+                model=model,
                 max_tokens=16000,
                 system=system,
                 tools=tools,
                 messages=messages,
                 thinking={"type": "adaptive", "display": "summarized"},
-                output_config={"effort": EFFORT},
+                output_config={"effort": effort},
                 cache_control={"type": "ephemeral"},
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
+                **extra,
             )
-            c = _cost(resp.usage)
+            c = _cost(resp.usage, getattr(resp, "model", None) or model)
             cycle_cost += c
             db.add_cost(agent.name, c)
             messages.append({"role": "assistant", "content": resp.content})
@@ -154,8 +188,8 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
                 messages.append({"role": "user", "content": "Ta réponse a été coupée. Termine plus brièvement."})
             else:
                 break
-            if db.cost_today() >= DAILY_BUDGET_USD:
-                db.log(agent.name, "budget", "budget du jour atteint, arrêt du cycle")
+            if budget.today_exhausted() or budget.api_exhausted():
+                db.log(agent.name, "budget", "budget IA atteint, arrêt du cycle")
                 break
         db.set_state(agent.name, status="en attente")
     except anthropic.AuthenticationError:
