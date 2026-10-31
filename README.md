@@ -128,6 +128,13 @@ Dans l'onglet 💰 Argent, remplis ton **profil investisseur** (âge, objectif, 
 Wolf rédige ta **stratégie personnalisée** et la tient à jour. Une première version est dans `STRATEGIE.md`.
 Wolf ne passe jamais d'ordre réel : tout investissement réel passe par ta validation, et c'est toi qui le fais.
 
+## Si tu as moins de 18 ans
+
+Mets `OWNER_MINOR=true` dans `.env` : les agents en tiennent compte (pas de bourse ni de crypto, démarches
+préparées avec un parent). La clé API Anthropic, Stripe et les plateformes de vente demandent d'avoir 18 ans :
+**un parent ouvre ces comptes à son nom** et reçoit l'argent. Avant de vendre régulièrement, vérifiez ensemble le
+cadre (statut, déclaration des revenus) sur service-public.fr.
+
 ## Ce qu'ils font seuls, et ce qui reste à toi
 
 ✅ **Seuls** : recherche sur internet, sites, applis, jeux, pubs, vidéos, code ; captures et liens pour te

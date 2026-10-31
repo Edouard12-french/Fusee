@@ -2,7 +2,7 @@
 import json
 
 from . import db
-from .config import API_BUDGET_DAYS, API_BUDGET_EUR, BUDGET_INITIAL_EUR, DAILY_BUDGET_USD, USD_EUR
+from .config import API_BUDGET_DAYS, API_BUDGET_EUR, BUDGET_INITIAL_EUR, DAILY_BUDGET_USD, ROOT, USD_EUR
 
 
 def settings() -> dict:
@@ -58,3 +58,11 @@ def investor_profile() -> dict:
         return json.loads(db.get_setting("investor_profile", "{}"))
     except ValueError:
         return {}
+
+
+def strategy() -> str:
+    """Stratégie d'investissement : celle tenue à jour par Wolf, sinon la première version (STRATEGIE.md)."""
+    s = db.get_setting("strategy", "")
+    if not s and (ROOT / "STRATEGIE.md").is_file():
+        s = (ROOT / "STRATEGIE.md").read_text(errors="replace")
+    return s

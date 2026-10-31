@@ -7,10 +7,19 @@ import anthropic
 
 from . import budget, db, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
-from .config import MAX_STEPS_PER_CYCLE, PRICING, PUBLIC_URL, WEB_SEARCH_COST, model_for
+from .config import MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, WEB_SEARCH_COST, model_for
 from .tools import execute, skills, tool_defs, toolbox
 
 client = anthropic.AsyncAnthropic(max_retries=4)
+MINOR_TXT = f"""
+
+## ⚠️ {OWNER} a moins de 18 ans
+- Tout compte (Stripe, plateformes de vente, pub, hébergement payant), paiement, encaissement, contrat ou devis
+  signé passe par un PARENT, titulaire du compte. Les tâches pour {OWNER} le prévoient (« avec un parent : … »).
+- Pas de bourse réelle, pas de crypto, pas de régie publicitaire à son nom. Pas de démarchage téléphonique.
+- Business adaptés : produits numériques, jeux, sites et outils, petits services en ligne — encaissés via le
+  compte d'un parent. Contenus et communication adaptés à son âge.
+- Ne collecte que le strict nécessaire sur les clients (RGPD) et ne donne jamais ses informations personnelles."""
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
@@ -63,8 +72,8 @@ def build_context(agent: Agent, reason: str) -> str:
                    + ("\n".join(f"- {k} : {v}" for k, v in prof.items()) if prof else
                       "(pas encore rempli — il peut le remplir dans l'onglet Argent, ou @Clara peut lui demander)"))
         if agent.name == "Wolf":
-            strat = db.get_setting("strategy", "")
-            profile += "\n\n## Stratégie actuelle\n" + (strat[:4000] if strat else "(aucune — à rédiger)")
+            strat = budget.strategy()
+            profile += "\n\n## Stratégie actuelle\n" + (strat[:6000] if strat else "(aucune — à rédiger)")
     caps = "\n".join([
         f"- Navigateur web (browse, captures d'URL) : {'AUTORISÉ' if db.get_setting('browser_enabled', '0') == '1' else f'non autorisé par {OWNER} pour le moment'}",
         f"- Mise en ligne de sites (publish_site) : {'disponible' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
@@ -84,7 +93,7 @@ def build_context(agent: Agent, reason: str) -> str:
 Raison du réveil : {reason}
 
 ## Budget
-{budget_txt}
+{budget_txt}{MINOR_TXT if OWNER_MINOR else ""}
 
 ## Consigne permanente de {OWNER}
 {owner_directive or "(aucune — objectif général : faire gagner de l'argent légalement)"}

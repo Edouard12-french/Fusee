@@ -122,10 +122,17 @@ nav#bottom{display:none}
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const time = ts => new Date(ts * 1000).toLocaleString("fr-FR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
-const md = s => esc(s).replace(/^### (.*)$/gm,"<h3>$1</h3>").replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>")
-  .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>")
-  .replace(/(https?:\/\/[^\s<)]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')
-  .replace(/(<\/h[123]>)\n+/g,"$1").replace(/\n/g,"<br>");
+const mdTable = block => {
+  const rows = block.trim().split("\n").filter(r => !/^\|[\s:|-]+\|$/.test(r.trim()));
+  return "<table>" + rows.map((r, i) => "<tr>" + r.trim().replace(/^\||\|$/g, "").split("|")
+    .map(c => i === 0 ? `<th>${c.trim()}</th>` : `<td>${c.trim()}</td>`).join("") + "</tr>").join("") + "</table>";
+};
+const md = s => esc(s).replace(/(?:^\|.*\|[ \t]*(?:\n|$))+/gm, mdTable)
+  .replace(/^### (.*)$/gm,"<h3>$1</h3>").replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>")
+  .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<i>$2</i>").replace(/`([^`]+)`/g,"<code>$1</code>")
+  .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+  .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>')
+  .replace(/^---$/gm,"<hr>").replace(/(<\/h[123]>|<\/table>|<hr>)\n+/g,"$1").replace(/\n/g,"<br>");
 const api = (u, opt) => fetch(u, opt).then(r => r.json());
 const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");

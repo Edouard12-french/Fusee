@@ -22,9 +22,9 @@ PLANS = {
     "eco":       {"lead": ("claude-sonnet-5-5", "medium"), "worker": ("claude-haiku-5-5", "medium"),
                   "coord": ("claude-haiku-5-5", "low")},
 }
-PLAN = os.getenv("FUSEE_PLAN", "max").strip().lower()
+PLAN = os.getenv("FUSEE_PLAN", "eco").strip().lower()
 if PLAN not in PLANS:
-    PLAN = "max"
+    PLAN = "eco"
 FORCE_MODEL = os.getenv("FUSEE_MODEL", "").strip()     # si défini : ce modèle pour tous les agents
 FORCE_EFFORT = os.getenv("FUSEE_EFFORT", "").strip()   # si défini : cet effort pour tous les agents
 
@@ -36,10 +36,12 @@ def model_for(tier: str) -> tuple[str, str]:
 
 # --- Budget réel de Patron (modifiable ensuite dans l'appli, onglet Argent) ----------------------
 BUDGET_INITIAL_EUR = float(os.getenv("BUDGET_INITIAL_EUR", "100"))
-API_BUDGET_EUR = float(os.getenv("API_BUDGET_EUR", "50"))      # part du budget réservée à l'IA
+API_BUDGET_EUR = float(os.getenv("API_BUDGET_EUR", "60"))      # part du budget réservée à l'IA
 API_BUDGET_DAYS = float(os.getenv("API_BUDGET_DAYS", "30"))    # étalée sur ce nombre de jours
 USD_EUR = float(os.getenv("USD_EUR", "0.92"))                  # taux de conversion approximatif
 DAILY_BUDGET_USD = float(os.getenv("DAILY_BUDGET_USD", "0") or 0)  # plafond dur optionnel (0 = aucun)
+# Patron a moins de 18 ans : comptes, paiements et contrats passent par un parent
+OWNER_MINOR = _bool("OWNER_MINOR", False)
 INTERVAL_MULTIPLIER = float(os.getenv("INTERVAL_MULTIPLIER", "1"))
 ALLOW_CODE_EXEC = _bool("ALLOW_CODE_EXEC", True)
 MAX_PARALLEL_AGENTS = int(os.getenv("MAX_PARALLEL_AGENTS", "2"))

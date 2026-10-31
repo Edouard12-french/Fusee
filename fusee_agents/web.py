@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import budget, db, integrations, mailbox, workflow
+from . import budget, db, integrations, mailbox
 from .agents import OWNER, TEAM
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
 from .notify import notify
@@ -462,9 +462,7 @@ async def budget_api():
             except Exception:  # noqa: BLE001
                 pass
         stripe_eur = (_sales_cache["data"] or {}).get("total_eur", 0.0)
-    strategy = db.get_setting("strategy", "")
-    if not strategy and (Path(__file__).parent.parent / "STRATEGIE.md").is_file():
-        strategy = (Path(__file__).parent.parent / "STRATEGIE.md").read_text()
+    strategy = budget.strategy()
     return {"summary": budget.summary(stripe_eur), "ledger": db.q("SELECT * FROM ledger ORDER BY id DESC LIMIT 100"),
             "profile": budget.investor_profile(), "strategy": strategy,
             "strategy_ts": float(db.get_setting("strategy_ts", "0") or 0), "usd_eur": USD_EUR}
