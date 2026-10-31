@@ -8,6 +8,7 @@ if not exist .env (
   exit /b 1
 )
 python -m pip install -q -r requirements.txt
+python -m playwright install chromium
 :loop
 python main.py
 echo Fusee s'est arretee - redemarrage dans 10 s ^(fermer la fenetre pour quitter^)

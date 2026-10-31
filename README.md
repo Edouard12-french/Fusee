@@ -1,132 +1,133 @@
-# 🚀 Fusée — une équipe d'agents IA qui travaille pour toi 24h/24
+# 🚀 Fusée — ton équipe d'agents IA qui travaille 24h/24
 
-Sept agents IA (Claude) avec chacun leur spécialité, qui discutent entre eux dans un **groupe façon WhatsApp**,
-cherchent sur internet, écrivent du code, créent des jeux et te préparent des produits à vendre.
-Tu suis tout depuis un **tableau de bord web** et tu peux leur écrire à tout moment.
+Huit agents IA (Claude) avec chacun leur métier. Ils discutent entre eux dans un **groupe façon WhatsApp**,
+cherchent sur internet, créent des **sites, des applis, des jeux, des pubs et des vidéos**, te les **montrent
+(captures, vidéos, liens)**, les **mettent en ligne et en vente quand tu valides**, puis **parlent avec les
+clients** intéressés et te disent **qui est intéressé, par quoi, et s'il vaut le coup pour le futur**.
 
-| Agent | Rôle | Cycle |
-|---|---|---|
-| 🧭 **Atlas** | Directeur : fixe les priorités, répartit le travail, t'écrit des rapports avec les « Actions pour Patron » | 60 min |
-| 📈 **Wolf** | Trader : suit les marchés, gère un **portefeuille simulé** (10 000 € fictifs) pour tester ses stratégies | 45 min |
-| 💻 **Neo** | Développeur : code des produits vendables (scripts, bots, templates SaaS…) et les teste | 40 min |
-| 🎮 **Pixel** | Créateur de jeux HTML5 originaux, jouables dans le navigateur (itch.io, portails web…) | 50 min |
-| 🔭 **Scout** | Veille : nouveautés IA, tendances, niches, opportunités, affiliation | 60 min |
-| 💰 **Mercure** | Ventes : où vendre, à quel prix, pages de vente, plan de lancement, conseils | 60 min |
-| 📬 **Iris** | Service client : lit les e-mails des clients et leur répond, en te notifiant à chaque fois | dès qu'un mail arrive |
+Tout se suit depuis **l'application Fusée**, installable sur ton téléphone et ton ordinateur.
 
-Chaque agent se réveille à son rythme **ou dès qu'on le mentionne** (`@Neo`, `@Tous`…).
+| Agent | Métier |
+|---|---|
+| 🧭 **Atlas** | Directeur : priorités, répartition du travail, rapports pour toi (ventes, prospects, actions à faire) |
+| 💻 **Neo** | Développeur : sites, applis web, logiciels vendables ; les montre en captures puis les met en ligne |
+| 🎮 **Pixel** | Jeux originaux jouables dans le navigateur, avec captures et vidéos de gameplay |
+| 💰 **Mercure** | Ventes aux **particuliers** + **pubs** (visuels) et **vidéos** (TikTok/Reels/Shorts) |
+| 🏢 **Victor** | Ventes aux **entreprises** : offres B2B, pages pro, devis, plaquettes |
+| 📬 **Iris** | Relation clients : répond sur le **chat des sites** et par e-mail, évalue chaque prospect |
+| 🔭 **Scout** | Veille : tendances, nouveautés, niches, opportunités |
+| 📈 **Wolf** | Marchés : stratégies testées sur un **portefeuille simulé** avant tout argent réel |
+
+## Comment ça marche
+
+1. **Ils créent** : un agent a une idée (ou tu lui en donnes une), il la construit — site, appli, jeu,
+   page de vente, pub, vidéo — et te la **montre dans le groupe** avec captures d'écran, vidéo et liens.
+2. **Tu valides** : avant toute mise en ligne, vente, dépense ou investissement, il t'envoie une
+   **demande de validation** (avec les captures) → notification sur ton téléphone → **Accepter / Refuser**.
+3. **Ils lancent** : après ton accord, le site est **mis en ligne** (lien public) et un **lien de paiement**
+   est créé ; l'argent arrive sur **ton** compte Stripe. Les pubs et vidéos sont prêtes, c'est toi qui les postes.
+4. **Ils vendent** : les visiteurs parlent à Iris sur le chat du site. Tu vois **chaque conversation**,
+   et pour chaque personne : **particulier ou entreprise, ce qui l'intéresse, son ressenti 😍🙂😐🤔😠,
+   un score sur 100 et son potentiel pour le futur**. Les prospects chauds (≥ 70) te sont notifiés.
+   Tu peux aussi répondre toi-même à un client depuis l'appli.
 
 ## Installation
 
-```bash
-pip install -r requirements.txt
-cp .env.example .env      # puis mets ta clé ANTHROPIC_API_KEY dans .env
-python main.py
-```
+1. Installe [Python 3.11+](https://www.python.org/downloads/) (sur Windows, coche « Add Python to PATH »).
+2. Télécharge ce projet, puis dans le dossier : copie `.env.example` en `.env` et mets au minimum ta clé
+   `ANTHROPIC_API_KEY` (sur [platform.claude.com](https://platform.claude.com)) et un `DASHBOARD_PASSWORD`.
+3. Lance :
+   - **Windows** : double-clic sur `start.bat`
+   - **Mac / Linux** : `./start.sh`
 
-Ouvre ensuite **http://localhost:8000**.
+   Le script installe tout (y compris le navigateur des agents) et **ouvre l'application**.
+   Il redémarre tout seul en cas de plantage.
 
-## Les faire tourner 24h/24 sur ton ordinateur
+### 📲 Installer l'application
 
-Les agents ont besoin que l'ordinateur reste **allumé et connecté à internet** (ils font leurs recherches
-Google/web eux-mêmes).
+- **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
+- **Téléphone, même Wi-Fi** : ouvre `http://<IP-de-ton-ordi>:8000` puis Chrome (Android) → ⋮ → « Installer
+  l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ».
+- **Téléphone, hors de chez toi** : installe [Tailscale](https://tailscale.com) (gratuit) sur l'ordinateur et le
+  téléphone, puis ouvre `http://<nom-de-ton-ordi>:8000`.
 
-- **Windows** : double-clique sur `start.bat`. Désactive la mise en veille
-  (Paramètres → Système → Alimentation → Mise en veille : Jamais).
-- **Mac / Linux** : `./start.sh` (sur Mac, il empêche aussi la mise en veille).
-- **Serveur / VPS Linux** (le plus fiable, ~5 €/mois, tourne même ordi éteint) : voir `fusee.service`.
+### 24h/24
 
-Ces scripts relancent Fusée automatiquement s'il plante.
-Pour voir le tableau de bord depuis ton téléphone sur le même Wi-Fi : `http://<IP-de-ton-ordi>:8000`
-(mets un `DASHBOARD_PASSWORD` dans `.env`). Hors de chez toi : installe [Tailscale](https://tailscale.com)
-(gratuit) sur l'ordinateur et le téléphone, plutôt que d'ouvrir un port sur ta box.
+L'ordinateur doit rester **allumé et connecté**. Désactive la mise en veille (Windows : Paramètres → Système →
+Alimentation → Jamais ; sur Mac, `start.sh` l'empêche tout seul). Le plus fiable : un petit serveur (VPS,
+~5 €/mois) avec `fusee.service`.
 
-## Ils proposent, tu valides ✅
+## Brancher les fonctions (fichier `.env`, puis redémarrer)
 
-Les agents imaginent et préparent des business tout seuls (recherche, code, jeux, pages de vente, stratégie
-d'investissement…). Mais **avant de lancer quoi que ce soit** (publier, vendre, investir, dépenser), ils
-t'envoient une **demande de validation** : quoi, pourquoi, combien ça coûte, ce que ça peut rapporter,
-les risques et les étapes exactes. Tu reçois une notification sur ton téléphone et tu cliques
-**Accepter** ou **Refuser** (avec un commentaire si tu veux) dans l'onglet ✅ Validations.
-L'agent est réveillé avec ta réponse et continue.
+L'onglet **⚙️ Réglages** de l'appli montre ce qui est branché.
 
-## Notifications sur ton téléphone 📱
+| Fonction | Ce qu'il faut | Coût |
+|---|---|---|
+| 📱 Notifications téléphone | App **ntfy** + un nom secret dans `NTFY_TOPIC` | gratuit |
+| 🌍 Mise en ligne des sites | Compte [Netlify](https://netlify.com) + `NETLIFY_TOKEN` | gratuit pour démarrer |
+| 💳 Paiements | Compte [Stripe](https://stripe.com) + `STRIPE_SECRET_KEY` (essaie d'abord avec une clé `sk_test_`) | commission Stripe par vente |
+| 💬 Chat en direct sur les sites | Une adresse publique pour Fusée dans `PUBLIC_URL` (ci-dessous) | gratuit |
+| ✉️ E-mails clients | Une adresse dédiée (ex. Gmail + mot de passe d'application) : `IMAP_HOST`, `SMTP_HOST`, `EMAIL_USER`, `EMAIL_PASSWORD` | gratuit |
+| 🌐 Navigateur des agents | Bouton **🌐 Navigateur** dans l'appli (tu l'autorises ou le bloques quand tu veux) | — |
 
-1. Installe l'app gratuite **ntfy** (Android / iPhone).
-2. Abonne-toi à un sujet au nom secret (ex. `fusee-edouard-8f3k29x`).
-3. Mets ce nom dans `.env` : `NTFY_TOPIC=fusee-edouard-8f3k29x`.
-4. Onglet 🔔 Notifs → « Envoyer une notification de test ».
+**Adresse publique pour le chat** : les sites en ligne doivent pouvoir joindre Fusée sur ton ordinateur.
+Le plus simple : [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) (`tailscale funnel 8000`) qui donne
+une adresse fixe du type `https://ton-ordi.tailXXXX.ts.net` → mets-la dans `PUBLIC_URL`. Seul le chat
+(`/public/...`) est accessible sans mot de passe ; le reste de l'appli est protégé par `DASHBOARD_PASSWORD`.
+Sans adresse publique, les sites affichent un contact par e-mail à la place.
 
-Tu es notifié pour : chaque demande de validation, chaque rapport, chaque réponse envoyée à un client,
-et les alertes importantes des agents.
+## L'application
 
-## Service client 📬 (quand un business commence à marcher)
+- **🤖 Équipe** : chaque agent, en direct : statut, ce qu'il fait, coût. Clique pour voir tout ce qu'il a fait et son plan.
+- **💬 Groupe** : leur discussion, avec les captures, vidéos et liens. Écris-leur (`@Neo`, `@Tous`…).
+- **📋 Suivi** :
+  - ✅ **Validations** : leurs demandes (avec captures) → Accepter / Refuser
+  - 👥 **Prospects** : chaque personne, son intérêt, son ressenti, son score, la conversation complète, et tu peux lui répondre
+  - 🖼️ **Vitrine** : aperçu de tous les sites, applis et jeux (local et en ligne), galerie des pubs et vidéos
+  - 💶 **Ventes** : argent réellement encaissé (Stripe), liens de paiement, sites en ligne
+  - 💡 Idées · 📄 Rapports · 📈 Bourse (simulée) · 🔔 Notifs · ⚙️ Réglages · ⚡ Tout
 
-Crée une adresse e-mail dédiée au business (ex. Gmail + « mot de passe d'application »), mets-la dans `.env`
-(`IMAP_HOST`, `SMTP_HOST`, `EMAIL_USER`, `EMAIL_PASSWORD`). Iris lit les nouveaux e-mails toutes les 2 min
-et répond aux clients. Dans l'onglet 📬 Clients, tu choisis le mode :
-- **Réponse automatique + notification** : Iris répond tout de suite, tu reçois la question et la réponse sur ton téléphone ;
-- **Je valide chaque réponse** : rien ne part sans ton clic.
+## Coûts
 
-Pour les remboursements, litiges ou cas délicats, Iris ne tranche jamais seule : elle te prévient.
+Chaque cycle d'agent est un appel payant à l'API Claude. Le plafond **`DAILY_BUDGET_USD`** (10 $ par défaut)
+arrête tout dès qu'il est atteint ; la dépense s'affiche en haut de l'appli. Pour dépenser moins :
+`INTERVAL_MULTIPLIER=3`, `FUSEE_EFFORT=low` ou `FUSEE_MODEL=claude-sonnet-5-5`.
+Le chat public est limité (20 messages/h par visiteur, 400/h au total) pour éviter qu'un abus ne vide le budget.
 
-## Le tableau de bord
+## Ce qu'ils font seuls, et ce qui reste à toi
 
-- **Colonne de gauche** : chaque agent, son statut en direct, ce qu'il fait, son nombre de cycles et son coût.
-- **Centre** : le groupe de discussion. Écris-leur ; sans mention, c'est Atlas qui répond.
-- **Onglets à droite** :
-  - 🤖 **Agent** : le journal détaillé de l'agent sélectionné (recherches web, fichiers écrits, réflexions) + sa mémoire/plan, et un bouton pour lancer un cycle tout de suite
-  - 💡 **Idées** : le tableau des idées de business avec revenu estimé et statut
-  - 📄 **Rapports** : les rapports d'Atlas pour toi (à lire le matin ☕)
-  - 📈 **Portefeuille** : le paper trading de Wolf (P&L, ordres, justifications)
-  - 📁 **Fichiers** : tout ce qu'ils ont produit (code, jeux jouables, fiches de vente)
-  - ⚡ **Tout** : le flux d'activité de toute l'équipe
-- **🎯 Consigne** : une consigne permanente lue par tous (ex. « priorité aux jeux et aux outils pour freelances »).
-- **⏸️ Pause** : arrête tous les agents.
+✅ **Seuls** : recherche sur internet, sites, applis, jeux, pubs, vidéos, code ; captures et liens pour te
+montrer ; réponses aux clients (avec notification, ou après ta validation si tu choisis ce mode).
 
-## Coûts — à lire
+✅ **Après ton accord** : mise en ligne des sites, création des liens de paiement.
 
-Chaque cycle d'agent est un appel payant à l'API Claude (en général quelques centimes à quelques dizaines
-de centimes selon le travail fait). Avec les réglages par défaut, l'équipe peut faire ~150 cycles/jour.
-Le garde-fou **`DAILY_BUDGET_USD`** (10 $ par défaut) arrête tout dès que le plafond du jour est atteint.
-Pour dépenser moins : `INTERVAL_MULTIPLIER=3` (cycles 3× plus espacés), `FUSEE_EFFORT=low`, ou un modèle
-moins cher (`FUSEE_MODEL=claude-sonnet-5-5`). Le coût s'affiche en direct en haut du tableau de bord.
+👤 **Toi** : créer les comptes (Netlify, Stripe, réseaux sociaux…), poster les pubs/vidéos sur les réseaux et
+payer d'éventuelles campagnes, investir de l'argent réel. Les agents te préparent tout, prêt à copier-coller.
+C'est voulu : pendant que tu dors, ni une erreur de l'IA ni un site piégé ne peuvent dépenser ton argent,
+publier en ton nom ou enfreindre les règles des plateformes.
 
-## Ce qu'ils peuvent et ne peuvent pas faire (volontairement)
-
-✅ Chercher et lire sur internet, écrire et exécuter du code Python dans `workspace/`, créer des jeux,
-préparer des produits et des pages de vente, analyser les marchés, se coordonner, t'écrire des rapports.
-
-❌ Ils **ne touchent pas à ton argent** : pas d'ordre de bourse réel, pas d'achat, pas de création de compte,
-pas de publication en ton nom. Quand quelque chose demande ça (mettre un jeu en vente sur itch.io, ouvrir un
-compte Gumroad, investir), ils te demandent ton accord et te donnent les étapes : **c'est toi qui valides
-et cliques**. Seule exception, que tu actives toi-même : les réponses aux e-mails clients. Ça évite qu'une erreur ou une page web piégée vide ton compte pendant que tu dors.
-
-⚠️ **Aucun revenu n'est garanti.** Les agents produisent des produits, des idées et des analyses ; l'argent
-vient quand tu publies et vends ce qui est bon. Les recommandations de trading ne sont pas des conseils
-financiers : ne mets en réel qu'une stratégie qui a fait ses preuves en simulation, et que de l'argent que tu
-peux perdre. Si tu vends, pense à déclarer tes revenus (ex. micro-entreprise en France).
-
-## Personnaliser
-
-- Ajouter / modifier un agent : `fusee_agents/agents.py` (nom, rôle, outils, rythme).
-- Ajouter un outil : `fusee_agents/tools.py`.
-- `ALLOW_CODE_EXEC=false` dans `.env` empêche les agents d'exécuter du code (ils peuvent toujours en écrire).
+⚠️ **Aucun revenu n'est garanti** : les agents produisent et vendent, le marché décide. Les vidéos sont des
+animations générées par le code (texte, couleurs, captures du produit), pas des vidéos filmées. Les conseils
+de bourse ne sont pas des conseils financiers. Dès que tu vends, il te faut un statut (ex. micro-entreprise),
+des mentions légales/CGV sur les sites et la déclaration de tes revenus.
 
 ## Structure
 
 ```
-main.py                     lancement (serveur web + agents)
-start.sh / start.bat        lancement 24h/24 avec redémarrage auto
-fusee.service               service pour serveur Linux
+main.py                        lancement (serveur + agents), ouvre l'appli
+start.sh / start.bat           lancement 24h/24 avec installation et redémarrage auto
+fusee.service                  service pour serveur Linux
 fusee_agents/
-  agents.py                 l'équipe et leurs instructions
-  runner.py                 un cycle de travail d'un agent (boucle Claude + outils)
-  scheduler.py              rythme 24h/24, réveil sur mention, limite de parallélisme
-  tools.py                  outils : chat, mémoire, fichiers, Python, idées, rapports, validations, paper trading, clients
-  notify.py                 notifications téléphone (ntfy)
-  mailbox.py                e-mails clients (IMAP/SMTP)
-  db.py                     base SQLite (data/fusee.db)
-  web.py, static/index.html tableau de bord
-workspace/                  tout ce que les agents produisent
+  agents.py                    l'équipe et leurs instructions
+  runner.py                    un cycle de travail d'un agent (boucle Claude + outils)
+  scheduler.py                 rythme 24h/24, réveil sur mention / message client
+  tools.py                     tous les outils des agents
+  browser.py                   navigateur : captures, navigation, vidéos
+  integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)
+  mailbox.py                   e-mails clients (IMAP/SMTP)
+  notify.py                    notifications téléphone (ntfy)
+  db.py                        base SQLite (data/fusee.db)
+  web.py                       serveur de l'appli + chat public des sites
+  static/                      l'application (PWA), le widget de chat, les icônes
+workspace/                     tout ce que les agents produisent (sites/, jeux/, pubs/, captures/…)
 ```

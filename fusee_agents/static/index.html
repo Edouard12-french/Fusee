@@ -2,21 +2,31 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fusée — QG des agents</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fusée</title>
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<meta name="theme-color" content="#12151d">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-:root{--bg:#0b0d12;--panel:#12151d;--panel2:#181c26;--line:#262b38;--text:#e7e9ee;--muted:#8b93a7;--accent:#7c5cff;--me:#1f3d2b}
+:root{--bg:#0b0d12;--panel:#12151d;--panel2:#181c26;--line:#262b38;--text:#e7e9ee;--muted:#8b93a7;--accent:#7c5cff;--me:#1f3d2b;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;height:100vh;display:flex;flex-direction:column}
-header{display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
-header h1{font-size:18px;margin:0}
-.pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);font-size:12px}
-.bar{width:120px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;gap:8px;align-items:center;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:18px;margin:0 6px 0 0;display:flex;align-items:center;gap:8px}
+header h1 img{width:26px;height:26px;border-radius:7px}
+.pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);font-size:12px;white-space:nowrap}
+.bar{width:90px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
 .bar i{display:block;height:100%;background:var(--accent)}
 button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit}
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent)}
-main{flex:1;display:grid;grid-template-columns:250px 1fr 420px;min-height:0}
+button.on{background:#14532d;border-color:var(--ok)}
+a{color:#9db4ff}
+main{flex:1;display:grid;grid-template-columns:250px 1fr 460px;min-height:0}
 aside,section{min-height:0;overflow:auto}
 #agents{border-right:1px solid var(--line);padding:10px}
 .agent{display:flex;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent;margin-bottom:6px}
@@ -24,65 +34,117 @@ aside,section{min-height:0;overflow:auto}
 .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:20px;flex:none}
 .agent b{display:block}.agent small{color:var(--muted);display:block;font-size:12px}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:#555}
-.dot.on{background:#22c55e;box-shadow:0 0 8px #22c55e}.dot.err{background:#ef4444}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}.dot.err{background:var(--bad)}
 #chat{display:flex;flex-direction:column;background:#0e1118}
 #msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-.msg{max-width:78%;background:var(--panel2);border-radius:12px;padding:8px 12px;border:1px solid var(--line);white-space:pre-wrap;word-wrap:break-word}
+.msg{max-width:80%;background:var(--panel2);border-radius:12px;padding:8px 12px;border:1px solid var(--line);white-space:pre-wrap;word-wrap:break-word}
 .msg .who{font-weight:600;font-size:12px;margin-bottom:2px}
 .msg .t{color:var(--muted);font-size:11px;text-align:right}
 .msg.me{align-self:flex-end;background:var(--me)}
-form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:var(--panel)}
-textarea,input{flex:1;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;resize:none}
+.att{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;white-space:normal}
+.att img{max-width:220px;max-height:220px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
+.att video{max-width:260px;max-height:300px;border-radius:8px;background:#000}
+.lnk{display:inline-block;background:#1e2540;border:1px solid #33407a;border-radius:8px;padding:3px 9px;font-size:12px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+form.send{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:var(--panel)}
+textarea,input,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+textarea{flex:1;resize:none}
 #side{border-left:1px solid var(--line);display:flex;flex-direction:column}
 .tabs{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.tabs button{padding:5px 10px;font-size:13px}.tabs button.on{background:var(--accent);border-color:var(--accent)}
+.tabs button{padding:5px 9px;font-size:13px}.tabs button.sel{background:var(--accent);border-color:var(--accent)}
 #pane{padding:12px;overflow:auto;flex:1}
 .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
 .card h4{margin:0 0 4px}.muted{color:var(--muted);font-size:12px}
+.card.pending{border-color:var(--warn)}.card.click{cursor:pointer}.card.click:hover{border-color:var(--accent)}
 .act{border-left:3px solid var(--line);padding:4px 8px;margin-bottom:6px;font-size:13px}
-.act.web{border-color:#0ea5e9}.act.outil{border-color:#f59e0b}.act.fichier{border-color:#22c55e}.act.erreur{border-color:#ef4444}.act.réflexion{border-color:#7c5cff}
+.act.web{border-color:#0ea5e9}.act.outil{border-color:var(--warn)}.act.fichier,.act.capture,.act.vidéo{border-color:var(--ok)}.act.erreur{border-color:var(--bad)}.act.réflexion{border-color:var(--accent)}
 details summary{cursor:pointer}
 pre{white-space:pre-wrap;word-wrap:break-word;background:#0b0d12;padding:8px;border-radius:8px;font-size:12px;max-height:400px;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:4px;border-bottom:1px solid var(--line);text-align:left}
-.pos{color:#22c55e}.neg{color:#ef4444}
-.tag{font-size:11px;padding:2px 8px;border-radius:999px;background:#262b38}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;background:#262b38;display:inline-block;margin:1px 0}
+.badge{background:var(--bad);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;margin-left:2px}
 .md h1,.md h2,.md h3{margin:.6em 0 .3em}
-.badge{background:#ef4444;color:#fff;border-radius:999px;padding:0 6px;font-size:11px;margin-left:2px}
-.card.pending{border-color:#f59e0b}
-select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px;font:inherit;margin-top:6px}
-@media (max-width:1000px){main{grid-template-columns:1fr;grid-auto-rows:auto}#agents{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}.agent{min-width:200px}#chat{height:60vh}#side{border-left:0;min-height:60vh}}
+.score{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:4px 0}
+.score i{display:block;height:100%}
+.thread{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.bub{max-width:85%;padding:7px 10px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word;font-size:13px}
+.bub.in{align-self:flex-start;background:#232838}.bub.out{align-self:flex-end;background:#2b2160}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.grid img,.grid video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
+.preview{width:100%;height:220px;border:1px solid var(--line);border-radius:8px;overflow:hidden;position:relative;background:#fff;margin:6px 0}
+.preview iframe{width:250%;height:250%;transform:scale(.4);transform-origin:0 0;border:0;pointer-events:none}
+.big{font-size:26px;font-weight:700}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;place-items:center;z-index:50;cursor:zoom-out;padding:20px}
+#lightbox.open{display:grid}#lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+nav#bottom{display:none}
+@media (max-width:1000px){
+  main{display:block;position:relative}
+  #agents,#chat,#side{position:absolute;inset:0;display:none}
+  body.v-team #agents{display:block}body.v-chat #chat{display:flex}body.v-more #side{display:flex}
+  #agents{border:0}#side{border:0}
+  nav#bottom{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom)}
+  nav#bottom button{flex:1;border:0;border-radius:0;background:none;padding:10px 0;font-size:12px;color:var(--muted)}
+  nav#bottom button.sel{color:var(--text);background:var(--panel2)}
+  .msg{max-width:92%}.pill.hide-m{display:none}.lbl{display:none}header .bar{display:none}header{flex-wrap:nowrap;gap:6px;padding:8px 10px}header h1{font-size:16px}header button{padding:6px 9px}
+  .att img{max-width:150px}.att video{max-width:170px;max-height:240px}
+}
 </style>
 </head>
-<body>
+<body class="v-chat">
 <header>
-  <h1>🚀 Fusée</h1>
-  <span class="pill" id="model"></span>
-  <span class="pill">Budget du jour : <span id="cost"></span><span class="bar"><i id="costbar"></i></span></span>
+  <h1><img src="/icon-192.png" alt="">Fusée</h1>
+  <span class="pill hide-m" id="model"></span>
+  <span class="pill">💸 <span id="cost"></span><span class="bar"><i id="costbar"></i></span></span>
   <span style="flex:1"></span>
-  <button id="directiveBtn" title="Consigne permanente lue par tous les agents">🎯 Consigne</button>
+  <button id="installBtn" hidden>📲<span class="lbl"> Installer l'app</span></button>
+  <button id="browserBtn" title="Autoriser les agents à naviguer sur internet avec un vrai navigateur"></button>
+  <button id="directiveBtn" title="Consigne permanente lue par tous les agents">🎯<span class="lbl"> Consigne</span></button>
   <button id="pauseBtn"></button>
 </header>
 <main>
   <aside id="agents"></aside>
   <section id="chat">
     <div id="msgs"></div>
-    <form id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo, @Wolf… pour cibler un agent, @Tous pour tout le monde)"></textarea><button class="primary">Envoyer</button></form>
+    <form class="send" id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo, @Iris… pour cibler un agent, @Tous pour tout le monde)"></textarea><button class="primary">Envoyer</button></form>
   </section>
   <aside id="side">
     <div class="tabs" id="tabs"></div>
     <div id="pane"></div>
   </aside>
 </main>
+<nav id="bottom">
+  <button data-v="team">🤖<br>Équipe</button>
+  <button data-v="chat">💬<br>Groupe</button>
+  <button data-v="more" id="moreBtn">📋<br>Suivi</button>
+</nav>
+<div id="lightbox"><img alt=""></div>
 <script>
 const $ = s => document.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const time = ts => new Date(ts * 1000).toLocaleString("fr-FR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 const md = s => esc(s).replace(/^### (.*)$/gm,"<h3>$1</h3>").replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>")
-  .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>").replace(/(<\/h[123]>)\n+/g,"$1").replace(/\n/g,"<br>");
-let lastSig = "", S = {agents:[]}, lastId = 0, selected = null, tab = "agent";
-const TABS = {agent:"🤖 Agent", approvals:"✅ Validations", ideas:"💡 Idées", inbox:"📬 Clients", notifs:"🔔 Notifs", reports:"📄 Rapports", pf:"📈 Portefeuille", files:"📁 Fichiers", feed:"⚡ Tout"};
+  .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>")
+  .replace(/(https?:\/\/[^\s<)]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')
+  .replace(/(<\/h[123]>)\n+/g,"$1").replace(/\n/g,"<br>");
+const api = (u, opt) => fetch(u, opt).then(r => r.json());
+const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
+const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
+let S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
+const TABS = {agent:"🤖 Agent", approvals:"✅ Validations", contacts:"👥 Prospects", vitrine:"🖼️ Vitrine", sales:"💶 Ventes",
+  ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse", notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
 const emojiOf = n => (S.agents.find(a => a.name === n) || {}).emoji || "👤";
+const SENT = {"très positif":"😍", "positif":"🙂", "neutre":"😐", "hésitant":"🤔", "négatif":"😠", "inconnu":"❔"};
+
+function attHtml(att) {
+  if (!att) return "";
+  const f = (att.files || []).map(p => /\.(mp4|webm)$/i.test(p)
+    ? `<video src="${wpath(p)}#t=1" controls playsinline preload="metadata"></video>`
+    : /\.(png|jpe?g|gif|webp)$/i.test(p) ? `<img src="${wpath(p)}" loading="lazy" alt="">`
+    : `<a class="lnk" href="${wpath(p)}" target="_blank">📎 ${esc(p)}</a>`).join("");
+  const l = (att.links || []).map(u => `<a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">🔗 ${esc(u.replace(/^https?:\/\//, ""))}</a>`).join("");
+  return f || l ? `<div class="att">${f}${l}</div>` : "";
+}
 
 function renderAgents() {
   $("#agents").innerHTML = S.agents.map(a => {
@@ -94,125 +156,190 @@ function renderAgents() {
       <small title="${esc(a.task)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.task || "—")}</small>
       <small>${a.cycles||0} cycles · ${(a.cost_usd||0).toFixed(2)} $</small></div></div>`;
   }).join("");
-  document.querySelectorAll(".agent").forEach(el => el.onclick = () => { selected = el.dataset.n; tab = "agent"; renderAgents(); renderTabs(); renderPane(); });
+  document.querySelectorAll(".agent").forEach(el => el.onclick = () => { selected = el.dataset.n; tab = "agent"; renderAgents(); renderTabs(); renderPane(); setView("more"); });
 }
 
 function addMessages(list) {
-  const box = $("#msgs"), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  const box = $("#msgs"), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   for (const m of list) {
     lastId = Math.max(lastId, m.id);
     const me = m.sender === "Patron";
-    box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}"><div class="who" style="color:${colorOf(m.sender)}">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/(^|\s)@(\w+)/g,"$1<b>@$2</b>")}<div class="t">${time(m.ts)}</div></div>`);
+    box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}"><div class="who" style="color:${colorOf(m.sender)}">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/(^|\s)@(\w+)/g,"$1<b>@$2</b>")}${attHtml(m.attachments)}<div class="t">${time(m.ts)}</div></div>`);
   }
-  if (stick || list.length) box.scrollTop = box.scrollHeight;
+  if (list.length && stick) box.scrollTop = box.scrollHeight;
 }
 
 async function poll() {
   try {
-    const r = await (await fetch("/api/state?after=" + lastId)).json();
+    const r = await api("/api/state?after=" + lastId);
     S = r;
     if (!selected) selected = r.agents[0]?.name;
     $("#model").textContent = r.model;
-    $("#cost").textContent = `${r.cost_today.toFixed(2)} / ${r.budget.toFixed(2)} $`;
+    $("#cost").textContent = `${r.cost_today.toFixed(2)} / ${r.budget.toFixed(0)} $`;
     $("#costbar").style.width = Math.min(100, 100 * r.cost_today / r.budget) + "%";
-    $("#pauseBtn").textContent = r.paused ? "▶️ Reprendre" : "⏸️ Pause";
+    $("#pauseBtn").innerHTML = r.paused ? "▶️<span class=lbl> Reprendre</span>" : "⏸️<span class=lbl> Pause</span>";
+    $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
+    $("#browserBtn").classList.toggle("on", r.browser_enabled);
     renderAgents(); addMessages(r.messages);
-    const sig = r.pending_approvals + "/" + r.unread_notifications;
-    if (sig !== lastSig) { lastSig = sig; renderTabs(); if (tab === "approvals") renderPane(); }
-    if (tab === "agent" || tab === "feed") renderPane(true);
+    const sig = [r.pending_approvals, r.unread_notifications, r.waiting_contacts].join("/");
+    if (sig !== lastSig) { lastSig = sig; renderTabs(); if (["approvals","contacts"].includes(tab)) renderPane(true); }
+    if (tab === "agent" || tab === "feed" || (tab === "contacts" && openContact)) renderPane(true);
+    const n = r.pending_approvals + r.waiting_contacts; $("#moreBtn").innerHTML = "📋<br>Suivi" + (n ? ` <span class="badge">${n}</span>` : "");
   } catch (e) { console.error(e); }
 }
 
 function renderTabs() {
-  const badge = k => k === "approvals" && S.pending_approvals ? ` <span class="badge">${S.pending_approvals}</span>` : k === "notifs" && S.unread_notifications ? ` <span class="badge">${S.unread_notifications}</span>` : "";
-  $("#tabs").innerHTML = Object.entries(TABS).map(([k, v]) => `<button class="${tab===k?"on":""}" data-t="${k}">${v}${badge(k)}</button>`).join("");
-  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tab = b.dataset.t; renderTabs(); renderPane(); });
+  const b = {approvals: S.pending_approvals, notifs: S.unread_notifications, contacts: S.waiting_contacts};
+  $("#tabs").innerHTML = Object.entries(TABS).map(([k, v]) => `<button class="${tab===k?"sel":""}" data-t="${k}">${v}${b[k] ? ` <span class="badge">${b[k]}</span>` : ""}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach(x => x.onclick = () => { tab = x.dataset.t; openContact = null; renderTabs(); renderPane(); });
 }
 
 const actHtml = a => `<div class="act ${a.kind}"><span class="muted">${time(a.ts)} · ${a.agent} · ${a.kind}</span><br>
-  ${a.detail ? `<details><summary>${esc(a.summary)}</summary><pre>${esc(a.detail)}</pre></details>` : esc(a.summary)}</div>`;
+  ${/^(capture|vidéo)$/.test(a.kind) && a.detail ? esc(a.summary) + attHtml({files:[a.detail]})
+    : a.detail ? `<details><summary>${esc(a.summary)}</summary><pre>${esc(a.detail)}</pre></details>` : esc(a.summary)}</div>`;
+
+function scoreBar(s) { const c = s >= 70 ? "var(--ok)" : s >= 40 ? "var(--warn)" : "#64748b"; return `<div class="score"><i style="width:${s}%;background:${c}"></i></div>`; }
 
 let busy = false;
 async function renderPane(soft) {
   if (busy) return; busy = true;
-  const pane = $("#pane");
+  const pane = $("#pane"), keep = soft ? pane.scrollTop : 0;
   try {
     if (tab === "agent") {
       const a = S.agents.find(x => x.name === selected); if (!a) return;
-      const [acts, mem] = await Promise.all([fetch("/api/activity?agent=" + a.name).then(r => r.json()), fetch("/api/memory/" + a.name).then(r => r.json())]);
+      const [acts, mem] = await Promise.all([api("/api/activity?agent=" + a.name), api("/api/memory/" + a.name)]);
       const open = soft && pane.querySelector("#memd")?.open;
       pane.innerHTML = `<div class="card"><h4>${a.emoji} ${a.name} — ${esc(a.title)}</h4>
         <div class="muted">Statut : ${esc(a.status)} · cycle toutes les ${a.interval_min} min · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
         <p><b>En ce moment :</b> ${esc(a.task || "—")}</p>
-        <button onclick="fetch('/api/wake/${a.name}',{method:'POST'})">⚡ Lancer un cycle maintenant</button></div>
+        <button onclick="post('/api/wake/${a.name}')">⚡ Lancer un cycle maintenant</button></div>
         <details class="card" id="memd" ${open?"open":""}><summary><b>🧠 Mémoire / plan</b></summary><div class="md">${md(mem.content || "(vide)")}</div></details>
-        <h4>Journal d'activité</h4>${acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>"}`;
+        <h4>Ce qu'il a fait</h4>${acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>"}`;
     } else if (tab === "feed") {
-      const acts = await fetch("/api/activity?limit=200").then(r => r.json());
-      pane.innerHTML = acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>";
+      pane.innerHTML = (await api("/api/activity?limit=200")).map(actHtml).join("") || "<p class=muted>Rien encore.</p>";
+    } else if (tab === "approvals") {
+      const list = await api("/api/approvals");
+      if (soft && pane.querySelector("input:focus")) return;
+      pane.innerHTML = `<p class="muted">Rien n'est lancé sans ton accord. Accepte ou refuse (commentaire facultatif) : l'agent est réveillé avec ta réponse.</p>` +
+        (list.map(a => `<div class="card ${a.status==="en attente"?"pending":""}"><h4>#${a.id} ${esc(a.title)}</h4>
+          <span class="tag">${esc(a.kind)}</span> <span class="tag">${esc(a.status)}</span> ${a.amount_eur ? `<span class="tag">💶 ${a.amount_eur} €</span>` : ""} <span class="muted">par ${a.agent} · ${time(a.ts)}</span>
+          <div class="md" style="margin:8px 0">${md(a.details)}</div>${attHtml(a.attachments)}
+          ${a.status === "en attente" ? `<input id="c${a.id}" placeholder="Commentaire (optionnel)" style="width:100%;margin:6px 0">
+            <button class="primary" onclick="decide(${a.id},true)">✅ Accepter</button> <button onclick="decide(${a.id},false)">❌ Refuser</button>`
+            : (a.response ? `<div class="muted">Ton commentaire : ${esc(a.response)}</div>` : "")}</div>`).join("") || "<p class=muted>Aucune demande.</p>");
+    } else if (tab === "contacts") {
+      if (openContact) {
+        const d = await api("/api/contacts/" + openContact), c = d.contact;
+        if (soft && pane.querySelector("textarea:focus")) return;
+        pane.innerHTML = `<button onclick="openContact=null;renderPane()">← Tous les prospects</button>
+          <div class="card" style="margin-top:8px"><h4>${SENT[c.sentiment]||"❔"} ${esc(c.name || c.email || "Visiteur #" + c.id)} ${c.company ? "· " + esc(c.company) : ""}</h4>
+          <span class="tag">${esc(c.segment)}</span> <span class="tag">${esc(c.status)}</span> <span class="tag">ressenti : ${esc(c.sentiment)}</span> <span class="tag">score ${c.score}/100</span>
+          ${scoreBar(c.score)}<div><b>Intéressé par :</b> ${esc(c.interest || "—")}</div><div><b>Potentiel futur :</b> ${esc(c.potential || "—")}</div>
+          <div class="muted">${esc(c.email || "pas d'e-mail")} · source : ${esc(c.source)} · premier contact ${time(c.created_ts)}</div></div>
+          <div class="thread">${d.messages.map(m => `<div class="bub ${m.direction}"><span class="muted">${m.channel === "email" ? "✉️" : "💬"} ${m.direction === "in" ? "Client" : esc(m.agent || "Nous")} · ${time(m.ts)}</span><br>${esc(m.content)}</div>`).join("")}</div>
+          <form class="send" id="rf" style="padding:0;border:0;background:none"><textarea id="rt" rows="2" placeholder="Répondre toi-même à ce client…"></textarea><button class="primary">Envoyer</button></form>`;
+        $("#rf").onsubmit = async e => { e.preventDefault(); const t = $("#rt").value.trim(); if (!t) return;
+          const r = await post(`/api/contacts/${c.id}/reply`, {content: t}); if (!r.ok) alert("Erreur : " + (await r.text())); renderPane(); };
+      } else {
+        const list = await api("/api/contacts");
+        pane.innerHTML = `<p class="muted">Tous les gens qui ont parlé à l'équipe (chat des sites, e-mails), classés par intérêt. Iris évalue leur ressenti et leur potentiel.</p>` +
+          (list.map(c => `<div class="card click" onclick="openContact=${c.id};renderPane()">
+            <h4>${SENT[c.sentiment]||"❔"} ${esc(c.name || c.email || "Visiteur #" + c.id)} ${c.waiting ? '<span class="badge">attend une réponse</span>' : ""}</h4>
+            <span class="tag">${c.segment === "entreprise" ? "🏢" : c.segment === "particulier" ? "🧑" : "❔"} ${esc(c.segment)}</span> <span class="tag">${esc(c.status)}</span> <span class="tag">${c.score}/100</span>
+            ${scoreBar(c.score)}<div>${esc(c.interest || "Intérêt pas encore identifié")}</div>
+            ${c.potential ? `<div class="muted">🔮 ${esc(c.potential)}</div>` : ""}<div class="muted">${esc(c.source)} · ${time(c.last_ts)}</div></div>`).join("") || "<p class=muted>Aucun prospect pour l'instant.</p>");
+      }
+    } else if (tab === "vitrine") {
+      if (soft) return;
+      const v = await api("/api/vitrine");
+      pane.innerHTML = `<h4>Sites, applis et jeux</h4>` + (v.projects.map(p => `<div class="card"><h4>${p.kind === "jeu" ? "🎮" : "🌐"} ${esc(p.name)}</h4>
+          <div class="preview"><iframe src="${p.local}" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe></div>
+          <a class="lnk" href="${p.local}" target="_blank">👁️ Ouvrir</a> ${p.public ? `<a class="lnk" href="${esc(p.public)}" target="_blank" rel="noopener">🌍 En ligne : ${esc(p.public.replace(/^https?:\/\//, ""))}</a>` : '<span class="tag">pas encore en ligne</span>'}
+          <div class="muted">modifié ${time(p.updated)}</div></div>`).join("") || "<p class=muted>Aucun site ou jeu pour l'instant.</p>") +
+        `<h4>Captures, pubs et vidéos</h4><div class="grid">${v.media.map(m => m.type === "video"
+          ? `<video src="${wpath(m.path)}#t=1" controls playsinline preload="metadata" title="${esc(m.path)}"></video>`
+          : `<img src="${wpath(m.path)}" loading="lazy" title="${esc(m.path)}" alt="">`).join("") || "<p class=muted>Rien encore.</p>"}</div>`;
+    } else if (tab === "sales") {
+      if (soft) return;
+      const s = await api("/api/sales"), cap = S.capabilities;
+      pane.innerHTML = `<div class="card"><h4>💶 Argent réellement encaissé</h4>
+          ${s.stripe ? `<div class="big pos">${s.stripe.total_eur.toFixed(2)} €</div><div class="muted">${s.stripe.count} paiement(s) Stripe</div>
+            ${s.stripe.recent.map(x => `<div class="act"><span class="muted">${time(x.ts)}</span> <b>${x.amount.toFixed(2)} ${x.currency.toUpperCase()}</b> ${esc(x.description)} <span class="muted">${esc(x.email || "")}</span></div>`).join("")}`
+            : cap.stripe ? `<p class="muted">${esc(s.stripe_error || "Chargement…")}</p>` : `<p class="muted">Stripe pas encore connecté (STRIPE_SECRET_KEY dans .env).</p>`}</div>
+        <div class="card"><h4>💳 Liens de paiement</h4>${s.payment_links.map(l => `<div class="act">${esc(l.name)} — <b>${l.price_eur} €</b> <a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a><div class="muted">par ${l.agent} · validation #${l.approval_id}</div></div>`).join("") || "<p class=muted>Aucun.</p>"}</div>
+        <div class="card"><h4>🌍 Sites en ligne</h4>${s.deployments.map(d => `<div class="act">${esc(d.site)} <a class="lnk" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.url)}</a></div>`).join("") || "<p class=muted>Aucun.</p>"}</div>`;
     } else if (tab === "ideas") {
-      const ideas = await fetch("/api/ideas").then(r => r.json());
+      const ideas = await api("/api/ideas");
       pane.innerHTML = ideas.map(i => `<div class="card"><h4>#${i.id} ${esc(i.title)}</h4>
         <span class="tag">${esc(i.status)}</span> <span class="tag">~${Math.round(i.revenue_eur_month)} €/mois</span> <span class="tag">effort ${esc(i.effort)}</span> <span class="muted">par ${i.agent}</span>
         <p>${esc(i.description)}</p></div>`).join("") || "<p class=muted>Aucune idée pour l'instant.</p>";
     } else if (tab === "reports") {
-      const reps = await fetch("/api/reports").then(r => r.json());
+      const reps = await api("/api/reports");
       pane.innerHTML = reps.map((r, k) => `<details class="card" ${k===0?"open":""}><summary><b>${esc(r.title)}</b> <span class="muted">${time(r.ts)} · ${r.agent}</span></summary><div class="md">${md(r.content)}</div></details>`).join("") || "<p class=muted>Pas encore de rapport. Atlas en rédige régulièrement.</p>";
     } else if (tab === "pf") {
-      const p = await fetch("/api/portfolio").then(r => r.json()), c = v => v >= 0 ? "pos" : "neg";
+      const p = await api("/api/portfolio"), c = v => v >= 0 ? "pos" : "neg";
       pane.innerHTML = `<div class="card"><h4>Portefeuille SIMULÉ (aucun argent réel)</h4>
         Valeur : <b>${p.total_value.toFixed(2)} €</b> · P&L <b class="${c(p.pnl)}">${p.pnl.toFixed(2)} € (${(100*p.pnl/p.start).toFixed(2)} %)</b> · Cash ${p.cash.toFixed(2)} €</div>
         <table><tr><th>Actif</th><th>Qté</th><th>PRU</th><th>Dernier</th><th>P&L</th></tr>${p.positions.map(x => `<tr><td>${esc(x.symbol)}</td><td>${+x.qty.toFixed(6)}</td><td>${x.avg_price.toFixed(2)}</td><td>${x.last_price.toFixed(2)}</td><td class="${c(x.pnl)}">${x.pnl.toFixed(2)}</td></tr>`).join("")}</table>
         <h4>Ordres</h4>${p.trades.map(t => `<div class="act"><span class="muted">${time(t.ts)}</span> <b class="${t.side==="buy"?"pos":"neg"}">${t.side==="buy"?"ACHAT":"VENTE"}</b> ${+t.qty} ${esc(t.symbol)} @ ${t.price}<br><span class="muted">${esc(t.rationale)}</span></div>`).join("") || "<p class=muted>Aucun ordre.</p>"}`;
-    } else if (tab === "approvals") {
-      const list = await fetch("/api/approvals").then(r => r.json());
-      pane.innerHTML = `<p class="muted">Rien n'est lancé sans ton accord. Accepte ou refuse, avec un commentaire si tu veux : l'agent est réveillé avec ta réponse.</p>` +
-        (list.map(a => `<div class="card ${a.status==="en attente"?"pending":""}"><h4>#${a.id} ${esc(a.title)}</h4>
-          <span class="tag">${esc(a.kind)}</span> <span class="tag">${esc(a.status)}</span> ${a.amount_eur ? `<span class="tag">💶 ${a.amount_eur} €</span>` : ""} <span class="muted">par ${a.agent} · ${time(a.ts)}</span>
-          <div class="md" style="margin:8px 0">${md(a.details)}</div>
-          ${a.status === "en attente" ? `<input id="c${a.id}" placeholder="Commentaire (optionnel)" style="width:100%;margin-bottom:6px">
-            <button class="primary" onclick="decide(${a.id},true)">✅ Accepter</button> <button onclick="decide(${a.id},false)">❌ Refuser</button>`
-            : (a.response ? `<div class="muted">Ton commentaire : ${esc(a.response)}</div>` : "")}</div>`).join("") || "<p class=muted>Aucune demande.</p>");
-    } else if (tab === "inbox") {
-      const mails = await fetch("/api/inbox").then(r => r.json());
-      pane.innerHTML = `<div class="card"><b>Service client (Iris)</b><br>
-        ${S.mail_enabled ? "📬 Boîte mail connectée." : "⚠️ Boîte mail non configurée (voir IMAP/SMTP dans .env)."}<br>
-        Mode : <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>` +
-        (mails.map(m => `<details class="card"><summary><b>${esc(m.subject || "(sans sujet)")}</b> <span class="tag">${esc(m.status)}</span><br><span class="muted">${esc(m.from_addr)} · ${time(m.ts)}</span></summary>
-          <pre>${esc(m.body)}</pre>${m.reply ? `<b>Réponse envoyée ${m.replied_ts ? time(m.replied_ts) : ""} :</b><pre>${esc(m.reply)}</pre>` : ""}</details>`).join("") || "<p class=muted>Aucun e-mail client.</p>");
-      $("#smode").value = S.support_mode;
-      $("#smode").onchange = e => fetch("/api/support_mode?mode=" + e.target.value, {method:"POST"}).then(poll);
     } else if (tab === "notifs") {
-      const list = await fetch("/api/notifications").then(r => r.json());
-      pane.innerHTML = `<button onclick="fetch('/api/test_notification',{method:'POST'})">📱 Envoyer une notification de test</button>` +
-        list.map(n => `<div class="act ${n.kind==="alerte"?"erreur":n.kind==="client"?"fichier":"web"}"><span class="muted">${time(n.ts)} · ${n.kind}</span><br><b>${esc(n.title)}</b><details><summary class="muted">détails</summary><pre>${esc(n.body)}</pre></details></div>`).join("");
+      const list = await api("/api/notifications");
+      pane.innerHTML = list.map(n => `<div class="act ${n.kind==="alerte"?"erreur":n.kind==="client"?"fichier":"web"}"><span class="muted">${time(n.ts)} · ${n.kind}</span><br><b>${esc(n.title)}</b><details><summary class="muted">détails</summary><pre>${esc(n.body)}</pre></details></div>`).join("") || "<p class=muted>Aucune notification.</p>";
       S.unread_notifications = 0; lastSig = ""; renderTabs();
-    } else if (tab === "files") {
-      const files = await fetch("/api/files").then(r => r.json());
-      pane.innerHTML = `<p class="muted">Tout ce que les agents ont produit (dossier workspace/). Les .html s'ouvrent directement (jeux jouables).</p>` +
-        (files.map(f => `<div class="act"><a style="color:#9db4ff" target="_blank" href="/api/file?path=${encodeURIComponent(f)}">${esc(f)}</a></div>`).join("") || "<p class=muted>Aucun fichier.</p>");
+    } else if (tab === "settings") {
+      if (soft) return;
+      const c = S.capabilities, ok = b => b ? "✅" : "⚪";
+      pane.innerHTML = `<div class="card"><h4>Ce qui est branché</h4>
+          ${ok(c.push)} Notifications téléphone (ntfy)<br>${ok(c.netlify)} Mise en ligne des sites (Netlify)<br>${ok(c.stripe)} Paiements (Stripe)<br>
+          ${ok(c.email)} E-mail clients<br>${ok(c.public_url)} Chat sur les sites ${c.public_url ? "(" + esc(c.public_url) + ")" : "(PUBLIC_URL)"}<br>
+          ${ok(S.browser_enabled)} Navigateur web des agents
+          <p class="muted">Tout se règle dans le fichier .env (voir le README), puis redémarre Fusée.</p>
+          <button onclick="post('/api/test_notification')">📱 Envoyer une notification de test</button></div>
+        <div class="card"><h4>Réponses aux clients (Iris)</h4>
+          <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
+        <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
+      $("#smode").value = S.support_mode;
+      $("#smode").onchange = e => post("/api/support_mode?mode=" + e.target.value).then(poll);
     }
+    if (soft) pane.scrollTop = keep;
   } finally { busy = false; }
 }
 
 async function decide(id, approve) {
   const comment = ($("#c" + id) || {}).value || "";
-  const r = await fetch("/api/approvals/" + id, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({approve, comment})});
+  const r = await post("/api/approvals/" + id, {approve, comment});
   if (!r.ok) alert("Erreur : " + (await r.text()));
   await poll(); renderPane();
 }
+function setView(v) {
+  document.body.className = "v-" + v;
+  document.querySelectorAll("nav#bottom button").forEach(b => b.classList.toggle("sel", b.dataset.v === v));
+  if (v === "chat") $("#msgs").scrollTop = 1e9;
+}
+document.querySelectorAll("nav#bottom button").forEach(b => b.onclick = () => setView(b.dataset.v));
+document.addEventListener("click", e => {
+  if (e.target.tagName === "IMG" && e.target.closest(".att,.grid")) { $("#lightbox img").src = e.target.src; $("#lightbox").classList.add("open"); }
+});
+$("#lightbox").onclick = () => $("#lightbox").classList.remove("open");
 $("#f").onsubmit = async e => {
   e.preventDefault(); const t = $("#txt").value.trim(); if (!t) return;
-  $("#txt").value = "";
-  await fetch("/api/message", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({content:t})});
-  poll();
+  $("#txt").value = ""; await post("/api/message", {content: t}); poll();
 };
 $("#txt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#f").requestSubmit(); } };
-$("#pauseBtn").onclick = async () => { await fetch("/api/pause?on=" + !S.paused, {method:"POST"}); poll(); };
-$("#directiveBtn").onclick = async () => {
-  const d = prompt("Consigne permanente pour toute l'équipe (ex. « Priorité : jeux mobiles et outils pour freelances, pas de crypto »)", S.directive || "");
-  if (d !== null) await fetch("/api/directive", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({content:d})});
+$("#pauseBtn").onclick = async () => { await post("/api/pause?on=" + !S.paused); poll(); };
+$("#browserBtn").onclick = async () => {
+  if (!S.browser_enabled && !confirm("Autoriser les agents à ouvrir des pages web dans un vrai navigateur (lecture et captures d'écran) ?")) return;
+  await post("/api/browser?on=" + !S.browser_enabled); poll();
 };
+$("#directiveBtn").onclick = async () => {
+  const d = prompt("Consigne permanente pour toute l'équipe (ex. « Priorité : sites pour artisans et jeux mobiles, pas de crypto »)", S.directive || "");
+  if (d !== null) await post("/api/directive", {content: d});
+};
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#installBtn").hidden = false; });
+$("#installBtn").onclick = async () => { if (installEvt) { installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#installBtn").hidden = true; } };
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+setView("chat");
 renderTabs(); poll(); setInterval(poll, 3000);
 </script>
 </body>

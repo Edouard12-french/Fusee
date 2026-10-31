@@ -5,9 +5,9 @@ from datetime import datetime
 
 import anthropic
 
-from . import db
+from . import db, integrations, mailbox
 from .agents import OWNER, Agent, system_prompt
-from .config import (DAILY_BUDGET_USD, EFFORT, MAX_STEPS_PER_CYCLE, MODEL, PRICING,
+from .config import (PUBLIC_URL, DAILY_BUDGET_USD, EFFORT, MAX_STEPS_PER_CYCLE, MODEL, PRICING,
                      WEB_SEARCH_COST)
 from .tools import execute, tool_defs
 
@@ -46,12 +46,30 @@ def build_context(agent: Agent, reason: str) -> str:
         f"#{a['id']} [{a['status']}] ({a['kind']}, par {a['agent']}) {a['title']}"
         + (f" — commentaire de {OWNER} : {a['response']}" if a["response"] else "") for a in appr) or "(aucune)"
     spent = db.cost_today()
+    caps = "\n".join([
+        f"- Navigateur web (browse, captures d'URL) : {'AUTORISÉ' if db.get_setting('browser_enabled', '0') == '1' else f'non autorisé par {OWNER} pour le moment'}",
+        f"- Mise en ligne de sites (publish_site) : {'disponible' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
+        f"- Liens de paiement (create_payment_link) : {'disponibles' if integrations.STRIPE_KEY else f'non configurés ({OWNER} doit ajouter STRIPE_SECRET_KEY)'}",
+        f"- E-mail clients : {'connecté (' + mailbox.EMAIL_USER + ')' if mailbox.ENABLED else 'non configuré'}",
+        (f"- Chat sur les sites : ajoute avant </body> : <script src=\"{PUBLIC_URL}/public/chat.js\" data-site=\"NOM-DU-SITE\"></script>"
+         if PUBLIC_URL else "- Chat sur les sites : indisponible (pas d'adresse publique) — mets un lien e-mail de contact"
+         + (f" vers {mailbox.EMAIL_USER}" if mailbox.ENABLED else "")),
+    ])
+    hot = db.q("SELECT id, name, email, segment, interest, sentiment, score, status FROM contacts "
+               "ORDER BY score DESC, last_ts DESC LIMIT 10")
+    waiting = len(db.unanswered_contacts())
+    hot_txt = ("\n".join(f"#{c['id']} {c['name'] or c['email'] or 'visiteur'} — {c['segment']}, {c['status']}, "
+                         f"score {c['score']}, {c['sentiment']} : {c['interest'][:120]}" for c in hot) or "(aucun)")
+    hot_txt += f"\n{waiting} contact(s) attendent une réponse." if waiting else ""
     return f"""# Nouveau cycle — {JOURS[datetime.now().weekday()]} {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Raison du réveil : {reason}
 Budget API du jour : {spent:.2f} $ utilisés sur {DAILY_BUDGET_USD:.2f} $ — sois efficace.
 
 ## Consigne permanente de {OWNER}
 {owner_directive or "(aucune — objectif général : faire gagner de l'argent légalement)"}
+
+## Capacités disponibles
+{caps}
 
 ## Ta mémoire
 {db.get_memory(agent.name) or "(vide — premier cycle : présente-toi brièvement au groupe et établis ton plan)"}
@@ -61,6 +79,9 @@ Budget API du jour : {spent:.2f} $ utilisés sur {DAILY_BUDGET_USD:.2f} $ — so
 
 ## Demandes de validation à {OWNER} (en attente + décisions des 3 derniers jours)
 {appr_txt}
+
+## Prospects & clients (meilleurs scores)
+{hot_txt}
 
 ## Tableau des idées
 {ideas_txt}

@@ -3,7 +3,7 @@ import asyncio
 
 from . import db, mailbox
 from .agents import BY_NAME, TEAM
-from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS, MIN_SECONDS_BETWEEN_CYCLES
+from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
 
 
@@ -33,11 +33,11 @@ class Scheduler:
                 async with self.sem:
                     await run_cycle(agent, reason, self.wake)
             # attendre le prochain cycle (ou une mention), avec un délai minimum anti ping-pong
-            await asyncio.sleep(MIN_SECONDS_BETWEEN_CYCLES)
+            await asyncio.sleep(agent.min_gap_s)
             if not self.reasons[name]:
                 self.events[name].clear()
             try:
-                await asyncio.wait_for(self.events[name].wait(), timeout=max(0, interval - MIN_SECONDS_BETWEEN_CYCLES))
+                await asyncio.wait_for(self.events[name].wait(), timeout=max(0, interval - agent.min_gap_s))
             except asyncio.TimeoutError:
                 pass
             self.events[name].clear()
@@ -49,7 +49,7 @@ class Scheduler:
             db.set_state(a.name, status="en attente")
             self.tasks.append(asyncio.create_task(self._loop(a.name, first_delay=i * 20)))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(
-            lambda ids: self.wake("Iris", f"{len(ids)} nouvel(s) e-mail(s) client : ids {ids}"))))
+            lambda ids: self.wake("Iris", f"nouvel(s) e-mail(s) de contact(s) {ids}"))))
 
 
 scheduler = Scheduler()

@@ -13,7 +13,7 @@ _conn.row_factory = sqlite3.Row
 
 _conn.executescript(
     """
-CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, ts REAL, sender TEXT, content TEXT);
+CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, ts REAL, sender TEXT, content TEXT, attachments TEXT);
 CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, kind TEXT, summary TEXT, detail TEXT);
 CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, title TEXT, description TEXT,
     revenue_eur_month REAL, effort TEXT, status TEXT DEFAULT 'proposée');
@@ -29,11 +29,22 @@ CREATE TABLE IF NOT EXISTS approvals (id INTEGER PRIMARY KEY, ts REAL, agent TEX
     details TEXT, amount_eur REAL, status TEXT DEFAULT 'en attente', response TEXT, decided_ts REAL, payload TEXT);
 CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, ts REAL, kind TEXT, title TEXT, body TEXT,
     read INTEGER DEFAULT 0);
-CREATE TABLE IF NOT EXISTS inbox (id INTEGER PRIMARY KEY, ts REAL, from_addr TEXT, subject TEXT, body TEXT,
-    message_id TEXT, status TEXT, reply TEXT, replied_ts REAL);
+CREATE TABLE IF NOT EXISTS contacts (id INTEGER PRIMARY KEY, created_ts REAL, last_ts REAL, name TEXT, email TEXT,
+    session TEXT, company TEXT, segment TEXT DEFAULT 'inconnu', source TEXT, interest TEXT DEFAULT '',
+    sentiment TEXT DEFAULT 'inconnu', score INTEGER DEFAULT 0, potential TEXT DEFAULT '', status TEXT DEFAULT 'nouveau');
+CREATE TABLE IF NOT EXISTS conv (id INTEGER PRIMARY KEY, ts REAL, contact_id INTEGER, channel TEXT, direction TEXT,
+    content TEXT, subject TEXT, message_id TEXT, agent TEXT);
+CREATE TABLE IF NOT EXISTS deployments (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, site TEXT, provider_id TEXT,
+    url TEXT, approval_id INTEGER);
+CREATE TABLE IF NOT EXISTS payment_links (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, name TEXT, price_eur REAL,
+    url TEXT, stripe_id TEXT, approval_id INTEGER);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )
+try:  # migration des bases créées avant l'ajout des pièces jointes
+    _conn.execute("ALTER TABLE messages ADD COLUMN attachments TEXT")
+except sqlite3.OperationalError:
+    pass
 
 
 def q(sql: str, args: tuple = ()) -> list[dict]:
@@ -49,8 +60,9 @@ def x(sql: str, args: tuple = ()) -> int:
 
 
 # --- groupe de discussion -------------------------------------------------
-def post_message(sender: str, content: str) -> int:
-    return x("INSERT INTO messages (ts, sender, content) VALUES (?,?,?)", (time.time(), sender, content))
+def post_message(sender: str, content: str, attachments: str = "") -> int:
+    return x("INSERT INTO messages (ts, sender, content, attachments) VALUES (?,?,?,?)",
+             (time.time(), sender, content, attachments))
 
 
 def recent_messages(limit: int = 40, after_id: int = 0) -> list[dict]:
@@ -143,3 +155,37 @@ def portfolio() -> dict:
                     "last_price": price, "value": mv, "pnl": mv - p["cost"]})
     return {"cash": cash, "total_value": value, "start": PAPER_START_CASH,
             "pnl": value - PAPER_START_CASH, "positions": out}
+
+
+# --- prospects & conversations (CRM) ---------------------------------------
+def upsert_contact(*, email: str = "", session: str = "", name: str = "", source: str = "") -> int:
+    now = time.time()
+    row = None
+    if email:
+        row = q("SELECT id FROM contacts WHERE lower(email)=lower(?)", (email,))
+    if not row and session:
+        row = q("SELECT id FROM contacts WHERE session=?", (session,))
+    if row:
+        cid = row[0]["id"]
+        x("UPDATE contacts SET last_ts=?, email=COALESCE(NULLIF(?, ''), email), name=COALESCE(NULLIF(?, ''), name), "
+          "session=COALESCE(NULLIF(session, ''), NULLIF(?, '')) WHERE id=?", (now, email, name, session, cid))
+        return cid
+    return x("INSERT INTO contacts (created_ts, last_ts, name, email, session, source) VALUES (?,?,?,?,?,?)",
+             (now, now, name, email, session, source))
+
+
+def add_conv(contact_id: int, channel: str, direction: str, content: str, subject: str = "",
+             message_id: str = "", agent: str = "") -> int:
+    x("UPDATE contacts SET last_ts=? WHERE id=?", (time.time(), contact_id))
+    return x("INSERT INTO conv (ts, contact_id, channel, direction, content, subject, message_id, agent) "
+             "VALUES (?,?,?,?,?,?,?,?)", (time.time(), contact_id, channel, direction, content, subject, message_id, agent))
+
+
+def thread(contact_id: int, limit: int = 60) -> list[dict]:
+    return q("SELECT * FROM conv WHERE contact_id=? ORDER BY id DESC LIMIT ?", (contact_id, limit))[::-1]
+
+
+def unanswered_contacts() -> list[dict]:
+    """Contacts dont le dernier message est entrant (le client attend une réponse)."""
+    return q("""SELECT c.* FROM contacts c JOIN conv m ON m.id = (SELECT MAX(id) FROM conv WHERE contact_id=c.id)
+                WHERE m.direction='in' ORDER BY c.last_ts DESC""")

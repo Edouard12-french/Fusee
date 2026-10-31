@@ -19,6 +19,8 @@ INTERVAL_MULTIPLIER = float(os.getenv("INTERVAL_MULTIPLIER", "1"))
 ALLOW_CODE_EXEC = _bool("ALLOW_CODE_EXEC", True)
 MAX_PARALLEL_AGENTS = int(os.getenv("MAX_PARALLEL_AGENTS", "2"))
 PORT = int(os.getenv("PORT", "8000"))
+# Adresse publique du tableau de bord (Tailscale Funnel, Cloudflare Tunnel…) : sert au chat des sites en ligne
+PUBLIC_URL = os.getenv("PUBLIC_URL", "").strip().rstrip("/")
 
 DATA_DIR = ROOT / "data"
 WORKSPACE = ROOT / "workspace"
@@ -27,7 +29,6 @@ DATA_DIR.mkdir(exist_ok=True)
 WORKSPACE.mkdir(exist_ok=True)
 
 MAX_STEPS_PER_CYCLE = 25          # appels API max par cycle d'un agent
-MIN_SECONDS_BETWEEN_CYCLES = 90   # anti ping-pong quand les agents se mentionnent
 PAPER_START_CASH = 10_000.0       # capital fictif du portefeuille simulé (EUR)
 
 # Tarifs USD par million de tokens : (entrée, sortie, lecture cache, écriture cache)
