@@ -32,13 +32,14 @@ def today_exhausted() -> bool:
     return db.cost_today() >= daily_cap_usd()
 
 
-def summary(stripe_total_eur: float = 0.0) -> dict:
+def summary() -> dict:
     s = settings()
     rows = db.q("SELECT kind, COALESCE(SUM(amount_eur), 0) t FROM ledger GROUP BY kind")
     by = {r["kind"]: r["t"] for r in rows}
     api = api_spent_eur()
     expenses = by.get("dépense", 0.0)
-    revenues = by.get("revenu", 0.0) + stripe_total_eur
+    sales = db.q("SELECT COALESCE(SUM(amount_eur), 0) t, COUNT(*) n FROM sales")[0]
+    revenues = by.get("revenu", 0.0) + sales["t"]
     return {
         **s,
         "api_spent_eur": api,
@@ -47,7 +48,8 @@ def summary(stripe_total_eur: float = 0.0) -> dict:
         "api_left_eur": max(0.0, s["api_budget_eur"] - api),
         "expenses_eur": expenses,
         "revenues_eur": revenues,
-        "stripe_eur": stripe_total_eur,
+        "sales_eur": sales["t"],
+        "sales_count": sales["n"],
         "remaining_eur": s["initial_eur"] - api - expenses + revenues,
         "free_to_spend_eur": s["initial_eur"] - s["api_budget_eur"] - expenses + revenues,
     }

@@ -48,9 +48,23 @@ CREATE TABLE IF NOT EXISTS owner_tasks (id INTEGER PRIMARY KEY, ts REAL, agent T
     priority TEXT, done INTEGER DEFAULT 0, done_ts REAL);
 CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY, ts REAL, kind TEXT, amount_eur REAL, label TEXT,
     source TEXT, approval_id INTEGER);
+CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, name TEXT, kind TEXT,
+    description TEXT, target TEXT, site_folder TEXT, price_eur REAL, status TEXT DEFAULT 'en création');
+CREATE TABLE IF NOT EXISTS sales (id TEXT PRIMARY KEY, ts REAL, amount_eur REAL, currency TEXT, email TEXT, name TEXT,
+    payment_link TEXT, product_id INTEGER, description TEXT);
+CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, ts REAL, day TEXT, site TEXT, path TEXT, event TEXT,
+    visitor TEXT, ref TEXT, utm TEXT, device TEXT);
+CREATE INDEX IF NOT EXISTS events_site_day ON events (site, day);
+CREATE VIRTUAL TABLE IF NOT EXISTS kb USING fts5(topic, content, agent UNINDEXED, ts UNINDEXED,
+    tokenize="unicode61 remove_diacritics 2");
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )
+for _sql in ("ALTER TABLE payment_links ADD COLUMN product_id INTEGER",):
+    try:
+        _conn.execute(_sql)
+    except sqlite3.OperationalError:
+        pass
 try:  # migration des bases créées avant l'ajout des pièces jointes
     _conn.execute("ALTER TABLE messages ADD COLUMN attachments TEXT")
 except sqlite3.OperationalError:
@@ -203,3 +217,20 @@ def unanswered_contacts() -> list[dict]:
     """Contacts dont le dernier message est entrant (le client attend une réponse)."""
     return q("""SELECT c.* FROM contacts c JOIN conv m ON m.id = (SELECT MAX(id) FROM conv WHERE contact_id=c.id)
                 WHERE m.direction='in' ORDER BY c.last_ts DESC""")
+
+
+# --- mémoire collective (recherche plein texte) -------------------------------
+def kb_add(agent: str, topic: str, content: str) -> None:
+    x("INSERT INTO kb (topic, content, agent, ts) VALUES (?,?,?,?)", (topic[:200], content[:8000], agent, time.time()))
+
+
+def kb_search(query: str, limit: int = 6) -> list[dict]:
+    words = [w for w in __import__("re").findall(r"\w{3,}", query.lower())][:12]
+    if not words:
+        return []
+    match = " OR ".join(f'"{w}"' for w in words)
+    try:
+        return q("SELECT topic, content, agent, ts, bm25(kb) AS rank FROM kb WHERE kb MATCH ? ORDER BY rank LIMIT ?",
+                 (match, limit))
+    except sqlite3.OperationalError:
+        return []

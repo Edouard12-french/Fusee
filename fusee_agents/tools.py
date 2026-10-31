@@ -1,14 +1,17 @@
 """Outils mis à disposition des agents (schémas + exécution)."""
 import asyncio
 import json
+import os
 import re
 import sys
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
-from . import browser, budget, db, integrations, mailbox, workflow
+from . import analytics, browser, budget, db, integrations, mailbox, workflow
 from .agents import BY_NAME, OWNER
-from .config import ALLOW_CODE_EXEC, WORKSPACE
+from .config import ALLOW_CODE_EXEC, PORT, WORKSPACE
 from .notify import notify
 
 
@@ -122,11 +125,52 @@ CLIENT_TOOLS: dict[str, dict] = {
     "create_payment_link": {
         "description": ("Crée un lien de paiement Stripe (le client paie par carte, l'argent arrive sur le compte de "
                         f"{OWNER}). Exige l'id d'une demande de validation ACCEPTÉE mentionnant ce produit et ce prix."),
-        "input_schema": _schema({"name": S, "price_eur": N, "description": S, "approval_id": I}),
+        "input_schema": _schema({"name": S, "price_eur": N, "description": S, "approval_id": I,
+                                 "product_id": {"type": "integer", "description": "Produit du catalogue (0 si aucun)"}}),
     },
     "sales_summary": {
         "description": "Ventes réelles encaissées sur Stripe + liens de paiement et sites en ligne.",
         "input_schema": _schema({}),
+    },
+    # --- catalogue, statistiques, qualité -----------------------------------
+    "register_product": {
+        "description": ("Ajoute un produit au catalogue de l'équipe (à faire dès qu'un produit est en création). "
+                        "site_folder : dossier du site dans le workspace (ex. 'sites/devis-eclair'), '' si aucun."),
+        "input_schema": _schema({"name": S, "kind": {"type": "string", "enum": ["site", "appli", "jeu", "logiciel",
+                                 "template", "service", "contenu", "autre"]},
+                                 "description": S, "target": {"type": "string", "enum": ["particuliers", "entreprises", "les deux"]},
+                                 "site_folder": S, "price_eur": N}),
+    },
+    "update_product": {
+        "description": "Met à jour un produit du catalogue (statut, prix, description, dossier du site).",
+        "input_schema": _schema({"product_id": I, "status": {"type": "string", "enum": ["en création", "prêt",
+                                 "en ligne", "en vente", "en pause", "abandonné"]}, "price_eur": N, "description": S,
+                                 "site_folder": S}),
+    },
+    "list_products": {
+        "description": "Catalogue : chaque produit avec statut, prix, liens, visites (7 j), ventes et chiffre d'affaires.",
+        "input_schema": _schema({}),
+    },
+    "site_stats": {
+        "description": ("Statistiques d'un site (nom du dossier, ex. 'devis-eclair') : visiteurs, sources, pages, "
+                        "appareils, clics « acheter », chats, ventes, taux de conversion. site='' = tous les sites."),
+        "input_schema": _schema({"site": S, "days": I}),
+    },
+    "audit_site": {
+        "description": ("Audit qualité d'un site du workspace (ex. 'sites/devis-eclair') comme un vrai visiteur, sur "
+                        "ordinateur et mobile : erreurs, liens cassés, débordement mobile, SEO, contact, mentions "
+                        "légales, prix, poids, vitesse. Score /100. publish_site exige un audit réussi."),
+        "input_schema": _schema({"folder": S}),
+    },
+    # --- mémoire collective -------------------------------------------------
+    "remember": {
+        "description": ("Enregistre un apprentissage durable dans la mémoire collective de l'équipe (ce qui marche, "
+                        "ce qui rate, chiffres, décisions, contacts utiles). Une idée par entrée, avec un sujet clair."),
+        "input_schema": _schema({"topic": S, "content": S}),
+    },
+    "recall": {
+        "description": "Cherche dans la mémoire collective de l'équipe (recherche plein texte) avant de refaire un travail.",
+        "input_schema": _schema({"query": S}),
     },
     # --- prospects & clients ------------------------------------------------
     "list_contacts": {
@@ -266,6 +310,14 @@ def tool_defs(names: list[str], model: str = "") -> list[dict]:
     return out
 
 
+SECRET_HINTS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASS", "AUTH", "CREDENTIAL", "NTFY", "EMAIL", "SMTP", "IMAP")
+
+
+def _safe_env() -> dict:
+    """Environnement du code écrit par les agents : sans aucune clé ni mot de passe de Patron."""
+    return {k: v for k, v in os.environ.items() if not any(h in k.upper() for h in SECRET_HINTS)}
+
+
 def _safe_path(rel: str) -> Path:
     p = (WORKSPACE / rel.lstrip("/")).resolve()
     if p != WORKSPACE.resolve() and WORKSPACE.resolve() not in p.parents:
@@ -316,6 +368,41 @@ def mentions(text: str) -> list[str]:
     if names & {"Tous", "tous", "all", "Équipe", "equipe"}:
         return list(BY_NAME)
     return [n for n in BY_NAME if n in names]
+
+
+async def run_audit(folder: str) -> dict:
+    """Audit d'un site via le serveur local (comme en ligne), ou en fichier si le serveur ne répond pas."""
+    folder = folder.strip().strip("/")
+    kind = "jeu" if folder.startswith("jeux/") else "site"
+    if await asyncio.to_thread(_server_up):
+        return await browser.audit(folder, f"http://127.0.0.1:{PORT}", os.getenv("DASHBOARD_PASSWORD", ""), kind)
+    return await browser.audit(folder, "", "", kind)
+
+
+def _server_up() -> bool:
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{PORT}/manifest.webmanifest", timeout=2)
+        return True
+    except urllib.error.HTTPError:
+        return True  # répond (ex. 401 avec mot de passe)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def products_overview() -> list[dict]:
+    out = []
+    for p in db.q("SELECT * FROM products WHERE status!='abandonné' ORDER BY id DESC LIMIT 40"):
+        site = Path(p["site_folder"]).name if p["site_folder"] else ""
+        st = analytics.site_stats(site, 7) if site else {}
+        sales = db.q("SELECT COUNT(*) n, COALESCE(SUM(amount_eur), 0) t FROM sales WHERE product_id=?", (p["id"],))[0]
+        dep = db.q("SELECT url FROM deployments WHERE site=? ORDER BY id DESC LIMIT 1", (p["site_folder"],))
+        links = db.q("SELECT url, price_eur FROM payment_links WHERE product_id=?", (p["id"],))
+        out.append({"id": p["id"], "nom": p["name"], "type": p["kind"], "cible": p["target"], "statut": p["status"],
+                    "prix_eur": p["price_eur"], "site": p["site_folder"], "en_ligne": dep[0]["url"] if dep else "",
+                    "liens_paiement": [x["url"] for x in links], "visiteurs_7j": st.get("visiteurs", 0),
+                    "clics_achat_7j": st.get("clics_achat", 0), "ventes": sales["n"], "ca_eur": round(sales["t"], 2),
+                    "par": p["agent"]})
+    return out
 
 
 def _accepted(approval_id: int, kinds: tuple[str, ...]) -> dict | None:
@@ -415,7 +502,7 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         if not p.is_file():
             return "Erreur : fichier introuvable."
         proc = await asyncio.create_subprocess_exec(
-            sys.executable, str(p), *args["args"], cwd=str(p.parent),
+            sys.executable, str(p), *args["args"], cwd=str(p.parent), env=_safe_env(),
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=60)
@@ -454,12 +541,23 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         if not (folder / "index.html").is_file():
             return "Erreur : le dossier doit contenir un index.html."
         rel = str(folder.relative_to(WORKSPACE))
+        try:
+            au = await run_audit(rel)
+        except Exception as e:  # noqa: BLE001 — sans navigateur, on publie quand même mais on le dit
+            au = None
+            db.log(agent, "erreur", f"audit impossible avant publication : {str(e)[:200]}")
+        if au and not au["ok_pour_publier"]:
+            return ("Publication bloquée par l'audit qualité (score " + str(au["score"]) + "/100). Corrige d'abord :\n"
+                    + "\n".join(f"- [{i['niveau']}] {i['probleme']}" for i in au["problemes"]
+                                 if i["niveau"] != "avertissement"))
         prev = db.q("SELECT provider_id FROM deployments WHERE site=? ORDER BY id DESC LIMIT 1", (rel,))
         r = await asyncio.to_thread(integrations.deploy_site, folder, folder.name, prev[0]["provider_id"] if prev else None)
         db.x("INSERT INTO deployments (ts, agent, site, provider_id, url, approval_id) "
              "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?)", (agent, rel, r["site_id"], r["url"], appr["id"]))
         notify("alerte", f"🌐 Site en ligne : {folder.name}", f"{r['url']}\n(validé par toi, demande #{appr['id']})")
-        db.post_message(agent, f"🌐 {folder.name} est en ligne !", _attach_json([], [r["url"]]))
+        db.x("UPDATE products SET status='en ligne' WHERE site_folder=? AND status IN ('en création','prêt')", (rel,))
+        db.post_message(agent, f"🌐 {folder.name} est en ligne !" + (f" (audit {au['score']}/100)" if au else ""),
+                        _attach_json(list((au or {}).get("captures", {}).values()), [r["url"]]))
         return f"Site en ligne : {r['url']}"
     if name == "create_payment_link":
         appr = _accepted(args["approval_id"], ("business", "publication"))
@@ -469,9 +567,12 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         if args["price_eur"] <= 0:
             return "Erreur : prix invalide."
         r = await asyncio.to_thread(integrations.create_payment_link, args["name"], args["price_eur"], args["description"])
-        db.x("INSERT INTO payment_links (ts, agent, name, price_eur, url, stripe_id, approval_id) "
-             "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?)",
-             (agent, args["name"], args["price_eur"], r["url"], r["id"], appr["id"]))
+        pid = args["product_id"] if db.q("SELECT id FROM products WHERE id=?", (args["product_id"],)) else None
+        db.x("INSERT INTO payment_links (ts, agent, name, price_eur, url, stripe_id, approval_id, product_id) "
+             "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?,?)",
+             (agent, args["name"], args["price_eur"], r["url"], r["id"], appr["id"], pid))
+        if pid:
+            db.x("UPDATE products SET price_eur=? WHERE id=?", (args["price_eur"], pid))
         notify("alerte", f"💳 Lien de paiement créé : {args['name']} ({args['price_eur']} €)", r["url"])
         return f"Lien de paiement : {r['url']} (à mettre sur le site / la page de vente)."
     if name == "sales_summary":
@@ -480,6 +581,45 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         if integrations.STRIPE_KEY:
             out["ventes_stripe"] = await asyncio.to_thread(integrations.sales_summary)
         return json.dumps(out, ensure_ascii=False)
+    # --- catalogue, statistiques, qualité -----------------------------------
+    if name == "register_product":
+        if db.q("SELECT id FROM products WHERE lower(name)=lower(?) AND status!='abandonné'", (args["name"],)):
+            return "Un produit de ce nom existe déjà : utilise update_product."
+        folder = args["site_folder"].strip().strip("/")
+        if folder:
+            _safe_path(folder)
+        i = db.x("INSERT INTO products (ts, agent, name, kind, description, target, site_folder, price_eur) "
+                 "VALUES (?,?,?,?,?,?,?,?)", (time.time(), agent, args["name"], args["kind"], args["description"],
+                                              args["target"], folder, args["price_eur"]))
+        db.post_message(agent, f"📦 Nouveau produit au catalogue : #{i} {args['name']} ({args['kind']}, "
+                               f"{args['price_eur']:.2f} €, pour {args['target']})")
+        return f"Produit #{i} ajouté au catalogue."
+    if name == "update_product":
+        if not db.q("SELECT id FROM products WHERE id=?", (args["product_id"],)):
+            return "Erreur : produit introuvable."
+        db.x("UPDATE products SET status=?, price_eur=?, description=COALESCE(NULLIF(?, ''), description), "
+             "site_folder=COALESCE(NULLIF(?, ''), site_folder) WHERE id=?",
+             (args["status"], args["price_eur"], args["description"], args["site_folder"].strip().strip("/"),
+              args["product_id"]))
+        return "Produit mis à jour."
+    if name == "list_products":
+        return json.dumps(products_overview(), ensure_ascii=False) or "Catalogue vide."
+    if name == "site_stats":
+        days = max(1, min(int(args["days"] or 7), 90))
+        site = Path(args["site"].strip().strip("/")).name if args["site"].strip() else ""
+        data = analytics.site_stats(site, days) if site else analytics.all_sites_summary(days)
+        return json.dumps(data, ensure_ascii=False) if data else "Aucune donnée de visite pour l'instant."
+    if name == "audit_site":
+        au = await run_audit(args["folder"])
+        db.log(agent, "audit", f"audit {au['site']} : {au['score']}/100", json.dumps(au, ensure_ascii=False, indent=1))
+        return json.dumps(au, ensure_ascii=False)
+    # --- mémoire collective -------------------------------------------------
+    if name == "remember":
+        db.kb_add(agent, args["topic"], args["content"])
+        return "Enregistré dans la mémoire collective."
+    if name == "recall":
+        hits = db.kb_search(args["query"], 8)
+        return "\n\n".join(f"[{h['topic']}] ({h['agent']}) {h['content']}" for h in hits) or "Rien trouvé."
     # --- prospects & clients ------------------------------------------------
     if name == "list_contacts":
         waiting = {c["id"] for c in db.unanswered_contacts()}

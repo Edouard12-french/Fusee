@@ -7,20 +7,26 @@ import shutil
 import subprocess
 import tempfile
 import time
+import urllib.parse
 from pathlib import Path
 
 from .config import WORKSPACE
 
 _pw = None
 _browser = None
-_lock = asyncio.Lock()
+_loop = None
+_lock: asyncio.Lock | None = None
 CAPTURES = WORKSPACE / "captures"
 
 FORMATS = {"vertical": (1080, 1920), "horizontal": (1920, 1080), "carré": (1080, 1080)}
 
 
 async def _get_browser():
-    global _pw, _browser
+    global _pw, _browser, _loop, _lock
+    loop = asyncio.get_running_loop()
+    if _loop is not loop:  # nouvelle boucle d'événements : l'ancien navigateur n'est plus utilisable
+        _pw = _browser = None
+        _loop, _lock = loop, asyncio.Lock()
     async with _lock:
         if _browser is None or not _browser.is_connected():
             from playwright.async_api import async_playwright
@@ -28,6 +34,11 @@ async def _get_browser():
             exe = os.getenv("PLAYWRIGHT_CHROMIUM_PATH") or None
             _browser = await _pw.chromium.launch(executable_path=exe)
         return _browser
+
+
+async def _no_tracking(obj) -> None:
+    """Les visites du navigateur des agents (captures, audits, vidéos) ne comptent pas dans les statistiques."""
+    await obj.route("**/public/t", lambda route: route.fulfill(status=204))
 
 
 def _target(target: str) -> str:
@@ -54,6 +65,7 @@ async def screenshot(target: str, name: str, mobile: bool = False, full_page: bo
     b = await _get_browser()
     vp = {"width": 390, "height": 844} if mobile else {"width": 1366, "height": 850}
     page = await b.new_page(viewport=vp, device_scale_factor=2 if mobile else 1)
+    await _no_tracking(page)
     try:
         await page.goto(_target(target), wait_until="networkidle", timeout=45000)
         await page.wait_for_timeout(800)
@@ -70,6 +82,7 @@ async def browse(url: str) -> dict:
         raise ValueError("URL http(s) attendue")
     b = await _get_browser()
     page = await b.new_page(viewport={"width": 1366, "height": 850})
+    await _no_tracking(page)
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=45000)
         await page.wait_for_timeout(1500)
@@ -105,6 +118,7 @@ async def record_video(target: str, name: str, seconds: float, fmt: str) -> str:
     w, h = FORMATS.get(fmt, FORMATS["vertical"])
     b = await _get_browser()
     ctx = await b.new_context(viewport={"width": w, "height": h})
+    await _no_tracking(ctx)
     page = await ctx.new_page()
     frames: list[tuple[float, bytes]] = []
     try:
@@ -147,3 +161,138 @@ async def record_video(target: str, name: str, seconds: float, fmt: str) -> str:
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg : {proc.stderr[-500:]}")
     return str(out.relative_to(WORKSPACE))
+
+
+# --- audit qualité d'un site ---------------------------------------------------
+_AUDIT_JS = """() => {
+  const q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)];
+  const text = (document.body ? document.body.innerText : "").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  const html = document.documentElement.outerHTML;
+  const links = qa("a[href]").map(a => a.getAttribute("href"));
+  return {
+    title: document.title || "", lang: document.documentElement.lang || "",
+    description: (q('meta[name="description"]') || {}).content || "",
+    viewport: !!q('meta[name="viewport"]'), ogTitle: !!q('meta[property="og:title"]'), ogImage: !!q('meta[property="og:image"]'),
+    favicon: !!q('link[rel~="icon"]'), h1: qa("h1").length,
+    imgNoAlt: qa("img").filter(i => !i.hasAttribute("alt")).length, images: qa("img").length,
+    internalLinks: links.filter(h => h && !/^(https?:|mailto:|tel:|#|javascript:)/i.test(h)),
+    emptyLinks: links.filter(h => !h || h === "#").length,
+    legal: /mentions legales|mentions-legales|cgv|conditions generales/.test(text + " " + links.join(" ").toLowerCase()),
+    contact: /\\/public\\/chat\\.js/.test(html) || links.some(h => /^mailto:|^tel:/i.test(h || "")) || !!q("form")
+             || /contact/.test(text),
+    buy: links.some(h => /buy\\.stripe\\.com|checkout\\.stripe\\.com/.test(h || "")) || !!q("[data-buy]"),
+    price: /\\d\\s?(€|eur)|€\\s?\\d/.test(text),
+    analytics: /\\/public\\/(a|chat)\\.js/.test(html),
+    words: text.split(/\\s+/).filter(Boolean).length,
+    overflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+  };
+}"""
+
+
+async def audit(folder: str, base_url: str = "", password: str = "", kind: str = "site") -> dict:
+    """Audit d'un site du workspace : chargement, erreurs, mobile, SEO, contact, mentions légales, liens."""
+    path = (WORKSPACE / folder.strip("/")).resolve()
+    if WORKSPACE.resolve() not in path.parents or not (path / "index.html").is_file():
+        raise ValueError("dossier invalide (il faut un index.html dans le workspace)")
+    rel = str(path.relative_to(WORKSPACE))
+    url = f"{base_url.rstrip('/')}/w/{rel}/" if base_url else (path / "index.html").as_uri()
+    b = await _get_browser()
+    issues: list[dict] = []
+    shots, metrics = {}, {}
+
+    def add(level: str, msg: str) -> None:
+        issues.append({"niveau": level, "probleme": msg})
+
+    for device, vp in (("ordi", {"width": 1366, "height": 850}), ("mobile", {"width": 390, "height": 844})):
+        ctx = await b.new_context(viewport=vp, is_mobile=device == "mobile",
+                                  http_credentials={"username": "fusee", "password": password} if password else None)
+        await _no_tracking(ctx)
+        page = await ctx.new_page()
+        errors, failed = [], []
+        page.on("pageerror", lambda e: errors.append(str(e)[:200]))
+        page.on("console", lambda m: errors.append(f"{m.text[:200]} @{(m.location or {}).get('url', '')}")
+                if m.type == "error" else None)
+        page.on("requestfailed", lambda r: failed.append(r.url[:150]))
+        page.on("response", lambda r: failed.append(f"{r.status} {r.url[:150]}") if r.status >= 400 else None)
+        try:
+            t0 = time.time()
+            resp = await page.goto(url, wait_until="load", timeout=30000)
+            load_ms = int((time.time() - t0) * 1000)
+            await page.wait_for_timeout(700)
+            if resp is not None and resp.status >= 400:
+                add("bloquant", f"la page ne se charge pas (HTTP {resp.status})")
+            info = await page.evaluate(_AUDIT_JS)
+            out = _out(f"audit-{path.name}-{device}", "png")
+            await page.screenshot(path=str(out), full_page=device == "mobile")
+            shots[device] = str(out.relative_to(WORKSPACE))
+            if device == "ordi":
+                metrics = {"temps_chargement_ms": load_ms, "mots": info["words"], "images": info["images"]}
+                broken = []
+                for href in info["internalLinks"][:40]:
+                    target = href.split("#")[0].split("?")[0]
+                    if not target:
+                        continue
+                    if base_url:
+                        r = await page.request.get(urllib.parse.urljoin(page.url, target))
+                        ok = r.status < 400
+                    else:
+                        p = (path / target).resolve()
+                        ok = p.exists() and (p.is_file() or (p / "index.html").is_file())
+                    if not ok:
+                        broken.append(href)
+                if broken:
+                    add("erreur", f"liens internes cassés : {', '.join(broken[:6])}")
+                if not info["title"]:
+                    add("bloquant", "pas de <title>")
+                elif not 10 <= len(info["title"]) <= 70:
+                    add("avertissement", f"titre de {len(info['title'])} caractères (idéal 10-70)")
+                if not info["description"]:
+                    add("erreur", "pas de meta description (référencement Google)")
+                if not info["lang"]:
+                    add("avertissement", "attribut lang manquant sur <html>")
+                if not info["viewport"]:
+                    add("bloquant", "pas de meta viewport : illisible sur mobile")
+                if info["h1"] != 1:
+                    add("avertissement", f"{info['h1']} titre(s) <h1> (idéal : 1)")
+                if not info["ogTitle"] or not info["ogImage"]:
+                    add("avertissement", "balises og:title / og:image manquantes (aperçu des partages)")
+                if not info["favicon"]:
+                    add("avertissement", "pas de favicon")
+                if info["imgNoAlt"]:
+                    add("avertissement", f"{info['imgNoAlt']} image(s) sans texte alternatif (alt)")
+                if info["emptyLinks"]:
+                    add("avertissement", f"{info['emptyLinks']} lien(s) vide(s) ou « # »")
+                if not info["contact"]:
+                    add("bloquant", "aucun moyen de contact (widget de chat, e-mail ou formulaire)")
+                if not info["legal"]:
+                    add("bloquant" if kind == "site" else "avertissement", "pas de mentions légales / CGV")
+                if info["buy"] and not info["price"]:
+                    add("erreur", "bouton d'achat sans prix affiché")
+                if not info["analytics"]:
+                    add("avertissement", "pas de statistiques (script /public/a.js ou widget de chat)")
+                if info["words"] < 60:
+                    add("avertissement", f"très peu de texte ({info['words']} mots) : difficile à convaincre et à référencer")
+                if load_ms > 4000:
+                    add("erreur", f"chargement lent ({load_ms} ms)")
+            elif info["overflow"]:
+                add("bloquant", "la page déborde horizontalement sur mobile (défilement de côté)")
+        except Exception as e:  # noqa: BLE001
+            add("bloquant", f"chargement impossible sur {device} : {str(e)[:200]}")
+        finally:
+            await ctx.close()
+        real_errors = [e.split(" @")[0] for e in errors if "/public/" not in e and "favicon" not in e]
+        real_failed = [f for f in failed if "/public/" not in f and "favicon" not in f]
+        if real_errors:
+            add("bloquant", f"erreurs JavaScript ({device}) : {' | '.join(dict.fromkeys(real_errors))[:300]}")
+        if real_failed:
+            add("erreur", f"ressources introuvables ({device}) : {', '.join(dict.fromkeys(real_failed))[:300]}")
+
+    weight = sum(f.stat().st_size for f in path.rglob("*") if f.is_file() and f.suffix not in (".mp4", ".webm"))
+    metrics["poids_ko"] = round(weight / 1024)
+    if weight > 3 * 1024 * 1024:
+        add("erreur", f"site lourd ({weight // 1024} Ko) : compresse les images")
+    penalty = {"bloquant": 20, "erreur": 10, "avertissement": 3}
+    score = max(0, 100 - sum(penalty[i["niveau"]] for i in issues))
+    blocking = [i for i in issues if i["niveau"] == "bloquant"]
+    return {"site": rel, "score": score, "ok_pour_publier": score >= 70 and not blocking,
+            "problemes": issues, "mesures": metrics, "captures": shots}

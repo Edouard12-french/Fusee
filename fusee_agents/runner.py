@@ -8,7 +8,7 @@ import anthropic
 from . import budget, db, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
 from .config import MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, WEB_SEARCH_COST, model_for
-from .tools import execute, skills, tool_defs, toolbox
+from .tools import execute, products_overview, skills, tool_defs, toolbox
 
 client = anthropic.AsyncAnthropic(max_retries=4)
 MINOR_TXT = f"""
@@ -60,6 +60,13 @@ def build_context(agent: Agent, reason: str) -> str:
                   f"(aujourd'hui {b['api_today_eur']:.2f} / {b['api_daily_cap_eur']:.2f} €). "
                   f"Disponible pour de vraies dépenses (hors IA) : {b['free_to_spend_eur']:.2f} €.")
     my_tasks = workflow.agent_context(agent.name)
+    prods = products_overview()
+    prods_txt = "\n".join(
+        f"#{p['id']} {p['nom']} [{p['statut']}] {p['prix_eur']:.2f} € — {p['visiteurs_7j']} visiteurs/7 j, "
+        f"{p['clics_achat_7j']} clics achat, {p['ventes']} ventes, {p['ca_eur']:.2f} € CA"
+        + (f" — {p['en_ligne']}" if p["en_ligne"] else "") for p in prods[:15]) or "(catalogue vide)"
+    memories = db.kb_search(f"{reason} {agent.title}", 4)
+    mem_txt = "\n".join(f"- [{m['topic']}] ({m['agent']}) {m['content'][:400]}" for m in memories) or "(rien de lié)"
     tb = ", ".join(n for n, _ in toolbox()) or "(vide)"
     sk = ", ".join(n for n, _ in skills()) or "(aucune)"
     answers = db.q("SELECT id, agent, question, answer FROM owner_questions WHERE answered_ts > ? ORDER BY id DESC LIMIT 8",
@@ -97,6 +104,12 @@ Raison du réveil : {reason}
 
 ## Consigne permanente de {OWNER}
 {owner_directive or "(aucune — objectif général : faire gagner de l'argent légalement)"}
+
+## Catalogue produits (ventes réelles)
+{prods_txt}
+
+## Souvenirs utiles de la mémoire collective (recall pour chercher plus)
+{mem_txt}
 
 ## Tes tâches en cours (workflows)
 {my_tasks or "(aucune)"}

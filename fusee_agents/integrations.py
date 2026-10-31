@@ -71,3 +71,17 @@ def sales_summary() -> dict:
             "recent": [{"ts": c["created"], "amount": c["amount"] / 100, "currency": c["currency"],
                         "description": c.get("description") or "", "email": (c.get("billing_details") or {}).get("email")}
                        for c in paid[:20]]}
+
+
+def completed_checkouts(limit: int = 100) -> list[dict]:
+    """Paiements terminés (sessions Checkout, y compris via liens de paiement), du plus récent au plus ancien."""
+    data = _stripe("checkout/sessions", {"limit": limit, "status": "complete"}, method="GET")["data"]
+    out = []
+    for c in data:
+        if c.get("payment_status") not in ("paid", "no_payment_required"):
+            continue
+        cd = c.get("customer_details") or {}
+        out.append({"id": c["id"], "ts": c["created"], "amount": (c.get("amount_total") or 0) / 100,
+                    "currency": c.get("currency") or "eur", "email": cd.get("email") or "", "name": cd.get("name") or "",
+                    "payment_link": c.get("payment_link") or ""})
+    return out

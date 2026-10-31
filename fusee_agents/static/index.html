@@ -136,8 +136,8 @@ const md = s => esc(s).replace(/(?:^\|.*\|[ \t]*(?:\n|$))+/gm, mdTable)
 const api = (u, opt) => fetch(u, opt).then(r => r.json());
 const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
-let S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
-const TABS = {agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", contacts:"👥 Prospects", money:"💰 Argent",
+let openProduct = null, S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
+const TABS = {agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", products:"📦 Produits", contacts:"👥 Prospects", money:"💰 Argent",
   vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse",
   notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
@@ -264,6 +264,7 @@ async function renderPane(soft) {
       const v = await api("/api/vitrine");
       pane.innerHTML = `<h4>Sites, applis et jeux</h4>` + (v.projects.map(p => `<div class="card"><h4>${p.kind === "jeu" ? "🎮" : "🌐"} ${esc(p.name)}</h4>
           <div class="preview"><iframe src="${p.local}" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe></div>
+          <div class="muted">7 j : 👀 ${p.stats.visiteurs} visiteurs · 🛒 ${p.stats.clics_achat} clics achat · 💬 ${p.stats.chats_ouverts} chats · 💶 ${p.stats.ventes} ventes (${p.stats.taux_conversion} %)</div>
           <a class="lnk" href="${p.local}" target="_blank">👁️ Ouvrir</a> ${p.public ? `<a class="lnk" href="${esc(p.public)}" target="_blank" rel="noopener">🌍 En ligne : ${esc(p.public.replace(/^https?:\/\//, ""))}</a>` : '<span class="tag">pas encore en ligne</span>'}
           <div class="muted">modifié ${time(p.updated)}</div></div>`).join("") || "<p class=muted>Aucun site ou jeu pour l'instant.</p>") +
         `<h4>Captures, pubs et vidéos</h4><div class="grid">${v.media.map(m => m.type === "video"
@@ -284,6 +285,32 @@ async function renderPane(soft) {
           <div><b>${esc(t.title)}</b> <span class="tag">${esc(t.priority)}</span><div class="md">${md(t.steps)}</div><div class="muted">par ${t.agent} · ${time(t.ts)}</div></div></label></div>`).join("") || "<p class=muted>Rien à faire pour l'instant 🎉</p>") +
         (done.length ? `<details class="card"><summary>Tâches faites (${done.length})</summary>${done.map(t => `<div class="act">✔️ ${esc(t.title)}</div>`).join("")}</details>` : "") +
         (doneQ.length ? `<details class="card"><summary>Questions répondues (${doneQ.length})</summary>${doneQ.map(q => `<div class="act">${esc(q.question)}<br><b>→ ${esc(q.answer)}</b></div>`).join("")}</details>` : "");
+    } else if (tab === "products") {
+      if (soft) return;
+      const eur = v => (+v).toFixed(2).replace(".", ",") + " €";
+      if (openProduct) {
+        const st = await api(`/api/stats?site=${encodeURIComponent(openProduct)}&days=30`);
+        pane.innerHTML = `<button onclick="openProduct=null;renderPane()">← Catalogue</button>
+          <div class="card" style="margin-top:8px"><h4>📊 ${esc(st.site)} — 30 derniers jours</h4>
+          <table><tr><td>Visiteurs</td><td><b>${st.visiteurs}</b> (${st.pages_vues} pages vues)</td></tr>
+          <tr><td>Clics « acheter »</td><td><b>${st.clics_achat}</b> (${st.taux_clic_achat} % des visiteurs)</td></tr>
+          <tr><td>Chats ouverts</td><td>${st.chats_ouverts} (${st.messages_chat} messages)</td></tr>
+          <tr><td>Ventes</td><td><b class="pos">${st.ventes}</b> — ${eur(st.ca_eur)} (conversion ${st.taux_conversion} %)</td></tr></table></div>
+          <div class="card"><h4>Visiteurs par jour</h4><table>${st.par_jour.map(d => `<tr><td>${d.day.slice(8)}/${d.day.slice(5,7)}</td><td>${d.u}</td></tr>`).join("") || "<tr><td class=muted>Aucune visite</td></tr>"}</table></div>
+          <div class="card"><h4>D'où viennent les visiteurs</h4><table>${st.sources.map(r => `<tr><td>${esc(r.src)}</td><td>${r.u}</td></tr>`).join("") || "<tr><td class=muted>—</td></tr>"}</table></div>
+          <div class="card"><h4>Appareils & pages</h4><table>${st.appareils.map(r => `<tr><td>${esc(r.device)}</td><td>${r.u}</td></tr>`).join("")}${st.pages.map(r => `<tr><td>${esc(r.path)}</td><td>${r.n} vues</td></tr>`).join("")}</table></div>`;
+      } else {
+        const list = await api("/api/products");
+        const tot = list.reduce((a, p) => a + p.ca_eur, 0), nb = list.reduce((a, p) => a + p.ventes, 0);
+        pane.innerHTML = `<div class="card"><div class="big pos">${eur(tot)}</div><div class="muted">${nb} vente(s) au total · ${list.length} produit(s)</div></div>` +
+          (list.map(p => `<div class="card ${p.site ? "click" : ""}" ${p.site ? `onclick="openProduct='${esc(p.site.split("/").pop())}';renderPane()"` : ""}>
+            <h4>📦 #${p.id} ${esc(p.nom)}</h4>
+            <span class="tag">${esc(p.type)}</span> <span class="tag">${esc(p.cible)}</span> <span class="tag">${esc(p.statut)}</span> <span class="tag">${eur(p.prix_eur)}</span> <span class="muted">par ${p.par}</span>
+            <table style="margin-top:6px"><tr><td>👀 ${p.visiteurs_7j} visiteurs (7 j)</td><td>🛒 ${p.clics_achat_7j} clics achat</td><td>💶 ${p.ventes} ventes · <b>${eur(p.ca_eur)}</b></td></tr></table>
+            ${p.en_ligne ? `<a class="lnk" href="${esc(p.en_ligne)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🌍 ${esc(p.en_ligne.replace(/^https?:\/\//, ""))}</a>` : ""}
+            ${p.liens_paiement.map(u => `<a class="lnk" href="${esc(u)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💳 paiement</a>`).join(" ")}</div>`).join("")
+            || "<p class=muted>Aucun produit au catalogue pour l'instant.</p>");
+      }
     } else if (tab === "flows") {
       const jobs = await api("/api/jobs");
       pane.innerHTML = `<p class="muted">⛓️ Séquentiel : chaque agent reçoit le résultat du précédent. 🐙 Parallèle : plusieurs agents en même temps, puis synthèse.</p>` +
@@ -310,7 +337,7 @@ async function renderPane(soft) {
       pane.innerHTML = `<div class="card"><h4>💶 Ton argent</h4>
           <div class="big ${m.remaining_eur >= m.initial_eur ? "pos" : ""}">${eur(m.remaining_eur)}</div><div class="muted">restants sur ${eur(m.initial_eur)} de départ</div>
           <table style="margin-top:8px"><tr><td>🤖 IA dépensée</td><td>${eur(m.api_spent_eur)} / ${eur(m.api_budget_eur)} (aujourd'hui ${eur(m.api_today_eur)} / ${eur(m.api_daily_cap_eur)})</td></tr>
-          <tr><td>🧾 Autres dépenses</td><td>${eur(m.expenses_eur)}</td></tr><tr><td>💶 Revenus</td><td class="pos">${eur(m.revenues_eur)}${m.stripe_eur ? ` (dont Stripe ${eur(m.stripe_eur)})` : ""}</td></tr>
+          <tr><td>🧾 Autres dépenses</td><td>${eur(m.expenses_eur)}</td></tr><tr><td>💶 Revenus</td><td class="pos">${eur(m.revenues_eur)}${m.sales_count ? ` (dont ${m.sales_count} vente(s) Stripe : ${eur(m.sales_eur)})` : ""}</td></tr>
           <tr><td>🛒 Dispo pour dépenser (hors IA)</td><td>${eur(m.free_to_spend_eur)}</td></tr></table>
           <div class="score"><i style="width:${Math.min(100, 100 * m.api_spent_eur / Math.max(m.api_budget_eur, 0.01))}%;background:var(--accent)"></i></div>
           <details style="margin-top:6px"><summary>Régler le budget</summary>
@@ -328,8 +355,8 @@ async function renderPane(soft) {
           <div style="display:flex;gap:6px;flex-wrap:wrap"><select id="lk"><option>dépense</option><option>revenu</option></select><input id="la" type="number" step="0.01" placeholder="€" style="width:80px"><input id="ll" placeholder="ex. nom de domaine" style="flex:1"><button onclick="addLedger()">Ajouter</button></div>
           ${b.ledger.map(l => `<div class="act"><span class="muted">${time(l.ts)}</span> <b class="${l.kind === "revenu" ? "pos" : "neg"}">${l.kind === "revenu" ? "+" : "−"}${eur(l.amount_eur)}</b> ${esc(l.label)} <span class="muted">${esc(l.source)}</span>${l.source === "Patron" ? ` <a href="#" onclick="delLedger(${l.id});return false">✕</a>` : ""}</div>`).join("") || "<p class=muted>Rien pour l'instant.</p>"}</div>
         <div class="card"><h4>💳 Ventes & liens de paiement</h4>
-          ${s.stripe ? `<div><b class="pos">${eur(s.stripe.total_eur)}</b> encaissés (${s.stripe.count} paiements Stripe)</div>${s.stripe.recent.map(x => `<div class="act"><span class="muted">${time(x.ts)}</span> <b>${x.amount.toFixed(2)} ${x.currency.toUpperCase()}</b> ${esc(x.description)} <span class="muted">${esc(x.email || "")}</span></div>`).join("")}`
-            : `<p class="muted">${S.capabilities.stripe ? esc(s.stripe_error || "Chargement…") : "Stripe pas encore connecté (STRIPE_SECRET_KEY dans .env)."}</p>`}
+          ${s.sales.length ? s.sales.map(x => `<div class="act"><span class="muted">${time(x.ts)}</span> <b class="pos">+${eur(x.amount_eur)}</b> ${esc(x.description)} <span class="muted">${esc(x.name || x.email || "")}</span></div>`).join("")
+            : `<p class="muted">${S.capabilities.stripe ? "Aucune vente pour l'instant — elles apparaissent ici toutes seules (vérifiées toutes les 3 min)." : "Stripe pas encore connecté (STRIPE_SECRET_KEY dans .env)."}</p>`}
           ${s.payment_links.map(l => `<div class="act">${esc(l.name)} — <b>${l.price_eur} €</b> <a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>`).join("")}
           ${s.deployments.map(d => `<div class="act">🌍 ${esc(d.site)} <a class="lnk" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.url)}</a></div>`).join("")}</div>`;
     } else if (tab === "ideas") {

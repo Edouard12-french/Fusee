@@ -14,12 +14,12 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import budget, db, integrations, mailbox
+from . import analytics, budget, db, integrations, mailbox
 from .agents import OWNER, TEAM
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
 from .notify import notify
 from .scheduler import scheduler
-from .tools import _safe_path, deliver_reply, mentions, skills, toolbox
+from .tools import _safe_path, deliver_reply, mentions, products_overview, skills, toolbox
 
 STATIC = Path(__file__).parent / "static"
 PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
@@ -171,8 +171,11 @@ def vitrine():
         for d in sorted(p for p in base.iterdir() if p.is_dir()) if base.exists() else []:
             if (d / "index.html").is_file():
                 rel = str(d.relative_to(WORKSPACE))
+                st = analytics.site_stats(d.name, 7)
                 projects.append({"kind": kind, "name": d.name, "local": f"/w/{rel}/",
                                  "public": deployed.get(rel, {}).get("url"),
+                                 "stats": {k: st[k] for k in ("visiteurs", "clics_achat", "chats_ouverts", "ventes",
+                                                              "taux_conversion")},
                                  "updated": max(f.stat().st_mtime for f in d.rglob("*") if f.is_file())})
     media = [{"path": str(p.relative_to(WORKSPACE)), "ts": p.stat().st_mtime,
               "type": "video" if p.suffix in (".mp4", ".webm") else "image"}
@@ -182,6 +185,18 @@ def vitrine():
     return {"projects": sorted(projects, key=lambda p: -p["updated"]), "media": media[:120]}
 
 
+# --- catalogue & statistiques -------------------------------------------------
+@app.get("/api/products")
+def products():
+    return products_overview()
+
+
+@app.get("/api/stats")
+def stats(site: str = "", days: int = 7):
+    days = max(1, min(days, 90))
+    return analytics.site_stats(site, days) if site else {"sites": analytics.all_sites_summary(days)}
+
+
 # --- ventes -------------------------------------------------------------------
 _sales_cache: dict = {"ts": 0, "data": None}
 
@@ -189,6 +204,7 @@ _sales_cache: dict = {"ts": 0, "data": None}
 @app.get("/api/sales")
 async def sales():
     out = {"payment_links": db.q("SELECT * FROM payment_links ORDER BY id DESC"),
+           "sales": db.q("SELECT * FROM sales ORDER BY ts DESC LIMIT 50"),
            "deployments": db.q("SELECT site, url, max(ts) ts FROM deployments GROUP BY site ORDER BY ts DESC"),
            "stripe": None, "stripe_error": None}
     if integrations.STRIPE_KEY:
@@ -356,6 +372,27 @@ def _rate_ok(key: str, limit: int, window: int) -> bool:
     return True
 
 
+@app.get("/public/a.js")
+def analytics_js():
+    return FileResponse(STATIC / "analytics.js", media_type="application/javascript")
+
+
+@app.post("/public/t")
+async def track(request: Request):
+    try:
+        d = json.loads(await request.body())
+    except ValueError:
+        raise HTTPException(400)
+    if not isinstance(d, dict):
+        raise HTTPException(400)
+    ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "?")
+    if not (_rate_ok(f"t:{ip}", 300, 3600) and _rate_ok("t:all", 20000, 3600)):
+        return Response(status_code=204)
+    analytics.record(str(d.get("site", "")), str(d.get("path", "")), str(d.get("event", "")),
+                     str(d.get("visitor", "")), str(d.get("ref", "")), str(d.get("utm", "")), str(d.get("device", "")))
+    return Response(status_code=204)
+
+
 @app.get("/public/chat.js")
 def chat_js():
     return FileResponse(STATIC / "chat-widget.js", media_type="application/javascript")
@@ -453,17 +490,8 @@ def toolbox_api():
 # --- argent : budget, dépenses, profil investisseur, stratégie -----------------
 @app.get("/api/budget")
 async def budget_api():
-    stripe_eur = 0.0
-    if integrations.STRIPE_KEY:
-        if time.time() - _sales_cache["ts"] > 300:
-            try:
-                _sales_cache["data"] = await asyncio.to_thread(integrations.sales_summary)
-                _sales_cache["ts"] = time.time()
-            except Exception:  # noqa: BLE001
-                pass
-        stripe_eur = (_sales_cache["data"] or {}).get("total_eur", 0.0)
     strategy = budget.strategy()
-    return {"summary": budget.summary(stripe_eur), "ledger": db.q("SELECT * FROM ledger ORDER BY id DESC LIMIT 100"),
+    return {"summary": budget.summary(), "ledger": db.q("SELECT * FROM ledger ORDER BY id DESC LIMIT 100"),
             "profile": budget.investor_profile(), "strategy": strategy,
             "strategy_ts": float(db.get_setting("strategy_ts", "0") or 0), "usd_eur": USD_EUR}
 

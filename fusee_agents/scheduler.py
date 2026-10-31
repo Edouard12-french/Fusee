@@ -1,7 +1,7 @@
 """Fait tourner chaque agent en continu : un cycle à intervalle régulier, ou dès qu'il est mentionné."""
 import asyncio
 
-from . import db, mailbox
+from . import db, mailbox, sales
 from .agents import BY_NAME, TEAM
 from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
@@ -54,6 +54,7 @@ class Scheduler:
         for i, a in enumerate(TEAM):
             db.set_state(a.name, status="en attente")
             self.tasks.append(asyncio.create_task(self._loop(a.name, first_delay=i * 30)))
+        self.tasks.append(asyncio.create_task(sales.poll_forever(self.wake)))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(
             lambda ids: self.wake("Iris", f"nouvel(s) e-mail(s) de contact(s) {ids}"))))
 

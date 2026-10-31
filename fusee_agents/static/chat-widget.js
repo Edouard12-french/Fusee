@@ -4,6 +4,9 @@
   var me = document.currentScript, base = me.src.replace(/\/public\/chat\.js.*$/, "");
   var site = me.getAttribute("data-site") || location.hostname, color = me.getAttribute("data-color") || "#7c5cff";
   var title = me.getAttribute("data-title") || "Une question ? On vous répond !";
+  // statistiques : le widget de chat charge aussi le compteur de visites
+  if (!window.__fuseeA) { var t = document.createElement("script"); t.src = base + "/public/a.js"; t.setAttribute("data-site", site); document.head.appendChild(t); }
+  function track(ev) { if (window.fuseeTrack) window.fuseeTrack(ev); }
   var KEY = "fusee_chat_" + site, st = {};
   try { st = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
   if (!st.session) { st.session = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); }
@@ -14,7 +17,8 @@
     "background:" + color + ";color:#fff;font-size:26px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:2147483000}" +
     "#fz-box{position:fixed;right:20px;bottom:90px;width:340px;max-width:calc(100vw - 32px);height:460px;max-height:70vh;background:#fff;color:#111;" +
     "border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.3);display:none;text-align:left;flex-direction:column;overflow:hidden;z-index:2147483000;font:14px/1.4 system-ui,sans-serif}" +
-    "#fz-box.open{display:flex}#fz-h{background:" + color + ";color:#fff;padding:12px 14px;font-weight:600}" +
+    "#fz-box.open{display:flex}#fz-h{background:" + color + ";color:#fff;padding:12px 14px;font-weight:600;display:flex;align-items:center;gap:8px}" +
+    "#fz-h span{flex:1}#fz-x{background:none;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px}" +
     "#fz-m{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:6px;background:#f6f7fb}" +
     ".fz-b{max-width:82%;padding:8px 11px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}" +
     ".fz-in{align-self:flex-end;background:" + color + ";color:#fff}.fz-out{align-self:flex-start;background:#fff;border:1px solid #e3e5ee}" +
@@ -24,11 +28,12 @@
   var s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);
   var btn = document.createElement("button"); btn.id = "fz-btn"; btn.setAttribute("aria-label", "Discuter"); btn.textContent = "💬";
   var box = document.createElement("div"); box.id = "fz-box";
-  box.innerHTML = '<div id="fz-h"></div><div id="fz-m"></div><input id="fz-e" type="email" placeholder="Votre e-mail (facultatif, pour vous recontacter)">' +
+  box.innerHTML = '<div id="fz-h"><span></span><button id="fz-x" aria-label="Fermer">✕</button></div><div id="fz-m"></div><input id="fz-e" type="email" placeholder="Votre e-mail (facultatif, pour vous recontacter)">' +
     '<form id="fz-f"><textarea id="fz-t" rows="1" placeholder="Votre message…"></textarea><button id="fz-s">Envoyer</button></form>';
   document.body.appendChild(btn); document.body.appendChild(box);
   var $ = function (id) { return box.querySelector("#" + id); };
-  $("fz-h").textContent = title;
+  box.querySelector("#fz-h span").textContent = title;
+  $("fz-x").onclick = function () { box.classList.remove("open"); };
   if (st.email) { $("fz-e").value = st.email; }
   function add(dir, text) {
     var d = document.createElement("div"); d.className = "fz-b " + (dir === "in" ? "fz-in" : "fz-out"); d.textContent = text;
@@ -54,13 +59,13 @@
       }).catch(function () {});
   }
   setInterval(function () { if (box.classList.contains("open") || waiting) poll(); }, 4000);
-  btn.onclick = function () { box.classList.toggle("open"); if (box.classList.contains("open")) { poll(); $("fz-t").focus(); } };
+  btn.onclick = function () { box.classList.toggle("open"); if (box.classList.contains("open")) { track("chat_ouvert"); poll(); $("fz-t").focus(); } };
   $("fz-t").onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("fz-f").requestSubmit(); } };
   $("fz-f").onsubmit = function (e) {
     e.preventDefault();
     var t = $("fz-t").value.trim(); if (!t) return;
     st.email = $("fz-e").value.trim(); $("fz-t").value = "";
-    add("in", t); st.log.push({d: "in", t: t}); save();
+    add("in", t); st.log.push({d: "in", t: t}); save(); track("chat_message");
     fetch(base + "/public/chat/send", {method: "POST", headers: {"Content-Type": "text/plain"},
       body: JSON.stringify({session: st.session, message: t, site: site, email: st.email})})
       .then(function (r) { if (r.status === 429) add("out", "Trop de messages pour le moment, réessayez un peu plus tard 🙏"); else { waiting = true; setTyping(true); } })

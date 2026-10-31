@@ -47,6 +47,27 @@ besoin d'eux** : ils ne coûtent rien le reste du temps.
    un score sur 100 et son potentiel pour le futur**. Les prospects chauds (≥ 70) te sont notifiés.
    Tu peux aussi répondre toi-même à un client depuis l'appli.
 
+## Ce qui rend l'équipe efficace
+
+- **📦 Catalogue produits** : chaque produit (site, appli, jeu, template, service) avec son prix, son site, ses
+  liens de paiement, ses visiteurs, ses ventes et son chiffre d'affaires. Les agents décident avec ces chiffres.
+- **💶 Ventes détectées en temps réel** : toutes les 3 minutes, Fusée lit les paiements Stripe, les attribue au bon
+  produit, enregistre le client et t'envoie « 💶 Vente ! » sur ton téléphone. (À la première connexion, l'historique
+  est importé sans notification.)
+- **📊 Statistiques des sites, sans cookies** : visites, provenance (Google, TikTok… grâce aux liens `?utm_source=`),
+  ordinateur/mobile, clics sur « Acheter », chats ouverts, taux de conversion. Le widget de chat les charge tout
+  seul ; sinon `<script src="PUBLIC_URL/public/a.js" data-site="nom-du-site"></script>`. Les visites des agents
+  eux-mêmes (captures, audits) ne comptent pas.
+- **🔍 Audit qualité obligatoire** : avant toute mise en ligne, Fusée ouvre le site comme un visiteur (ordinateur et
+  mobile) et vérifie erreurs JavaScript, liens cassés, débordement sur mobile, titre et description Google, aperçu de
+  partage, contact, mentions légales, prix affiché, statistiques, poids et vitesse. Un site bâclé est **bloqué**
+  avec la liste précise de ce qu'il faut corriger.
+- **🧠 Mémoire collective** : les agents enregistrent ce qu'ils apprennent (prix acceptés, canaux qui marchent,
+  erreurs à éviter) et le retrouvent par recherche, même des semaines plus tard. Les souvenirs utiles sont
+  rappelés automatiquement à chaque cycle.
+- **🔒 Tes clés restent secrètes** : le code écrit par les agents tourne sans aucune clé ni mot de passe de ton
+  `.env` (API, Stripe, e-mail, notifications).
+
 ## Installation
 
 1. Installe [Python 3.11+](https://www.python.org/downloads/) (sur Windows, coche « Add Python to PATH »).
@@ -98,6 +119,8 @@ Sans adresse publique, les sites affichent un contact par e-mail à la place.
 - **💬 Groupe** : leur discussion, avec les captures, vidéos et liens. Écris-leur (`@Neo`, `@Tous`…) ; sans mention, Nexus aiguille ta demande.
 - **📋 Suivi** :
   - 🙋 **Pour toi** : les questions de l'équipe (boutons de réponse) et ta liste « À faire » pas à pas
+  - 📦 **Produits** : le catalogue avec ventes, chiffre d'affaires, visiteurs et conversion ; clique un produit pour
+    voir d'où viennent ses visiteurs, jour par jour
   - ✅ **Validations** : leurs demandes (avec captures) → Accepter / Refuser
   - 👥 **Prospects** : chaque personne, son intérêt, son ressenti, son score, la conversation complète, et tu peux lui répondre
   - 🖼️ **Vitrine** : aperçu de tous les sites, applis et jeux (local et en ligne), galerie des pubs et vidéos
@@ -165,6 +188,8 @@ fusee_agents/
   tools.py                     tous les outils des agents
   workflow.py                  moteur des workflows séquentiels et parallèles
   budget.py                    budget réel en euros, plafonds IA
+  sales.py                     détection des ventes Stripe en temps réel
+  analytics.py                 statistiques des sites (sans cookies)
   browser.py                   navigateur : captures, navigation, vidéos
   integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)
   mailbox.py                   e-mails clients (IMAP/SMTP)
