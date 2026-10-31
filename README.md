@@ -1,6 +1,6 @@
 # 🚀 Fusée — une équipe d'agents IA qui travaille pour toi 24h/24
 
-Six agents IA (Claude) avec chacun leur spécialité, qui discutent entre eux dans un **groupe façon WhatsApp**,
+Sept agents IA (Claude) avec chacun leur spécialité, qui discutent entre eux dans un **groupe façon WhatsApp**,
 cherchent sur internet, écrivent du code, créent des jeux et te préparent des produits à vendre.
 Tu suis tout depuis un **tableau de bord web** et tu peux leur écrire à tout moment.
 
@@ -12,6 +12,7 @@ Tu suis tout depuis un **tableau de bord web** et tu peux leur écrire à tout m
 | 🎮 **Pixel** | Créateur de jeux HTML5 originaux, jouables dans le navigateur (itch.io, portails web…) | 50 min |
 | 🔭 **Scout** | Veille : nouveautés IA, tendances, niches, opportunités, affiliation | 60 min |
 | 💰 **Mercure** | Ventes : où vendre, à quel prix, pages de vente, plan de lancement, conseils | 60 min |
+| 📬 **Iris** | Service client : lit les e-mails des clients et leur répond, en te notifiant à chaque fois | dès qu'un mail arrive |
 
 Chaque agent se réveille à son rythme **ou dès qu'on le mentionne** (`@Neo`, `@Tous`…).
 
@@ -25,8 +26,49 @@ python main.py
 
 Ouvre ensuite **http://localhost:8000**.
 
-Pour qu'ils tournent vraiment jour et nuit, l'ordinateur (ou un petit serveur/VPS) doit rester allumé
-avec `python main.py` lancé (par exemple dans `tmux`, ou en service systemd).
+## Les faire tourner 24h/24 sur ton ordinateur
+
+Les agents ont besoin que l'ordinateur reste **allumé et connecté à internet** (ils font leurs recherches
+Google/web eux-mêmes).
+
+- **Windows** : double-clique sur `start.bat`. Désactive la mise en veille
+  (Paramètres → Système → Alimentation → Mise en veille : Jamais).
+- **Mac / Linux** : `./start.sh` (sur Mac, il empêche aussi la mise en veille).
+- **Serveur / VPS Linux** (le plus fiable, ~5 €/mois, tourne même ordi éteint) : voir `fusee.service`.
+
+Ces scripts relancent Fusée automatiquement s'il plante.
+Pour voir le tableau de bord depuis ton téléphone sur le même Wi-Fi : `http://<IP-de-ton-ordi>:8000`
+(mets un `DASHBOARD_PASSWORD` dans `.env`). Hors de chez toi : installe [Tailscale](https://tailscale.com)
+(gratuit) sur l'ordinateur et le téléphone, plutôt que d'ouvrir un port sur ta box.
+
+## Ils proposent, tu valides ✅
+
+Les agents imaginent et préparent des business tout seuls (recherche, code, jeux, pages de vente, stratégie
+d'investissement…). Mais **avant de lancer quoi que ce soit** (publier, vendre, investir, dépenser), ils
+t'envoient une **demande de validation** : quoi, pourquoi, combien ça coûte, ce que ça peut rapporter,
+les risques et les étapes exactes. Tu reçois une notification sur ton téléphone et tu cliques
+**Accepter** ou **Refuser** (avec un commentaire si tu veux) dans l'onglet ✅ Validations.
+L'agent est réveillé avec ta réponse et continue.
+
+## Notifications sur ton téléphone 📱
+
+1. Installe l'app gratuite **ntfy** (Android / iPhone).
+2. Abonne-toi à un sujet au nom secret (ex. `fusee-edouard-8f3k29x`).
+3. Mets ce nom dans `.env` : `NTFY_TOPIC=fusee-edouard-8f3k29x`.
+4. Onglet 🔔 Notifs → « Envoyer une notification de test ».
+
+Tu es notifié pour : chaque demande de validation, chaque rapport, chaque réponse envoyée à un client,
+et les alertes importantes des agents.
+
+## Service client 📬 (quand un business commence à marcher)
+
+Crée une adresse e-mail dédiée au business (ex. Gmail + « mot de passe d'application »), mets-la dans `.env`
+(`IMAP_HOST`, `SMTP_HOST`, `EMAIL_USER`, `EMAIL_PASSWORD`). Iris lit les nouveaux e-mails toutes les 2 min
+et répond aux clients. Dans l'onglet 📬 Clients, tu choisis le mode :
+- **Réponse automatique + notification** : Iris répond tout de suite, tu reçois la question et la réponse sur ton téléphone ;
+- **Je valide chaque réponse** : rien ne part sans ton clic.
+
+Pour les remboursements, litiges ou cas délicats, Iris ne tranche jamais seule : elle te prévient.
 
 ## Le tableau de bord
 
@@ -57,8 +99,8 @@ préparer des produits et des pages de vente, analyser les marchés, se coordonn
 
 ❌ Ils **ne touchent pas à ton argent** : pas d'ordre de bourse réel, pas d'achat, pas de création de compte,
 pas de publication en ton nom. Quand quelque chose demande ça (mettre un jeu en vente sur itch.io, ouvrir un
-compte Gumroad, investir), ils te le préparent et te le listent dans les rapports : **c'est toi qui valides
-et cliques**. Ça évite qu'une erreur ou une page web piégée vide ton compte pendant que tu dors.
+compte Gumroad, investir), ils te demandent ton accord et te donnent les étapes : **c'est toi qui valides
+et cliques**. Seule exception, que tu actives toi-même : les réponses aux e-mails clients. Ça évite qu'une erreur ou une page web piégée vide ton compte pendant que tu dors.
 
 ⚠️ **Aucun revenu n'est garanti.** Les agents produisent des produits, des idées et des analyses ; l'argent
 vient quand tu publies et vends ce qui est bon. Les recommandations de trading ne sont pas des conseils
@@ -75,11 +117,15 @@ peux perdre. Si tu vends, pense à déclarer tes revenus (ex. micro-entreprise e
 
 ```
 main.py                     lancement (serveur web + agents)
+start.sh / start.bat        lancement 24h/24 avec redémarrage auto
+fusee.service               service pour serveur Linux
 fusee_agents/
   agents.py                 l'équipe et leurs instructions
   runner.py                 un cycle de travail d'un agent (boucle Claude + outils)
   scheduler.py              rythme 24h/24, réveil sur mention, limite de parallélisme
-  tools.py                  outils : chat, mémoire, fichiers, Python, idées, rapports, paper trading
+  tools.py                  outils : chat, mémoire, fichiers, Python, idées, rapports, validations, paper trading, clients
+  notify.py                 notifications téléphone (ntfy)
+  mailbox.py                e-mails clients (IMAP/SMTP)
   db.py                     base SQLite (data/fusee.db)
   web.py, static/index.html tableau de bord
 workspace/                  tout ce que les agents produisent

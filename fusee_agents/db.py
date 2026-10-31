@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS memory (agent TEXT PRIMARY KEY, content TEXT);
 CREATE TABLE IF NOT EXISTS agent_state (agent TEXT PRIMARY KEY, status TEXT, task TEXT, last_run REAL,
     cycles INTEGER DEFAULT 0, cost_usd REAL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS usage (day TEXT PRIMARY KEY, cost_usd REAL);
+CREATE TABLE IF NOT EXISTS approvals (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, kind TEXT, title TEXT,
+    details TEXT, amount_eur REAL, status TEXT DEFAULT 'en attente', response TEXT, decided_ts REAL, payload TEXT);
+CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, ts REAL, kind TEXT, title TEXT, body TEXT,
+    read INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS inbox (id INTEGER PRIMARY KEY, ts REAL, from_addr TEXT, subject TEXT, body TEXT,
+    message_id TEXT, status TEXT, reply TEXT, replied_ts REAL);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )

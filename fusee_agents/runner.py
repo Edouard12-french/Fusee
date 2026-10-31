@@ -40,6 +40,11 @@ def build_context(agent: Agent, reason: str) -> str:
     mine = db.activity(agent.name, 12)[::-1]
     mine_txt = "\n".join(f"[{_fmt_ts(a['ts'])}] {a['kind']}: {a['summary']}" for a in mine) or "(rien encore)"
     owner_directive = db.get_setting("directive", "")
+    appr = db.q("SELECT * FROM approvals WHERE status='en attente' OR decided_ts > ? ORDER BY id DESC LIMIT 15",
+                (time.time() - 3 * 86400,))
+    appr_txt = "\n".join(
+        f"#{a['id']} [{a['status']}] ({a['kind']}, par {a['agent']}) {a['title']}"
+        + (f" — commentaire de {OWNER} : {a['response']}" if a["response"] else "") for a in appr) or "(aucune)"
     spent = db.cost_today()
     return f"""# Nouveau cycle — {JOURS[datetime.now().weekday()]} {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Raison du réveil : {reason}
@@ -53,6 +58,9 @@ Budget API du jour : {spent:.2f} $ utilisés sur {DAILY_BUDGET_USD:.2f} $ — so
 
 ## Tes dernières actions
 {mine_txt}
+
+## Demandes de validation à {OWNER} (en attente + décisions des 3 derniers jours)
+{appr_txt}
 
 ## Tableau des idées
 {ideas_txt}

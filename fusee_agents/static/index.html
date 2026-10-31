@@ -47,6 +47,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:4px;borde
 .pos{color:#22c55e}.neg{color:#ef4444}
 .tag{font-size:11px;padding:2px 8px;border-radius:999px;background:#262b38}
 .md h1,.md h2,.md h3{margin:.6em 0 .3em}
+.badge{background:#ef4444;color:#fff;border-radius:999px;padding:0 6px;font-size:11px;margin-left:2px}
+.card.pending{border-color:#f59e0b}
+select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px;font:inherit;margin-top:6px}
 @media (max-width:1000px){main{grid-template-columns:1fr;grid-auto-rows:auto}#agents{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}.agent{min-width:200px}#chat{height:60vh}#side{border-left:0;min-height:60vh}}
 </style>
 </head>
@@ -76,8 +79,8 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const time = ts => new Date(ts * 1000).toLocaleString("fr-FR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 const md = s => esc(s).replace(/^### (.*)$/gm,"<h3>$1</h3>").replace(/^## (.*)$/gm,"<h2>$1</h2>").replace(/^# (.*)$/gm,"<h1>$1</h1>")
   .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>").replace(/(<\/h[123]>)\n+/g,"$1").replace(/\n/g,"<br>");
-let S = {agents:[]}, lastId = 0, selected = null, tab = "agent";
-const TABS = {agent:"🤖 Agent", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Portefeuille", files:"📁 Fichiers", feed:"⚡ Tout"};
+let lastSig = "", S = {agents:[]}, lastId = 0, selected = null, tab = "agent";
+const TABS = {agent:"🤖 Agent", approvals:"✅ Validations", ideas:"💡 Idées", inbox:"📬 Clients", notifs:"🔔 Notifs", reports:"📄 Rapports", pf:"📈 Portefeuille", files:"📁 Fichiers", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
 const emojiOf = n => (S.agents.find(a => a.name === n) || {}).emoji || "👤";
 
@@ -99,7 +102,7 @@ function addMessages(list) {
   for (const m of list) {
     lastId = Math.max(lastId, m.id);
     const me = m.sender === "Patron";
-    box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}"><div class="who" style="color:${colorOf(m.sender)}">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/@(\w+)/g,"<b>@$1</b>")}<div class="t">${time(m.ts)}</div></div>`);
+    box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}"><div class="who" style="color:${colorOf(m.sender)}">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/(^|\s)@(\w+)/g,"$1<b>@$2</b>")}<div class="t">${time(m.ts)}</div></div>`);
   }
   if (stick || list.length) box.scrollTop = box.scrollHeight;
 }
@@ -114,12 +117,15 @@ async function poll() {
     $("#costbar").style.width = Math.min(100, 100 * r.cost_today / r.budget) + "%";
     $("#pauseBtn").textContent = r.paused ? "▶️ Reprendre" : "⏸️ Pause";
     renderAgents(); addMessages(r.messages);
+    const sig = r.pending_approvals + "/" + r.unread_notifications;
+    if (sig !== lastSig) { lastSig = sig; renderTabs(); if (tab === "approvals") renderPane(); }
     if (tab === "agent" || tab === "feed") renderPane(true);
   } catch (e) { console.error(e); }
 }
 
 function renderTabs() {
-  $("#tabs").innerHTML = Object.entries(TABS).map(([k, v]) => `<button class="${tab===k?"on":""}" data-t="${k}">${v}</button>`).join("");
+  const badge = k => k === "approvals" && S.pending_approvals ? ` <span class="badge">${S.pending_approvals}</span>` : k === "notifs" && S.unread_notifications ? ` <span class="badge">${S.unread_notifications}</span>` : "";
+  $("#tabs").innerHTML = Object.entries(TABS).map(([k, v]) => `<button class="${tab===k?"on":""}" data-t="${k}">${v}${badge(k)}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tab = b.dataset.t; renderTabs(); renderPane(); });
 }
 
@@ -158,6 +164,29 @@ async function renderPane(soft) {
         Valeur : <b>${p.total_value.toFixed(2)} €</b> · P&L <b class="${c(p.pnl)}">${p.pnl.toFixed(2)} € (${(100*p.pnl/p.start).toFixed(2)} %)</b> · Cash ${p.cash.toFixed(2)} €</div>
         <table><tr><th>Actif</th><th>Qté</th><th>PRU</th><th>Dernier</th><th>P&L</th></tr>${p.positions.map(x => `<tr><td>${esc(x.symbol)}</td><td>${+x.qty.toFixed(6)}</td><td>${x.avg_price.toFixed(2)}</td><td>${x.last_price.toFixed(2)}</td><td class="${c(x.pnl)}">${x.pnl.toFixed(2)}</td></tr>`).join("")}</table>
         <h4>Ordres</h4>${p.trades.map(t => `<div class="act"><span class="muted">${time(t.ts)}</span> <b class="${t.side==="buy"?"pos":"neg"}">${t.side==="buy"?"ACHAT":"VENTE"}</b> ${+t.qty} ${esc(t.symbol)} @ ${t.price}<br><span class="muted">${esc(t.rationale)}</span></div>`).join("") || "<p class=muted>Aucun ordre.</p>"}`;
+    } else if (tab === "approvals") {
+      const list = await fetch("/api/approvals").then(r => r.json());
+      pane.innerHTML = `<p class="muted">Rien n'est lancé sans ton accord. Accepte ou refuse, avec un commentaire si tu veux : l'agent est réveillé avec ta réponse.</p>` +
+        (list.map(a => `<div class="card ${a.status==="en attente"?"pending":""}"><h4>#${a.id} ${esc(a.title)}</h4>
+          <span class="tag">${esc(a.kind)}</span> <span class="tag">${esc(a.status)}</span> ${a.amount_eur ? `<span class="tag">💶 ${a.amount_eur} €</span>` : ""} <span class="muted">par ${a.agent} · ${time(a.ts)}</span>
+          <div class="md" style="margin:8px 0">${md(a.details)}</div>
+          ${a.status === "en attente" ? `<input id="c${a.id}" placeholder="Commentaire (optionnel)" style="width:100%;margin-bottom:6px">
+            <button class="primary" onclick="decide(${a.id},true)">✅ Accepter</button> <button onclick="decide(${a.id},false)">❌ Refuser</button>`
+            : (a.response ? `<div class="muted">Ton commentaire : ${esc(a.response)}</div>` : "")}</div>`).join("") || "<p class=muted>Aucune demande.</p>");
+    } else if (tab === "inbox") {
+      const mails = await fetch("/api/inbox").then(r => r.json());
+      pane.innerHTML = `<div class="card"><b>Service client (Iris)</b><br>
+        ${S.mail_enabled ? "📬 Boîte mail connectée." : "⚠️ Boîte mail non configurée (voir IMAP/SMTP dans .env)."}<br>
+        Mode : <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>` +
+        (mails.map(m => `<details class="card"><summary><b>${esc(m.subject || "(sans sujet)")}</b> <span class="tag">${esc(m.status)}</span><br><span class="muted">${esc(m.from_addr)} · ${time(m.ts)}</span></summary>
+          <pre>${esc(m.body)}</pre>${m.reply ? `<b>Réponse envoyée ${m.replied_ts ? time(m.replied_ts) : ""} :</b><pre>${esc(m.reply)}</pre>` : ""}</details>`).join("") || "<p class=muted>Aucun e-mail client.</p>");
+      $("#smode").value = S.support_mode;
+      $("#smode").onchange = e => fetch("/api/support_mode?mode=" + e.target.value, {method:"POST"}).then(poll);
+    } else if (tab === "notifs") {
+      const list = await fetch("/api/notifications").then(r => r.json());
+      pane.innerHTML = `<button onclick="fetch('/api/test_notification',{method:'POST'})">📱 Envoyer une notification de test</button>` +
+        list.map(n => `<div class="act ${n.kind==="alerte"?"erreur":n.kind==="client"?"fichier":"web"}"><span class="muted">${time(n.ts)} · ${n.kind}</span><br><b>${esc(n.title)}</b><details><summary class="muted">détails</summary><pre>${esc(n.body)}</pre></details></div>`).join("");
+      S.unread_notifications = 0; lastSig = ""; renderTabs();
     } else if (tab === "files") {
       const files = await fetch("/api/files").then(r => r.json());
       pane.innerHTML = `<p class="muted">Tout ce que les agents ont produit (dossier workspace/). Les .html s'ouvrent directement (jeux jouables).</p>` +
@@ -166,6 +195,12 @@ async function renderPane(soft) {
   } finally { busy = false; }
 }
 
+async function decide(id, approve) {
+  const comment = ($("#c" + id) || {}).value || "";
+  const r = await fetch("/api/approvals/" + id, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({approve, comment})});
+  if (!r.ok) alert("Erreur : " + (await r.text()));
+  await poll(); renderPane();
+}
 $("#f").onsubmit = async e => {
   e.preventDefault(); const t = $("#txt").value.trim(); if (!t) return;
   $("#txt").value = "";

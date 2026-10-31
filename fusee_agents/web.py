@@ -1,11 +1,17 @@
 """Serveur du tableau de bord : API JSON + page web."""
+import asyncio
+import base64
+import json
+import os
+import secrets
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from . import db
+from . import db, mailbox
+from .notify import notify
 from .agents import OWNER, TEAM
 from .config import DAILY_BUDGET_USD, MODEL, WORKSPACE
 from .scheduler import scheduler
@@ -21,6 +27,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Fusée", lifespan=lifespan)
+PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
+
+
+@app.middleware("http")
+async def basic_auth(request: Request, call_next):
+    """Protège le tableau de bord par mot de passe (utilisateur : n'importe lequel) si DASHBOARD_PASSWORD est défini."""
+    if PASSWORD:
+        try:
+            _, pwd = base64.b64decode(request.headers.get("authorization", "")[6:]).decode().split(":", 1)
+        except Exception:  # noqa: BLE001
+            pwd = ""
+        if not secrets.compare_digest(pwd.encode(), PASSWORD.encode()):
+            return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Fusee"'})
+    return await call_next(request)
 
 
 @app.get("/")
@@ -42,6 +62,10 @@ def state(after: int = 0):
         "model": MODEL,
         "paused": scheduler.paused,
         "directive": db.get_setting("directive", ""),
+        "pending_approvals": db.q("SELECT COUNT(*) n FROM approvals WHERE status='en attente'")[0]["n"],
+        "unread_notifications": db.q("SELECT COUNT(*) n FROM notifications WHERE read=0")[0]["n"],
+        "support_mode": db.get_setting("support_mode", "auto"),
+        "mail_enabled": mailbox.ENABLED,
     }
 
 
@@ -119,4 +143,67 @@ def pause(on: bool):
 @app.post("/api/wake/{agent}")
 def wake(agent: str):
     scheduler.wake(agent, f"{OWNER} a demandé un cycle maintenant")
+    return {"ok": True}
+
+
+@app.get("/api/approvals")
+def approvals():
+    return db.q("SELECT * FROM approvals ORDER BY (status='en attente') DESC, id DESC LIMIT 100")
+
+
+class Decision(BaseModel):
+    approve: bool
+    comment: str = ""
+
+
+@app.post("/api/approvals/{aid}")
+async def decide(aid: int, d: Decision):
+    rows = db.q("SELECT * FROM approvals WHERE id=?", (aid,))
+    if not rows:
+        raise HTTPException(404)
+    a = rows[0]
+    if a["status"] != "en attente":
+        raise HTTPException(409, "déjà décidée")
+    status = "acceptée" if d.approve else "refusée"
+    if a["kind"] == "réponse client":
+        inbox_id = json.loads(a["payload"])["inbox_id"]
+        if d.approve:
+            if not mailbox.ENABLED:
+                raise HTTPException(400, "boîte mail non configurée")
+            await asyncio.to_thread(mailbox.send, inbox_id, a["details"])
+        else:
+            db.x("UPDATE inbox SET status='nouveau' WHERE id=?", (inbox_id,))
+    db.x("UPDATE approvals SET status=?, response=?, decided_ts=CAST(strftime('%s','now') AS REAL) WHERE id=?",
+         (status, d.comment.strip(), aid))
+    emoji = "✅" if d.approve else "❌"
+    db.post_message(OWNER, f"{emoji} Demande #{aid} {status} : {a['title']}" + (f" — {d.comment.strip()}" if d.comment.strip() else ""))
+    for t in {a["agent"], "Atlas"}:
+        scheduler.wake(t, f"{OWNER} a {'accepté' if d.approve else 'refusé'} la demande #{aid} « {a['title']} »"
+                          + (f" avec ce commentaire : {d.comment}" if d.comment else ""))
+    return {"ok": True}
+
+
+@app.get("/api/notifications")
+def notifications():
+    rows = db.q("SELECT * FROM notifications ORDER BY id DESC LIMIT 100")
+    db.x("UPDATE notifications SET read=1 WHERE read=0")
+    return rows
+
+
+@app.get("/api/inbox")
+def inbox():
+    return db.q("SELECT * FROM inbox ORDER BY id DESC LIMIT 100")
+
+
+@app.post("/api/support_mode")
+def support_mode(mode: str):
+    if mode not in ("auto", "validation"):
+        raise HTTPException(400)
+    db.set_setting("support_mode", mode)
+    return {"mode": mode}
+
+
+@app.post("/api/test_notification")
+def test_notification():
+    notify("alerte", "Test Fusée 🚀", "Si tu vois ce message sur ton téléphone, les notifications marchent !")
     return {"ok": True}

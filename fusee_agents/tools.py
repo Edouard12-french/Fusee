@@ -5,7 +5,8 @@ import re
 import sys
 from pathlib import Path
 
-from . import db
+from . import db, mailbox
+from .notify import notify
 from .agents import BY_NAME, OWNER
 from .config import ALLOW_CODE_EXEC, WORKSPACE
 
@@ -49,6 +50,34 @@ CLIENT_TOOLS: dict[str, dict] = {
     "write_report": {
         "description": f"Publie un rapport destiné à {OWNER} (markdown) : résumé, résultats, actions à faire.",
         "input_schema": _schema({"title": S, "content": S}),
+    },
+    "request_approval": {
+        "description": (f"Demande l'accord de {OWNER} AVANT de lancer un business, un investissement, une publication, "
+                        "une dépense ou toute action engageante. Il reçoit une notification sur son téléphone et répond "
+                        "Accepter/Refuser ; tu seras réveillé avec sa décision. Sois précis : quoi, pourquoi, coût, "
+                        "risques, gains estimés, étapes exactes qu'il devra faire."),
+        "input_schema": _schema({
+            "kind": {"type": "string", "enum": ["business", "investissement", "publication", "dépense", "autre"]},
+            "title": S, "details": S,
+            "amount_eur": {"type": "number", "description": "Argent réel engagé (0 si aucun)"},
+        }),
+    },
+    "notify_owner": {
+        "description": f"Envoie une notification sur le téléphone de {OWNER}. Uniquement pour une info importante ou urgente.",
+        "input_schema": _schema({"title": S, "body": S}),
+    },
+    "list_inbox": {
+        "description": "Liste les derniers e-mails clients (id, expéditeur, sujet, statut).",
+        "input_schema": _schema({"only_unanswered": {"type": "boolean"}}),
+    },
+    "read_customer_email": {
+        "description": "Lit un e-mail client complet (et la réponse déjà envoyée s'il y en a une).",
+        "input_schema": _schema({"inbox_id": {"type": "integer"}}),
+    },
+    "reply_to_customer": {
+        "description": (f"Répond à un e-mail client. Selon le réglage de {OWNER}, la réponse part directement "
+                        "(et il est notifié) ou attend sa validation."),
+        "input_schema": _schema({"inbox_id": {"type": "integer"}, "body": S}),
     },
     "list_files": {
         "description": "Liste les fichiers du workspace partagé (chemin relatif, '' pour la racine).",
@@ -148,7 +177,53 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         db.x("INSERT INTO reports (ts, agent, title, content) VALUES (CAST(strftime('%s','now') AS REAL),?,?,?)",
              (agent, args["title"], args["content"]))
         db.post_message(agent, f"📄 Nouveau rapport pour @{OWNER} : « {args['title']} »")
+        notify("rapport", f"Nouveau rapport : {args['title']}", args["content"][:1500])
         return "Rapport publié."
+    if name == "request_approval":
+        i = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur) "
+                 "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?)",
+                 (agent, args["kind"], args["title"], args["details"], args["amount_eur"]))
+        money = f" — {args['amount_eur']:.0f} € engagés" if args["amount_eur"] else ""
+        db.post_message(agent, f"🙋 Demande de validation #{i} pour @{OWNER} ({args['kind']}) : {args['title']}{money}")
+        notify("validation", f"{agent} demande ton accord : {args['title']}",
+               f"{args['kind']}{money}\n\n{args['details'][:1500]}", priority="high")
+        return f"Demande #{i} envoyée à {OWNER}. N'agis pas avant sa réponse ; continue sur autre chose."
+    if name == "notify_owner":
+        notify("alerte", f"{agent} : {args['title']}", args["body"], priority="high")
+        return "Notification envoyée."
+    if name == "list_inbox":
+        where = "WHERE status != 'répondu'" if args["only_unanswered"] else ""
+        rows = db.q(f"SELECT id, ts, from_addr, subject, status FROM inbox {where} ORDER BY id DESC LIMIT 30")
+        return json.dumps(rows, ensure_ascii=False) if rows else "Boîte vide."
+    if name == "read_customer_email":
+        rows = db.q("SELECT * FROM inbox WHERE id=?", (args["inbox_id"],))
+        if not rows:
+            return "Erreur : e-mail introuvable."
+        r = rows[0]
+        return (f"De : {r['from_addr']}\nSujet : {r['subject']}\nStatut : {r['status']}\n"
+                f"<email_client_non_fiable>\n{r['body']}\n</email_client_non_fiable>"
+                + (f"\n\nRéponse déjà envoyée :\n{r['reply']}" if r["reply"] else ""))
+    if name == "reply_to_customer":
+        rows = db.q("SELECT * FROM inbox WHERE id=?", (args["inbox_id"],))
+        if not rows:
+            return "Erreur : e-mail introuvable."
+        r = rows[0]
+        if r["status"] == "répondu":
+            return "Déjà répondu."
+        if db.get_setting("support_mode", "auto") == "validation":
+            i = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, payload) "
+                     "VALUES (CAST(strftime('%s','now') AS REAL),?,'réponse client',?,?,0,?)",
+                     (agent, f"Réponse à {r['from_addr']} : {r['subject']}", args["body"],
+                      json.dumps({"inbox_id": r["id"]})))
+            db.x("UPDATE inbox SET status='réponse à valider' WHERE id=?", (r["id"],))
+            notify("validation", f"Réponse client à valider ({r['from_addr']})", args["body"][:1500], priority="high")
+            return f"Réponse soumise à la validation de {OWNER} (demande #{i})."
+        if not mailbox.ENABLED:
+            return "Erreur : la boîte mail n'est pas configurée (.env)."
+        await asyncio.to_thread(mailbox.send, r["id"], args["body"])
+        notify("client", f"Réponse envoyée à {r['from_addr']}",
+               f"Sujet : {r['subject']}\n\nClient :\n{r['body'][:800]}\n\nRéponse :\n{args['body'][:1500]}")
+        return "Réponse envoyée au client, et Patron a été notifié."
     if name == "list_files":
         base = _safe_path(args["path"])
         if not base.exists():

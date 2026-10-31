@@ -1,0 +1,19 @@
+# Service systemd pour un serveur Linux / VPS (tourne au démarrage, redémarre tout seul).
+# Installation :
+#   sudo cp fusee.service /etc/systemd/system/   (adapte User et WorkingDirectory ci-dessous)
+#   sudo systemctl enable --now fusee
+#   journalctl -u fusee -f        (voir les logs)
+[Unit]
+Description=Fusee - equipe d'agents IA
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=CHANGE_MOI
+WorkingDirectory=/home/CHANGE_MOI/Fusee
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
