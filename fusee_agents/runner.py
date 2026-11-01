@@ -1,4 +1,5 @@
 """Un « cycle » de travail d'un agent : boucle d'appels Claude + exécution des outils."""
+import asyncio
 import json
 import os
 import time
@@ -242,3 +243,66 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
         st = db.get_states().get(agent.name, {})
         db.set_state(agent.name, cycles=(st.get("cycles") or 0) + 1)
         db.log(agent.name, "cycle", f"fin du cycle — coût {cycle_cost:.3f} $")
+
+
+# --- réunion : tous les agents répondent en même temps, en quelques secondes -----------------------------
+MEETING_RULES = f"""
+## Réunion d'équipe en direct
+{OWNER} parle à toute l'équipe en même temps, comme dans une réunion. Réponds MAINTENANT, en ton nom, avec ta
+personnalité et ton métier :
+- 1 à 3 phrases, concrètes, en français, sans répéter ce que diraient les autres (reste dans ton rôle).
+- Si la question ne concerne pas ton métier, une phrase suffit (ou « Rien à ajouter de mon côté 👍 »).
+- Pas d'outils ici : tu réponds juste. Si une action de ta part est utile, termine par une ligne seule :
+  ACTION: <ce que tu vas faire concrètement>
+  et tu te mettras au travail juste après la réunion.
+- Ne promets rien que tu ne peux pas faire ; rien n'est publié ni dépensé sans validation de {OWNER}."""
+
+
+async def meeting_reply(agent: Agent, owner_text: str) -> tuple[str, str]:
+    """Réponse courte d'un agent pendant une réunion. Renvoie (réponse, action éventuelle)."""
+    model, _ = model_for(agent.tier)
+    msgs = db.recent_messages(25)
+    chat = "\n".join(f"{m['sender']}: {m['content'][:400]}" for m in msgs[:-1]) or "(aucun)"
+    memory = db.get_memory(agent.name)[:1500] or "(vide)"
+    context = (f"Ta mémoire :\n{memory}\n\nDerniers messages du groupe :\n{chat}\n\n"
+               f"🎙️ {OWNER} dit à toute l'équipe : « {owner_text} »\n\nTa réponse :")
+    extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+             if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
+    resp = await client.beta.messages.create(
+        model=model, max_tokens=1500,
+        system=[{"type": "text", "text": system_prompt(agent) + MEETING_RULES, "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": context}],
+        output_config={"effort": "low"}, **extra)
+    db.add_cost(agent.name, _cost(resp.usage, getattr(resp, "model", None) or model))
+    text = "".join(b.text for b in resp.content if b.type == "text").strip()
+    action = ""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip().upper().startswith("ACTION:"):
+            action = line.split(":", 1)[1].strip()
+            text = "\n".join(lines[:i]).strip()
+            break
+    return text, action
+
+
+async def run_meeting(agents: list[Agent], owner_text: str, wake, parallel: int = 14) -> None:
+    """Tous les agents répondent en parallèle ; chaque réponse est postée dès qu'elle arrive."""
+    sem = asyncio.Semaphore(parallel)
+
+    async def one(agent: Agent) -> None:
+        async with sem:
+            db.set_state(agent.name, status="en réunion")
+            try:
+                text, action = await meeting_reply(agent, owner_text)
+                if text or action:
+                    db.post_message(agent.name, text + (f"\n➡️ Je m'en occupe : {action}" if action else ""))
+                if action:
+                    wake(agent.name, f"pendant la réunion, tu as annoncé : « {action} ». Fais-le maintenant "
+                                     f"(message de {OWNER} : « {owner_text[:300]} »)")
+            except Exception as e:  # noqa: BLE001
+                db.log(agent.name, "erreur", f"réunion : {type(e).__name__}: {str(e)[:200]}")
+            finally:
+                db.set_state(agent.name, status="en attente")
+
+    await asyncio.gather(*(one(a) for a in agents))
+    db.log("système", "réunion", f"réunion terminée ({len(agents)} agents)")

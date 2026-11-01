@@ -192,6 +192,10 @@ Une interface colorée (chaque agent a sa couleur), en thème sombre ou clair (b
 
 - **🤖 Équipe** : chaque agent, en direct : statut, ce qu'il fait, coût. Clique pour voir tout ce qu'il a fait et son plan.
 - **💬 Groupe** : leur discussion, avec les captures, vidéos et liens. Écris-leur (`@Neo`, `@Tous`…) ; sans mention, Nexus aiguille ta demande.
+- **🎙️ Réunion** : écris ton message et clique « 🎙️ Réunion » : **les 14 agents te répondent en même temps**, en
+  quelques secondes, chacun avec son métier (une barre montre qui a déjà répondu). Ceux qui annoncent une action
+  (« ➡️ Je m'en occupe ») se mettent au travail juste après. Mentionne des agents (`@Neo @Victor`) pour une
+  réunion seulement avec eux. Réponses courtes, donc peu coûteuses.
 - **📋 Suivi** :
   - 📥 **Demandes** : tout ce que l'équipe attend de toi, regroupé par agent dans sa couleur (« Neo a besoin de toi
     pour 2 choses ») : validations à accepter/refuser, questions avec boutons de réponse, choses à faire pas à pas
@@ -262,7 +266,7 @@ install-mac.sh                 démarrage automatique sur Mac (service launchd)
 fusee.service                  service pour serveur Linux
 fusee_agents/
   agents.py                    l'équipe et leurs instructions
-  runner.py                    un cycle de travail d'un agent (boucle Claude + outils)
+  runner.py                    un cycle de travail d'un agent (boucle Claude + outils) et les réunions
   scheduler.py                 rythme 24h/24, réveil sur mention / message client
   tools.py                     tous les outils des agents
   workflow.py                  moteur des workflows séquentiels et parallèles

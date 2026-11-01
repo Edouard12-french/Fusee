@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, budget, db, integrations, knowledge, mailbox, outreach
+from . import analytics, budget, db, integrations, knowledge, mailbox, outreach, runner
 from . import setup as setup_mod
 from .agents import BY_NAME, OWNER, TEAM, add_agent, agent_settings, make_custom, save_team_config, team_config
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
@@ -266,6 +266,24 @@ def send(msg: Msg):
     for t in targets:
         scheduler.wake(t, f"message de {OWNER} : {text[:500]}")
     return {"ok": True, "woken": targets}
+
+
+@app.post("/api/meeting")
+async def meeting(msg: Msg):
+    """Réunion : tous les agents (ou ceux mentionnés) répondent en même temps, en quelques secondes."""
+    text = msg.content.strip()
+    if not text:
+        raise HTTPException(400, "message vide")
+    if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
+        raise HTTPException(400, "Il faut d'abord la clé API (onglet 🚀 Démarrage).")
+    if budget.api_exhausted() or budget.today_exhausted():
+        raise HTTPException(400, "Le budget IA du jour est atteint : la réunion reprendra demain (ou augmente le budget).")
+    named = [n for n in mentions(text) if n in BY_NAME]
+    pool = [BY_NAME[n] for n in named] if named and len(named) < len(BY_NAME) else list(TEAM)
+    agents = [a for a in pool if agent_settings(a.name).get("enabled", True) is not False]
+    mid = db.post_message(OWNER, f"🎙️ {text}")
+    asyncio.create_task(runner.run_meeting(agents, text, scheduler.wake))
+    return {"ok": True, "message_id": mid, "agents": [a.name for a in agents]}
 
 
 @app.post("/api/directive")

@@ -101,6 +101,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px;borde
 .req-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}.req-head .av{--ag:inherit}
 .req{background:var(--panel2);border-radius:12px;padding:10px;margin-top:8px;border-left:4px solid var(--ag)}
 .req-kind{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:3px}
+button.meet{background:linear-gradient(135deg,#0ea5e9,#22c55e);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(14,165,233,.35);white-space:nowrap}
+#meetBar{margin:0 12px 8px;padding:8px 12px;border-radius:12px;color:#fff;font-size:13px;background:linear-gradient(135deg,#0ea5e9,#22c55e);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#meetBar[hidden]{display:none}#meetBar .who{opacity:.45}#meetBar .who.done{opacity:1}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;place-items:center;z-index:50;cursor:zoom-out;padding:20px}
 #lightbox.open{display:grid}#lightbox img{max-width:100%;max-height:100%;border-radius:8px}
 nav#bottom{display:none}
@@ -134,7 +137,9 @@ nav#bottom{display:none}
   <aside id="agents"></aside>
   <section id="chat">
     <div id="msgs"></div>
-    <form class="send" id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo, @Iris… pour cibler un agent, @Tous pour tout le monde)"></textarea><button class="primary">Envoyer</button></form>
+    <div id="meetBar" hidden></div>
+    <form class="send" id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo pour un agent) — ou 🎙️ Réunion : les 14 te répondent en même temps"></textarea>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="primary">Envoyer</button><button type="button" id="meetBtn" class="meet" title="Tous les agents répondent en même temps, en quelques secondes">🎙️ Réunion</button></div></form>
   </section>
   <aside id="side">
     <div class="tabs" id="tabs"></div>
@@ -197,14 +202,24 @@ function renderAgents() {
   document.querySelectorAll(".agent").forEach(el => el.onclick = () => { selected = el.dataset.n; tab = "agent"; renderAgents(); renderTabs(); renderPane(); setView("more"); });
 }
 
+let meet = null;
+function updateMeet() {
+  if (!meet) return;
+  const bar = $("#meetBar"), n = meet.agents.filter(a => meet.done.has(a)).length;
+  if (n >= meet.agents.length || Date.now() - meet.start > 120000) { bar.hidden = true; meet = null; return; }
+  bar.hidden = false;
+  bar.innerHTML = `🎙️ Réunion : <b>${n}/${meet.agents.length}</b> ont répondu ` + meet.agents.map(a => `<span class="who ${meet.done.has(a) ? "done" : ""}" title="${a}">${emojiOf(a)}</span>`).join("");
+}
 function addMessages(list) {
   const box = $("#msgs"), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   for (const m of list) {
     lastId = Math.max(lastId, m.id);
+    if (meet && m.id > meet.since && meet.agents.includes(m.sender)) meet.done.add(m.sender);
     const me = m.sender === "Patron";
     box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}" style="--ag:${colorOf(m.sender)}"><div class="who">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/(^|\s)@(\w+)/g,"$1<b>@$2</b>")}${attHtml(m.attachments)}<div class="t">${time(m.ts)}</div></div>`);
   }
   if (list.length && stick) box.scrollTop = box.scrollHeight;
+  updateMeet();
 }
 
 async function poll() {
@@ -605,6 +620,13 @@ $("#lightbox").onclick = () => $("#lightbox").classList.remove("open");
 $("#f").onsubmit = async e => {
   e.preventDefault(); const t = $("#txt").value.trim(); if (!t) return;
   $("#txt").value = ""; await post("/api/message", {content: t}); poll();
+};
+$("#meetBtn").onclick = async () => {
+  const t = $("#txt").value.trim(); if (!t) { $("#txt").placeholder = "Écris d'abord ce que tu veux dire à toute l'équipe, puis 🎙️ Réunion"; $("#txt").focus(); return; }
+  const r = await post("/api/meeting", {content: t});
+  if (!r.ok) { alert((await r.json().catch(() => ({}))).detail || "Réunion impossible"); return; }
+  const d = await r.json(); $("#txt").value = "";
+  meet = {since: d.message_id, agents: d.agents, done: new Set(), start: Date.now()}; updateMeet(); poll();
 };
 $("#txt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#f").requestSubmit(); } };
 $("#pauseBtn").onclick = async () => { await post("/api/pause?on=" + !S.paused); poll(); };
