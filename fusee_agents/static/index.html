@@ -565,6 +565,7 @@ async function renderPane(soft) {
           <div class="muted" style="margin-top:6px">Pendant le silence, tout reste dans l'appli (onglet 🔔 Notifs) : rien n'est perdu.${ns.quiet_now ? " <b>Silence en cours.</b>" : ""}
             ${ns.phone ? "📱 Aussi envoyées sur ton téléphone (ntfy)." : "Pour les recevoir aussi sur ton téléphone : étape « Notifications sur ton téléphone » dans 🚀 Démarrage (optionnel)."}</div>
           <button style="margin-top:8px" onclick="testNotif(this)">🔔 Envoyer une notification de test</button></div>
+        <div class="card" style="border-left:4px solid #0ea5e9"><h4>📱 Fusée sur ton iPhone et ton iPad</h4><div id="devBox" class="muted">…</div></div>
         <div class="card" style="border-left:4px solid #22c55e"><h4>📱 Notifications sur cet appareil (iPhone…)</h4>
           <div id="pushBox" class="muted">…</div></div>
         <div class="card"><h4>Ce qui est branché</h4>
@@ -577,7 +578,7 @@ async function renderPane(soft) {
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
-      renderPushBox();
+      renderPushBox(); renderDeviceBox();
       ["nMac", "nSound", "nQuiet", "nFrom", "nTo"].forEach(id => $("#" + id).onchange = () => post("/api/notif_settings", {
         mac: $("#nMac").checked, sound: $("#nSound").checked, quiet: $("#nQuiet").checked, quiet_from: +$("#nFrom").value, quiet_to: +$("#nTo").value})
         .then(() => { S._sound = $("#nSound").checked; }));
@@ -683,6 +684,21 @@ async function saveOwnerProfile(btn) {
 }
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+async function renderDeviceBox() {
+  const box = $("#devBox"); if (!box) return;
+  const {url} = await api("/api/device_url");
+  if (!url) {
+    box.innerHTML = `1. Installe l'app gratuite <b>Tailscale</b> sur ce Mac, ton iPhone et ton iPad, et connecte-toi <b>avec le même compte</b> sur les trois.<br>
+      2. Sur le Mac, dans le dossier Fusee, double-clique sur <b>« Activer iPhone et iPad »</b>.<br>3. Reviens ici : un QR code apparaîtra.`;
+    return;
+  }
+  box.innerHTML = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <img src="/api/qr?${Date.now()}" alt="QR code" style="width:170px;height:170px;background:#fff;border-radius:12px;padding:6px">
+      <div style="flex:1;min-width:200px;color:var(--text)">
+        <b>Sur ton iPhone ou ton iPad</b> (Tailscale allumé) :<br>1. ouvre l'<b>Appareil photo</b> et vise ce QR code → touche le lien ;<br>
+        2. dans Safari : <b>Partager</b> → <b>Sur l'écran d'accueil</b> → Ajouter ;<br>3. ouvre <b>Fusée</b> depuis l'icône → ⚙️ Réglages → active les notifications.
+        <div class="muted" style="margin-top:6px">Adresse privée : <code>${esc(url)}</code> — seuls tes appareils Tailscale peuvent l'ouvrir.</div></div></div>`;
+}
 async function renderPushBox() {
   const box = $("#pushBox"); if (!box) return;
   const info = await api("/api/push");

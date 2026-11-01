@@ -183,12 +183,14 @@ les 7 derniers jours.
 ### 📲 Installer l'application
 
 - **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
-- **📱 iPhone (recommandé), rien que pour toi, partout (même en 4G)** :
-  1. installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac) et sur ton iPhone (App Store),
-     connecte-toi avec **le même compte** ;
-  2. sur le Mac, dans le dossier Fusee : `./activer-iphone.sh` → il affiche ton adresse privée `https://…ts.net` ;
-  3. sur l'iPhone : ouvre cette adresse dans **Safari** → **Partager** → **Sur l'écran d'accueil** ;
-  4. ouvre **Fusée** depuis l'icône → ⚙️ Réglages → **Activer les notifications sur cet iPhone** (iOS 16.4+).
+- **📱 iPhone et iPad (recommandé), rien que pour toi, partout (même en 4G)** :
+  1. installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac), ton iPhone et ton iPad
+     (App Store), connecte-toi avec **le même compte** partout ;
+  2. sur le Mac, dans le dossier Fusee : double-clique **« Activer iPhone et iPad »** (ou `./activer-iphone.sh`) →
+     ton adresse privée `https://…ts.net` est créée et Fusée s'ouvre sur ⚙️ Réglages avec un **QR code** ;
+  3. sur l'iPhone / l'iPad : vise le QR code avec l'**Appareil photo** → touche le lien → dans **Safari** :
+     **Partager** → **Sur l'écran d'accueil** ;
+  4. ouvre **Fusée** depuis l'icône → ⚙️ Réglages → **Activer les notifications** (iOS / iPadOS 16.4+).
 
   Seuls **tes** appareils connectés à ton compte Tailscale peuvent l'ouvrir : personne d'autre au monde. Les
   notifications sont **chiffrées de bout en bout** (même Apple ne peut pas les lire). `./activer-iphone.sh --off`

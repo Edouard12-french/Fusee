@@ -190,6 +190,19 @@ def test_public_server_exposes_only_public_routes():
     assert c.get("/public/a.js").status_code == 200
 
 
+def test_qr_code_for_iphone(monkeypatch):
+    from fastapi.testclient import TestClient
+    from fusee_agents import web
+    c = TestClient(web.app)
+    monkeypatch.setattr(web.setup_mod, "_read", lambda: {"DASHBOARD_URL": ""})
+    assert c.get("/api/qr").status_code == 404  # pas encore d'adresse privée
+    monkeypatch.setattr(web.setup_mod, "_read", lambda: {"DASHBOARD_URL": "https://mac.tail1.ts.net"})
+    r = c.get("/api/qr")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml") and b"<svg" in r.content
+    assert c.get("/api/device_url").json() == {"url": "https://mac.tail1.ts.net"}
+    assert TestClient(web.public_app).get("/api/qr").status_code == 404  # jamais sur le serveur public
+
+
 def test_setup_never_returns_secrets(tmp_path, monkeypatch):
     from fusee_agents import setup
     monkeypatch.setattr(setup, "ENV", tmp_path / ".env")

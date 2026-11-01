@@ -851,3 +851,24 @@ async def public_cors(request: Request, call_next):
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return resp
+
+
+# --- ouvrir Fusée sur l'iPhone / l'iPad : QR code de l'adresse privée ------------------------------------
+@app.get("/api/qr")
+def qr_code():
+    """QR code (SVG) de l'adresse privée de Fusée : à scanner avec l'appareil photo de l'iPhone ou de l'iPad."""
+    import io
+
+    import qrcode
+    import qrcode.image.svg
+    url = setup_mod._read().get("DASHBOARD_URL", os.getenv("DASHBOARD_URL", "")).strip()
+    if not url.startswith("https://"):
+        raise HTTPException(404, "adresse privée pas encore créée")
+    buf = io.BytesIO()
+    qrcode.make(url, image_factory=qrcode.image.svg.SvgPathImage, box_size=12, border=2).save(buf)
+    return Response(buf.getvalue(), media_type="image/svg+xml")
+
+
+@app.get("/api/device_url")
+def device_url():
+    return {"url": setup_mod._read().get("DASHBOARD_URL", os.getenv("DASHBOARD_URL", "")).strip()}
