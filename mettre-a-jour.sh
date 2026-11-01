@@ -11,7 +11,10 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 echo "⬇️  Récupération de la dernière version ($BRANCH)…"
 git pull --ff-only origin "$BRANCH" || { echo "❌ Mise à jour impossible (modifications locales ?). Rien n'a été changé."; exit 1; }
 PY=.venv/bin/python
-[ -x "$PY" ] && "$PY" -m pip install -q -r requirements.txt && touch .venv/.installed
+if [ -x "$PY" ]; then  # --only-binary : rien à compiler (indispensable sur les Mac Intel)
+  "$PY" -m pip install -q --only-binary :all: -r requirements.txt && touch .venv/.installed \
+    || echo "⚠️  Certains modules n'ont pas pu s'installer : relance la mise à jour (connexion internet ?)."
+fi
 if [ "$(uname)" = "Darwin" ] && launchctl print "gui/$(id -u)/fr.fusee.agents" >/dev/null 2>&1; then
   launchctl kickstart -k "gui/$(id -u)/fr.fusee.agents" && echo "♻️  Fusée redémarré."
   [ -x creer-app-mac.sh ] && ./creer-app-mac.sh >/dev/null 2>&1
