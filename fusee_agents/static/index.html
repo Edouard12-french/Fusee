@@ -689,7 +689,8 @@ async function renderDeviceBox() {
   const {url} = await api("/api/device_url");
   if (!url) {
     box.innerHTML = `1. Installe l'app gratuite <b>Tailscale</b> sur ce Mac, ton iPhone et ton iPad, et connecte-toi <b>avec le même compte</b> sur les trois.<br>
-      2. Sur le Mac, dans le dossier Fusee, double-clique sur <b>« Activer iPhone et iPad »</b>.<br>3. Reviens ici : un QR code apparaîtra.`;
+      2. Sur le Mac, dans le dossier Fusee, double-clique sur <b>« Activer iPhone et iPad »</b>.<br>3. Reviens ici : <b>le QR code apparaîtra à cette place</b>.
+      <div style="margin-top:6px">📷 Pas encore de QR code : c'est normal tant que les étapes 1 et 2 ne sont pas faites.</div>`;
     return;
   }
   box.innerHTML = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">

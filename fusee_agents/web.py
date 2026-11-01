@@ -63,9 +63,12 @@ async def guard(request: Request, call_next):
 
 
 # --- application (PWA) ------------------------------------------------------
+NO_CACHE = {"Cache-Control": "no-cache"}
+
+
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html")
+    return FileResponse(STATIC / "index.html", headers=NO_CACHE)  # après une mise à jour : nouvelle version tout de suite
 
 
 @app.get("/manifest.webmanifest")
@@ -75,7 +78,7 @@ def manifest():
 
 @app.get("/sw.js")
 def service_worker():
-    return FileResponse(STATIC / "sw.js", media_type="application/javascript")
+    return FileResponse(STATIC / "sw.js", media_type="application/javascript", headers=NO_CACHE)
 
 
 @app.get("/icon-{size}.png")
