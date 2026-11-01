@@ -297,6 +297,17 @@ async def meeting(msg: Msg):
     return {"ok": True, "message_id": mid, "agents": [a.name for a in agents]}
 
 
+@app.post("/api/diagnostic")
+async def diagnostic():
+    """Mini-requête réelle par agent : vérifie clé, modèles, instructions et outils d'un coup."""
+    if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
+        raise HTTPException(400, "Il faut d'abord la clé API (étape 1), puis redémarrer Fusée.")
+    results = await runner.diagnose(list(TEAM))
+    ok = sum(r["ok"] for r in results)
+    db.log("système", "diagnostic", f"diagnostic : {ok}/{len(results)} agents OK", json.dumps(results, ensure_ascii=False, indent=1))
+    return {"ok": ok == len(results), "results": results}
+
+
 @app.post("/api/directive")
 def directive(msg: Msg):
     db.set_setting("directive", msg.content.strip())

@@ -411,6 +411,8 @@ async function renderPane(soft) {
           <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <button class="primary" onclick="setupSave(${i})">💾 Enregistrer</button>
             ${stp.test ? `<button onclick="setupTest(${i})">🧪 Tester</button>` : ""}<span id="sres${i}" class="muted"></span></div></details>`).join("") +
+        `<div class="card" style="border-left:4px solid #22c55e"><h4>🩺 Diagnostic complet</h4><p class="muted">Après avoir mis la clé et redémarré : une mini-requête réelle pour chacun des agents (son modèle, ses instructions, ses outils). Coût : une fraction de centime.</p>
+          <button class="primary" onclick="runDiag(this)">🩺 Vérifier que tout marche</button><div id="diagRes"></div></div>` +
         `<div class="card"><h4>♻️ Appliquer les réglages</h4><p class="muted">Après avoir enregistré, redémarre Fusée pour que les agents utilisent les nouveaux réglages (10 secondes).</p>
           <button class="primary" onclick="setupRestart()">Redémarrer Fusée</button> <span id="srestart" class="muted"></span></div>`;
     } else if (tab === "outreach") {
@@ -712,6 +714,16 @@ async function enablePush(btn) {
 async function testNotif(btn) {
   const d = await (await post("/api/test_notification")).json();
   btn.textContent = d.mac ? "✅ Envoyée : regarde en haut à droite de ton écran" : "✅ Envoyée : elle apparaît ici" + (d.phone ? " et sur ton téléphone" : "");
+}
+async function runDiag(btn) {
+  btn.disabled = true; btn.textContent = "⏳ Test des agents en cours…"; const box = $("#diagRes");
+  const r = await post("/api/diagnostic");
+  btn.disabled = false; btn.textContent = "🩺 Refaire le diagnostic";
+  if (!r.ok) { box.innerHTML = `<p class="neg">${esc((await r.json().catch(() => ({}))).detail || "Erreur")}</p>`; return; }
+  const d = await r.json();
+  box.innerHTML = `<p><b>${d.ok ? "✅ Tout marche : l'équipe est prête !" : "⚠️ Certains agents ont un problème :"}</b></p><table>` +
+    d.results.map(x => `<tr><td>${emojiOf(x.agent)} ${x.agent}</td><td>${x.ok ? "✅" : "❌"}</td><td class="muted">${esc(x.model.replace("claude-", ""))}${x.ok ? ` · ${x.secondes} s` : ""}</td></tr>` +
+      (x.ok ? "" : `<tr><td colspan="3" class="neg" style="font-size:12px">${esc(x.message)}</td></tr>`)).join("") + "</table>";
 }
 async function answerQ(id, value) {
   const answer = value ?? ($("#qa" + id) || {}).value ?? "";

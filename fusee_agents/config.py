@@ -49,8 +49,8 @@ PORT = int(os.getenv("PORT", "8000"))
 # Adresse publique du tableau de bord (Tailscale Funnel, Cloudflare Tunnel…) : sert au chat des sites en ligne
 PUBLIC_URL = os.getenv("PUBLIC_URL", "").strip().rstrip("/")
 
-DATA_DIR = ROOT / "data"
-WORKSPACE = ROOT / "workspace"
+DATA_DIR = Path(os.getenv("FUSEE_DATA_DIR", ROOT / "data"))        # réglables pour les tests
+WORKSPACE = Path(os.getenv("FUSEE_WORKSPACE", ROOT / "workspace"))
 DB_PATH = DATA_DIR / "fusee.db"
 DATA_DIR.mkdir(exist_ok=True)
 WORKSPACE.mkdir(exist_ok=True)

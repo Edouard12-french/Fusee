@@ -79,6 +79,17 @@ class Scheduler:
                     db.log("système", "erreur", f"relances de prospection : {str(e)[:200]}")
             await asyncio.sleep(3600)
 
+    async def _backups(self) -> None:
+        """Sauvegarde quotidienne de la base (7 derniers jours gardés dans data/sauvegardes)."""
+        while True:
+            try:
+                path = await asyncio.to_thread(db.backup)
+                if path:
+                    db.log("système", "sauvegarde", f"base sauvegardée : {path.rsplit('/', 1)[-1]}")
+            except Exception as e:  # noqa: BLE001
+                db.log("système", "erreur", f"sauvegarde : {str(e)[:200]}")
+            await asyncio.sleep(6 * 3600)
+
     def add(self, agent: Agent) -> None:
         """Ajoute un agent recruté en cours de route (sans redémarrer)."""
         self.events[agent.name] = asyncio.Event()
@@ -94,6 +105,7 @@ class Scheduler:
         self.tasks.append(asyncio.create_task(sales.poll_forever(self.wake)))
         self.tasks.append(asyncio.create_task(self._mark_prices()))
         self.tasks.append(asyncio.create_task(self._followups()))
+        self.tasks.append(asyncio.create_task(self._backups()))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(
             lambda ids: self.wake("Iris", f"nouvel(s) e-mail(s) de contact(s) {ids}"))))
 

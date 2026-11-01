@@ -371,3 +371,29 @@ async def dm_reply(agent: Agent, wake) -> None:
              (time.time(), agent.name, agent.name, f"(Je n'ai pas pu répondre : {type(e).__name__}. Réessaie dans un instant.)"))
     finally:
         db.set_state(agent.name, status="en attente")
+
+
+# --- diagnostic : une mini-requête réelle par agent (modèle, instructions et outils exacts) -------------------
+async def diagnose(agents: list[Agent]) -> list[dict]:
+    async def one(agent: Agent) -> dict:
+        model, _ = model_for(agent.tier)
+        extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+                 if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
+        t0 = time.time()
+        try:
+            resp = await client.beta.messages.create(
+                model=model, max_tokens=256,
+                system=[{"type": "text", "text": system_prompt(agent), "cache_control": {"type": "ephemeral"}}],
+                tools=tool_defs(agent.tools, model),
+                messages=[{"role": "user", "content": "Diagnostic technique : réponds seulement « OK », sans outil."}],
+                thinking={"type": "adaptive", "display": "summarized"}, output_config={"effort": "low"}, **extra)
+            cost = _cost(resp.usage, getattr(resp, "model", None) or model)
+            db.add_cost(agent.name, cost)
+            return {"agent": agent.name, "ok": True, "model": model, "secondes": round(time.time() - t0, 1),
+                    "cout_eur": round(cost * 0.92, 4), "message": "OK"}
+        except anthropic.APIStatusError as e:
+            return {"agent": agent.name, "ok": False, "model": model, "message": f"API {e.status_code} : {e.message[:300]}"}
+        except Exception as e:  # noqa: BLE001
+            return {"agent": agent.name, "ok": False, "model": model, "message": f"{type(e).__name__} : {str(e)[:300]}"}
+
+    return list(await asyncio.gather(*(one(a) for a in agents)))

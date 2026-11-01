@@ -250,3 +250,22 @@ def kb_search(query: str, limit: int = 6) -> list[dict]:
                  (match, limit))
     except sqlite3.OperationalError:
         return []
+
+
+# --- sauvegardes automatiques ---------------------------------------------------------------------------
+def backup(keep: int = 7) -> str | None:
+    """Copie cohérente de la base (une par jour), en gardant les `keep` plus récentes."""
+    from datetime import date as _date
+    from .config import DATA_DIR
+    folder = DATA_DIR / "sauvegardes"
+    folder.mkdir(parents=True, exist_ok=True)
+    dest = folder / f"fusee-{_date.today().isoformat()}.db"
+    if dest.exists():
+        return None
+    with _lock:
+        target = sqlite3.connect(dest)
+        _conn.backup(target)
+        target.close()
+    for old in sorted(folder.glob("fusee-*.db"))[:-keep]:
+        old.unlink()
+    return str(dest)

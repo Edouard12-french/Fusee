@@ -5,3 +5,4 @@ data/
 workspace/
 logs/
 .venv/
+.pytest_cache/

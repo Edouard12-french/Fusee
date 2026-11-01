@@ -130,8 +130,14 @@ sites, les vidéos et les communautés, et on leur répond quand ils nous écriv
 
 1. Installe **Python 3.12** depuis https://www.python.org/downloads/macos/ (le paquet `.pkg`, puis double-clic sur
    « Install Certificates.command » dans le dossier Python des Applications).
-2. Télécharge ce projet (bouton vert **Code → Download ZIP** sur GitHub), dézippe-le dans ton dossier personnel.
-3. Ouvre le **Terminal**, tape `cd ` (avec un espace), glisse le dossier Fusee dans la fenêtre, appuie sur Entrée, puis :
+2. Récupère Fusée. **Le mieux** (pour recevoir les mises à jour) : dans le **Terminal**, tape
+   ```bash
+   cd ~ && git clone -b agents-ia-fusee https://github.com/Edouard12-french/Fusee.git && cd Fusee
+   ```
+   (si le Mac propose d'installer les « outils de ligne de commande », accepte, puis relance la commande).
+   Plus simple mais sans mises à jour automatiques : bouton vert **Code → Download ZIP** sur GitHub (branche
+   `agents-ia-fusee`), dézippe dans ton dossier personnel.
+3. Dans le **Terminal**, place-toi dans le dossier Fusee (`cd ~/Fusee`), puis :
    ```bash
    ./start.sh
    ```
@@ -158,6 +164,22 @@ enregistre la valeur dans `.env` (fichier lisible seulement par toi), et un bout
 connexion marche. Les clés ne sont jamais réaffichées en clair. Sans mot de passe d'appli, les réglages ne
 peuvent être modifiés que depuis le Mac lui-même. Un bouton redémarre Fusée pour appliquer les changements.
 
+
+### 🩺 Vérifier que tout marche
+
+Une fois la clé collée et Fusée redémarré : 🚀 Démarrage → **🩺 Vérifier que tout marche**. Chaque agent fait une
+mini-requête réelle (son modèle, ses instructions, ses outils) : tu vois tout de suite « ✅ Tout marche » ou
+exactement quel agent a un problème et pourquoi. Coût : une fraction de centime.
+
+### 🔄 Mettre à jour Fusée
+
+`./mettre-a-jour.sh` récupère la dernière version (si tu as installé avec `git clone`), met à jour ce qu'il faut et
+redémarre Fusée. Ton `.env`, tes données et le travail des agents ne sont jamais touchés.
+
+### 💾 Sauvegardes
+
+Chaque jour, Fusée sauvegarde sa base (conversations, clients, ventes, mémoire…) dans `data/sauvegardes/` et garde
+les 7 derniers jours.
 ### 📲 Installer l'application
 
 - **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
@@ -284,6 +306,13 @@ animations générées par le code (texte, couleurs, captures du produit), pas d
 de bourse ne sont pas des conseils financiers. Dès que tu vends, il te faut un statut (ex. micro-entreprise),
 des mentions légales/CGV sur les sites et la déclaration de tes revenus.
 
+## Tests
+
+`python -m pytest -q` (après `pip install -r requirements-dev.txt`) vérifie automatiquement les points critiques :
+chiffrement des notifications (vecteur officiel RFC 8291), règles de prospection, sécurité de l'argent et des
+publications, isolement des clés secrètes, serveur public, workflows, ventes, réunions et discussions privées…
+Aucun appel réel à l'IA, à Stripe, à Netlify ou à Apple.
+
 ## Structure
 
 ```
@@ -292,6 +321,8 @@ start.sh / start.bat           lancement 24h/24 avec installation et redémarrag
 install-mac.sh                 démarrage automatique sur Mac (service launchd) + app Fusée
 creer-app-mac.sh               crée l'icône Fusée.app à double-cliquer
 activer-iphone.sh              accès privé depuis l'iPhone (Tailscale) et, en option, chat public
+mettre-a-jour.sh               met Fusée à jour sans toucher à tes données
+tests/                         tests automatiques (python -m pytest -q)
 fusee.service                  service pour serveur Linux
 fusee_agents/
   agents.py                    l'équipe et leurs instructions

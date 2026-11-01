@@ -462,16 +462,43 @@ BASIC_SERVER_TOOLS = {
 }
 
 
+# L'API limite le nombre d'outils « stricts » (arguments garantis conformes) par requête : on réserve ce mode aux
+# outils où une erreur d'argument coûterait cher (argent, publication, ventes, fichiers, coordination).
+MAX_STRICT_TOOLS = 20
+STRICT_PRIORITY = ["request_approval", "publish_site", "create_payment_link", "paper_trade", "send_prospect_email",
+                   "create_campaign", "add_prospect", "reply_to_contact", "update_contact", "complete_task",
+                   "start_sequence", "start_parallel", "register_product", "update_product", "write_file",
+                   "post_message", "ask_owner", "add_owner_task", "submit_need", "hire_agent", "adjust_agent",
+                   "route_to", "create_site_from_template", "plan_content", "save_memory", "remember"]
+
+
 def tool_defs(names: list[str], model: str = "") -> list[dict]:
     server = SERVER_TOOLS if ("opus" in model or "sonnet" in model or not model) else BASIC_SERVER_TOOLS
+    client_names = [n for n in names if n not in SERVER_TOOLS
+                    and not (n in ("run_python", "run_tool") and not ALLOW_CODE_EXEC)]
+    ranked = sorted(client_names, key=lambda n: STRICT_PRIORITY.index(n) if n in STRICT_PRIORITY else 999)
+    strict = set(ranked[:MAX_STRICT_TOOLS])
     out = []
     for n in names:
         if n in SERVER_TOOLS:
             out.append(server[n])
-        elif n in ("run_python", "run_tool") and not ALLOW_CODE_EXEC:
-            continue
-        else:
-            out.append({"name": n, "strict": True, **CLIENT_TOOLS[n]})
+        elif n in client_names:
+            out.append({"name": n, **({"strict": True} if n in strict else {}), **CLIENT_TOOLS[n]})
+    return out
+
+
+_DEFAULTS = {"string": "", "integer": 0, "number": 0, "boolean": False, "array": [], "object": {}}
+
+
+def normalize_args(name: str, args: dict) -> dict:
+    """Complète les arguments manquants (outil non strict) avec des valeurs neutres : jamais de plantage pour un oubli."""
+    props = CLIENT_TOOLS.get(name, {}).get("input_schema", {}).get("properties", {})
+    out = dict(args or {})
+    for k, spec in props.items():
+        if k not in out or out[k] is None:
+            out[k] = _DEFAULTS.get(spec.get("type", "string"), "")
+            if out[k] in ([], {}):
+                out[k] = type(out[k])()
     return out
 
 
@@ -591,6 +618,7 @@ async def deliver_reply(contact_id: int, message: str, agent: str) -> str:
 
 async def execute(agent: str, name: str, args: dict, wake) -> str:
     """Exécute un outil client. `wake(nom, raison)` réveille un agent mentionné."""
+    args = normalize_args(name, args)
     # --- équipe -------------------------------------------------------------
     if name == "post_message":
         content = args["content"].strip()
