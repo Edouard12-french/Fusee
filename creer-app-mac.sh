@@ -66,6 +66,7 @@ open "\$URL"
 LAUNCHER
 chmod +x "$APP/Contents/MacOS/Fusee" start.sh
 touch "$APP"   # rafraîchit l'icône dans le Finder
+ln -sfn "$APP" "$HOME/Desktop/Fusée.app" 2>/dev/null || true   # raccourci sur le Bureau
 echo "✅ Application créée : $APP"
-echo "   👉 Double-clique sur « Fusée » dans Applications (ou glisse-la dans le Dock)."
+echo "   👉 Double-clique sur « Fusée » sur ton Bureau (ou glisse-la dans le Dock)."
 open -R "$APP" 2>/dev/null || true

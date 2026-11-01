@@ -27,6 +27,7 @@ cat > "$PLIST" <<PLISTEOF
   <key>WorkingDirectory</key><string>$DIR</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
@@ -37,7 +38,7 @@ cat > "$PLIST" <<PLISTEOF
 PLISTEOF
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-/bin/bash "$DIR/creer-app-mac.sh" >/dev/null 2>&1 && echo "✅ Icône « Fusée » créée dans ~/Applications (glisse-la dans le Dock)."
+/bin/bash "$DIR/creer-app-mac.sh" >/dev/null 2>&1 && echo "✅ Icône « Fusée » créée sur ton Bureau et dans ~/Applications."
 echo "✅ Fusée est installé : il tourne maintenant et redémarrera tout seul à chaque ouverture de session."
 echo "   Appli : http://localhost:8000   ·   Journal : $DIR/logs/fusee.log"
 echo ""
