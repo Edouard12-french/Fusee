@@ -118,9 +118,8 @@ CLIENT_TOOLS: dict[str, dict] = {
     # --- mise en ligne & ventes ---------------------------------------------
     "publish_site": {
         "description": ("Met en ligne (Netlify, gratuit) un site/app statique du workspace (dossier avec index.html) et "
-                        "renvoie son URL publique. Audit qualité automatique. En mode autonome, approval_id=0 suffit si "
-                        "l'audit fait ≥ 90 et qu'il ne reste aucun « [À compléter] » ; sinon il faut l'id d'une "
-                        f"validation ACCEPTÉE par {OWNER}. Republier le même dossier met à jour le site."),
+                        f"renvoie son URL publique. Exige TOUJOURS l'id d'une validation ACCEPTÉE par {OWNER} pour ce "
+                        "site. Audit qualité automatique. Republier le même dossier met à jour le site."),
         "input_schema": _schema({"folder": S, "approval_id": I}),
     },
     "create_payment_link": {
@@ -368,15 +367,37 @@ CLIENT_TOOLS: dict[str, dict] = {
         "input_schema": _schema({"name": S}),
     },
     # --- lien avec Patron (agent humain) ------------------------------------
+    "submit_need": {
+        "description": (f"Signale un besoin que l'équipe ne peut pas régler seule : une information ou une décision de "
+                        f"{OWNER}, un compte à créer, un accès, un blocage. @Clara le traite et le présente à {OWNER} ; "
+                        "tu es réveillé avec la réponse. (Pour publier ou dépenser : request_approval.)"),
+        "input_schema": _schema({"need": {"type": "string", "description": "ce dont tu as besoin, en une phrase claire"},
+                                 "why": {"type": "string", "description": "pourquoi, et ce que ça débloque"},
+                                 "urgency": {"type": "string", "enum": ["bloquant", "important", "normal"]},
+                                 "options": {"type": "array", "items": S, "description": "réponses possibles ([] si libre)"}}),
+    },
+    "list_needs": {
+        "description": "Besoins de l'équipe en attente de traitement (pour Clara).",
+        "input_schema": _schema({}),
+    },
+    "resolve_need": {
+        "description": ("Répond toi-même à un besoin d'un agent (si l'info existe déjà : mémoire, fichiers, réponses "
+                        f"précédentes de {OWNER}) ou le clôture ; l'agent est réveillé avec ta réponse."),
+        "input_schema": _schema({"need_id": I, "answer": S}),
+    },
     "ask_owner": {
-        "description": (f"Pose une question à {OWNER} (notification + réponse dans l'appli). options : réponses "
+        "description": (f"Pose une question à {OWNER} (notification + réponse dans l'appli) au nom de l'agent qui en a "
+                        "besoin (on_behalf_of) ; need_ids = besoins regroupés dans cette question. options : réponses "
                         "proposées en boutons (liste vide = réponse libre)."),
-        "input_schema": _schema({"question": S, "context": S, "options": LIST}),
+        "input_schema": _schema({"question": S, "context": S, "options": LIST, "on_behalf_of": AGENT,
+                                 "need_ids": {"type": "array", "items": I}}),
     },
     "add_owner_task": {
-        "description": f"Ajoute une tâche à la liste « À faire » de {OWNER}, avec des étapes numérotées très concrètes.",
+        "description": (f"Ajoute une tâche à la liste de {OWNER}, au nom de l'agent qui en a besoin, avec des étapes "
+                        "numérotées très concrètes ; need_ids = besoins couverts."),
         "input_schema": _schema({"title": S, "steps": S,
-                                 "priority": {"type": "string", "enum": ["haute", "normale", "basse"]}}),
+                                 "priority": {"type": "string", "enum": ["haute", "normale", "basse"]},
+                                 "on_behalf_of": AGENT, "need_ids": {"type": "array", "items": I}}),
     },
     "list_owner_items": {
         "description": f"Questions et tâches en attente chez {OWNER} (et réponses récentes).",
@@ -671,10 +692,10 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
     # --- mise en ligne & ventes ---------------------------------------------
     if name == "publish_site":
         appr = _accepted(args["approval_id"], ("publication", "business"))
-        autonomous = not appr and db.get_setting("autonomy", "autonome") == "autonome"
-        if not appr and not autonomous:
-            return (f"Refusé : la demande #{args['approval_id']} n'est pas une publication/business acceptée par "
-                    f"{OWNER}. Fais d'abord request_approval (kind=publication) avec captures et attends sa réponse.")
+        if not appr:
+            return (f"Refusé : rien n'est publié sans l'accord de {OWNER}. La demande #{args['approval_id']} n'est pas une "
+                    "publication acceptée : fais d'abord audit_site, puis request_approval (kind=publication) avec "
+                    "captures et lien de prévisualisation, et attends sa réponse.")
         folder = _safe_path(args["folder"])
         if not (folder / "index.html").is_file():
             return "Erreur : le dossier doit contenir un index.html."
@@ -688,30 +709,11 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
             return ("Publication bloquée par l'audit qualité (score " + str(au["score"]) + "/100). Corrige d'abord :\n"
                     + "\n".join(f"- [{i['niveau']}] {i['probleme']}" for i in au["problemes"]
                                  if i["niveau"] != "avertissement"))
-        if autonomous:  # mode autonome : un site gratuit et impeccable se publie sans attendre Patron
-            todo = [f.name for f in folder.rglob("*.html") if "[À compléter" in f.read_text(errors="replace")
-                    or "[à compléter" in f.read_text(errors="replace")]
-            reasons = []
-            if not au or au["score"] < 90:
-                reasons.append(f"l'audit doit atteindre 90/100 (actuel : {au['score'] if au else 'audit impossible'})")
-            if todo:
-                reasons.append(f"il reste des « [À compléter] » dans {', '.join(todo)} (demande à @Clara de faire "
-                               f"compléter les mentions légales par {OWNER})")
-            if reasons:
-                return ("Publication autonome impossible : " + " ; ".join(reasons)
-                        + ". Corrige, ou passe par request_approval (kind=publication).")
-            aid = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, status, response, decided_ts) "
-                       "VALUES (?,?,?,?,?,0,'acceptée','publication autonome (site gratuit, audit réussi)',?)",
-                       (time.time(), agent, "publication", f"Mise en ligne de {folder.name}",
-                        f"Audit {au['score']}/100", time.time()))
-            appr = {"id": aid}
         prev = db.q("SELECT provider_id FROM deployments WHERE site=? ORDER BY id DESC LIMIT 1", (rel,))
         r = await asyncio.to_thread(integrations.deploy_site, folder, folder.name, prev[0]["provider_id"] if prev else None)
         db.x("INSERT INTO deployments (ts, agent, site, provider_id, url, approval_id) "
              "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?)", (agent, rel, r["site_id"], r["url"], appr["id"]))
-        notify("alerte", f"🌐 Site en ligne : {folder.name}",
-               f"{r['url']}\n" + ("(publié en autonomie : gratuit, audit réussi)" if autonomous else
-                                  f"(validé par toi, demande #{appr['id']})"))
+        notify("alerte", f"🌐 Site en ligne : {folder.name}", f"{r['url']}\n(validé par toi, demande #{appr['id']})")
         db.x("UPDATE products SET status='en ligne' WHERE site_folder=? AND status IN ('en création','prêt')", (rel,))
         db.post_message(agent, f"🌐 {folder.name} est en ligne !" + (f" (audit {au['score']}/100)" if au else ""),
                         _attach_json(list((au or {}).get("captures", {}).values()), [r["url"]]))
@@ -1020,22 +1022,58 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         p = WORKSPACE / "competences" / f"{Path(args['name']).stem}.md"
         return p.read_text(errors="replace")[:30000] if p.is_file() else "Erreur : fiche inconnue. Vois list_skills."
     # --- lien avec Patron ---------------------------------------------------
+    if name == "submit_need":
+        dup = db.q("SELECT id FROM needs WHERE agent=? AND need=? AND status!='résolu'", (agent, args["need"]))
+        if dup:
+            return f"Ce besoin (#{dup[0]['id']}) est déjà en cours de traitement par Clara."
+        i = db.x("INSERT INTO needs (ts, agent, need, why, urgency, options) VALUES (?,?,?,?,?,?)",
+                 (time.time(), agent, args["need"], args["why"], args["urgency"],
+                  json.dumps(args["options"][:6], ensure_ascii=False)))
+        if agent != "Clara":
+            wake("Clara", f"nouveau besoin #{i} de {agent} ({args['urgency']}) : {args['need'][:300]}")
+        return f"Besoin #{i} transmis à Clara. Continue sur autre chose : tu seras réveillé avec la réponse."
+    if name == "list_needs":
+        rows = db.q("SELECT id, ts, agent, need, why, urgency, options, status FROM needs WHERE status!='résolu' "
+                    "ORDER BY CASE urgency WHEN 'bloquant' THEN 0 WHEN 'important' THEN 1 ELSE 2 END, id")
+        return json.dumps(rows, ensure_ascii=False) if rows else "Aucun besoin en attente."
+    if name == "resolve_need":
+        rows = db.q("SELECT * FROM needs WHERE id=?", (args["need_id"],))
+        if not rows:
+            return "Erreur : besoin introuvable."
+        db.x("UPDATE needs SET status='résolu', result=?, resolved_ts=? WHERE id=?", (args["answer"], time.time(), args["need_id"]))
+        wake(rows[0]["agent"], f"réponse de {agent} à ton besoin #{args['need_id']} « {rows[0]['need'][:150]} » : {args['answer'][:1200]}")
+        return f"Besoin #{args['need_id']} résolu ; {rows[0]['agent']} est prévenu."
     if name == "ask_owner":
         dup = db.q("SELECT id FROM owner_questions WHERE answer IS NULL AND question=?", (args["question"],))
         if dup:
             return f"Cette question (#{dup[0]['id']}) attend déjà la réponse de {OWNER}."
-        i = db.x("INSERT INTO owner_questions (ts, agent, question, context, options) VALUES (?,?,?,?,?)",
-                 (time.time(), agent, args["question"], args["context"], json.dumps(args["options"][:6], ensure_ascii=False)))
-        db.post_message(agent, f"❓ Question #{i} pour @{OWNER} : {args['question']}")
-        notify("validation", f"Question de {agent}", args["question"], priority="default")
-        return f"Question #{i} posée. Tu seras réveillé avec la réponse."
+        who = args["on_behalf_of"] or agent
+        ids = [int(n) for n in args["need_ids"]][:10]
+        i = db.x("INSERT INTO owner_questions (ts, agent, question, context, options, via, need_ids) VALUES (?,?,?,?,?,?,?)",
+                 (time.time(), who, args["question"], args["context"], json.dumps(args["options"][:6], ensure_ascii=False),
+                  agent, json.dumps(ids)))
+        for n in ids:
+            db.x("UPDATE needs SET status='présenté à Patron' WHERE id=?", (n,))
+        a = BY_NAME.get(who)
+        label = f"{a.emoji} {who} ({a.title})" if a else who
+        db.post_message(agent, f"❓ @{OWNER}, {label} a besoin de toi : {args['question']}")
+        urgent = any(r["urgency"] == "bloquant" for r in db.q(
+            f"SELECT urgency FROM needs WHERE id IN ({','.join('?' * len(ids))})", tuple(ids))) if ids else False
+        notify("validation", f"{label} a besoin de toi", args["question"], priority="high" if urgent else "default")
+        return f"Question #{i} posée à {OWNER} au nom de {who}. {who} sera réveillé avec la réponse."
     if name == "add_owner_task":
-        i = db.x("INSERT INTO owner_tasks (ts, agent, title, steps, priority) VALUES (?,?,?,?,?)",
-                 (time.time(), agent, args["title"], args["steps"], args["priority"]))
-        db.post_message(agent, f"📝 Nouvelle tâche pour @{OWNER} : {args['title']}")
+        who = args["on_behalf_of"] or agent
+        ids = [int(n) for n in args["need_ids"]][:10]
+        i = db.x("INSERT INTO owner_tasks (ts, agent, title, steps, priority, via, need_ids) VALUES (?,?,?,?,?,?,?)",
+                 (time.time(), who, args["title"], args["steps"], args["priority"], agent, json.dumps(ids)))
+        for n in ids:
+            db.x("UPDATE needs SET status='présenté à Patron' WHERE id=?", (n,))
+        a = BY_NAME.get(who)
+        label = f"{a.emoji} {who}" if a else who
+        db.post_message(agent, f"📝 @{OWNER}, {label} a besoin que tu fasses : {args['title']}")
         if args["priority"] == "haute":
-            notify("alerte", f"À faire : {args['title']}", args["steps"][:1500], priority="high")
-        return f"Tâche #{i} ajoutée à la liste de {OWNER}."
+            notify("alerte", f"À faire pour {who} : {args['title']}", args["steps"][:1500], priority="high")
+        return f"Tâche #{i} ajoutée à la liste de {OWNER} (pour {who})."
     if name == "list_owner_items":
         qs = db.q("SELECT id, agent, question, answer FROM owner_questions WHERE answer IS NULL OR answered_ts > ? "
                   "ORDER BY id DESC LIMIT 20", (time.time() - 3 * 86400,))

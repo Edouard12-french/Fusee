@@ -5,97 +5,126 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fusée</title>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
-<meta name="theme-color" content="#12151d">
+<meta name="theme-color" content="#6d28d9">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-:root{--bg:#0b0d12;--panel:#12151d;--panel2:#181c26;--line:#262b38;--text:#e7e9ee;--muted:#8b93a7;--accent:#7c5cff;--me:#1f3d2b;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b}
+:root{--bg:#0b0b1a;--bg2:#12122a;--panel:rgba(22,22,48,.78);--panel2:rgba(34,34,70,.72);--line:rgba(140,140,255,.16);--text:#eef0ff;--muted:#a3a8c8;
+  --accent:#8b5cf6;--accent2:#ec4899;--accent3:#f97316;--ok:#22c55e;--bad:#f43f5e;--warn:#f59e0b;--me:linear-gradient(135deg,#7c3aed,#db2777);
+  --glow1:rgba(139,92,246,.30);--glow2:rgba(236,72,153,.22);--glow3:rgba(14,165,233,.20);--shadow:0 8px 30px rgba(0,0,0,.35)}
+:root[data-theme="light"]{--bg:#f6f4ff;--bg2:#fff;--panel:rgba(255,255,255,.85);--panel2:rgba(246,243,255,.95);--line:rgba(110,80,200,.16);--text:#1d1b3a;--muted:#6b6890;
+  --glow1:rgba(139,92,246,.18);--glow2:rgba(236,72,153,.14);--glow3:rgba(14,165,233,.14);--shadow:0 6px 24px rgba(80,60,160,.12)}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden}
-header{display:flex;gap:8px;align-items:center;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
-header h1{font-size:18px;margin:0 6px 0 0;display:flex;align-items:center;gap:8px}
-header h1 img{width:26px;height:26px;border-radius:7px}
+body{margin:0;color:var(--text);font:14px/1.45 system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(900px 500px at 0% 0%,var(--glow1),transparent 60%),radial-gradient(800px 500px at 100% 10%,var(--glow2),transparent 60%),
+  radial-gradient(900px 600px at 50% 110%,var(--glow3),transparent 60%),var(--bg)}
+header{display:flex;gap:8px;align-items:center;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));flex-wrap:wrap;color:#fff;
+  background:linear-gradient(100deg,#6d28d9 0%,#c026d3 45%,#f97316 100%);box-shadow:0 4px 24px rgba(192,38,211,.35);position:relative;z-index:2}
+header h1{font-size:19px;margin:0 6px 0 0;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+header h1 img{width:28px;height:28px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+header .pill{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.28);color:#fff}
+header button{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff}
+header button:hover{background:rgba(255,255,255,.28);border-color:#fff}
+header button.on{background:rgba(34,197,94,.35);border-color:#bbf7d0}
 .pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);font-size:12px;white-space:nowrap}
-.bar{width:90px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
-.bar i{display:block;height:100%;background:var(--accent)}
-button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit}
-button:hover{border-color:var(--accent)}
-button.primary{background:var(--accent);border-color:var(--accent)}
-button.on{background:#14532d;border-color:var(--ok)}
-a{color:#9db4ff}
-main{flex:1;display:grid;grid-template-columns:250px 1fr 460px;min-height:0}
+.bar{width:90px;height:6px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+.bar i{display:block;height:100%;background:#fff}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:6px 12px;cursor:pointer;font:inherit;transition:transform .12s,border-color .12s}
+button:hover{border-color:var(--accent);transform:translateY(-1px)}
+button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(139,92,246,.35)}
+button.on{background:#14532d;border-color:var(--ok);color:#fff}
+a{color:#a78bfa}:root[data-theme="light"] a{color:#6d28d9}
+main{flex:1;display:grid;grid-template-columns:270px 1fr 480px;min-height:0;gap:0}
 aside,section{min-height:0;overflow:auto}
-#agents{border-right:1px solid var(--line);padding:10px}
-.agent{display:flex;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent;margin-bottom:6px}
-.agent:hover,.agent.sel{background:var(--panel2);border-color:var(--line)}
-.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:20px;flex:none}
-.agent b{display:block}.agent small{color:var(--muted);display:block;font-size:12px}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:#555}
-.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}.dot.err{background:var(--bad)}
-#chat{display:flex;flex-direction:column;background:#0e1118}
-#msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-.msg{max-width:80%;background:var(--panel2);border-radius:12px;padding:8px 12px;border:1px solid var(--line);white-space:pre-wrap;word-wrap:break-word}
-.msg .who{font-weight:600;font-size:12px;margin-bottom:2px}
+#agents{padding:12px;border-right:1px solid var(--line);background:linear-gradient(180deg,rgba(139,92,246,.06),transparent 40%)}
+.agent{--ag:#8b5cf6;display:flex;gap:10px;padding:10px;border-radius:14px;cursor:pointer;margin-bottom:8px;background:var(--panel);
+  border:1px solid var(--line);border-left:4px solid var(--ag);box-shadow:var(--shadow);transition:transform .12s}
+.agent:hover{transform:translateX(2px)}
+.agent.sel{background:linear-gradient(135deg,color-mix(in srgb,var(--ag) 24%,transparent),var(--panel));border-color:var(--ag)}
+.av{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:21px;flex:none;background:var(--ag,#8b5cf6);
+  box-shadow:0 4px 14px color-mix(in srgb,var(--ag,#8b5cf6) 45%,transparent)}
+.agent b{display:block;color:color-mix(in srgb,var(--ag) 55%,var(--text))}
+.agent small{color:var(--muted);display:block;font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:#64748b}
+.dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}.dot.err{background:var(--bad)}
+#chat{display:flex;flex-direction:column}
+#msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
+.msg{--ag:#8b5cf6;max-width:80%;border-radius:16px;padding:9px 13px;white-space:pre-wrap;word-wrap:break-word;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--ag) 20%,var(--panel)),var(--panel));border:1px solid color-mix(in srgb,var(--ag) 35%,transparent);
+  border-top-left-radius:4px;box-shadow:var(--shadow)}
+.msg .who{font-weight:700;font-size:12px;margin-bottom:2px;color:color-mix(in srgb,var(--ag) 70%,var(--text))}
 .msg .t{color:var(--muted);font-size:11px;text-align:right}
-.msg.me{align-self:flex-end;background:var(--me)}
+.msg.me{align-self:flex-end;background:var(--me);border:0;color:#fff;border-top-left-radius:16px;border-top-right-radius:4px}
+.msg.me .who,.msg.me .t{color:rgba(255,255,255,.85)}
 .att{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;white-space:normal}
-.att img{max-width:220px;max-height:220px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
-.att video{max-width:260px;max-height:300px;border-radius:8px;background:#000}
-.lnk{display:inline-block;background:#1e2540;border:1px solid #33407a;border-radius:8px;padding:3px 9px;font-size:12px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-form.send{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:var(--panel)}
-textarea,input,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+.att img{max-width:220px;max-height:220px;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
+.att video{max-width:260px;max-height:300px;border-radius:10px;background:#000}
+.lnk{display:inline-block;background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(236,72,153,.18));border:1px solid rgba(167,139,250,.45);border-radius:10px;
+  padding:3px 9px;font-size:12px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+form.send{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--panel)}
+textarea,input,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
+textarea:focus,input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--accent) 60%,transparent);border-color:transparent}
 textarea{flex:1;resize:none}
-#side{border-left:1px solid var(--line);display:flex;flex-direction:column}
-.tabs{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.tabs button{padding:5px 9px;font-size:13px}.tabs button.sel{background:var(--accent);border-color:var(--accent)}
+#side{border-left:1px solid var(--line);display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(236,72,153,.05),transparent 30%)}
+.tabs{display:flex;gap:5px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{padding:5px 10px;font-size:13px;border-radius:999px}
+.tabs button.sel{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(236,72,153,.3)}
 #pane{padding:12px;overflow:auto;flex:1}
-.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
-.card h4{margin:0 0 4px}.muted{color:var(--muted);font-size:12px}
-.card.pending{border-color:var(--warn)}.card.click{cursor:pointer}.card.click:hover{border-color:var(--accent)}
-.act{border-left:3px solid var(--line);padding:4px 8px;margin-bottom:6px;font-size:13px}
-.act.web{border-color:#0ea5e9}.act.outil{border-color:var(--warn)}.act.fichier,.act.capture,.act.vidéo{border-color:var(--ok)}.act.erreur{border-color:var(--bad)}.act.réflexion{border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px}.muted{color:var(--muted);font-size:12px}.muted2{opacity:.9;font-size:12px;margin-top:4px}
+.card.pending{border-color:var(--warn);box-shadow:0 0 0 1px rgba(245,158,11,.25),var(--shadow)}.card.click{cursor:pointer}.card.click:hover{border-color:var(--accent)}
+.act{border-left:3px solid var(--line);padding:4px 8px;margin-bottom:6px;font-size:13px;border-radius:2px}
+.act.web{border-color:#0ea5e9}.act.outil{border-color:var(--warn)}.act.fichier,.act.capture,.act.vidéo,.act.vente{border-color:var(--ok)}.act.erreur{border-color:var(--bad)}.act.réflexion{border-color:var(--accent)}
 details summary{cursor:pointer}
-pre{white-space:pre-wrap;word-wrap:break-word;background:#0b0d12;padding:8px;border-radius:8px;font-size:12px;max-height:400px;overflow:auto}
-table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:4px;border-bottom:1px solid var(--line);text-align:left}
+pre{white-space:pre-wrap;word-wrap:break-word;background:rgba(0,0,0,.28);padding:8px;border-radius:10px;font-size:12px;max-height:400px;overflow:auto}
+:root[data-theme="light"] pre{background:#f1eefc}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left}
 .pos{color:var(--ok)}.neg{color:var(--bad)}
-.tag{font-size:11px;padding:2px 8px;border-radius:999px;background:#262b38;display:inline-block;margin:1px 0}
-.badge{background:var(--bad);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;margin-left:2px}
+.tag{font-size:11px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 18%,transparent);display:inline-block;margin:1px 0;border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+.badge{background:linear-gradient(135deg,#f43f5e,#f97316);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;margin-left:2px}
 .md h1,.md h2,.md h3{margin:.6em 0 .3em}
-.score{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:4px 0}
-.score i{display:block;height:100%}
+.score{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:4px 0}.score i{display:block;height:100%}
 .thread{display:flex;flex-direction:column;gap:6px;margin:10px 0}
-.bub{max-width:85%;padding:7px 10px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word;font-size:13px}
-.bub.in{align-self:flex-start;background:#232838}.bub.out{align-self:flex-end;background:#2b2160}
+.bub{max-width:85%;padding:7px 10px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word;font-size:13px}
+.bub.in{align-self:flex-start;background:var(--panel2)}.bub.out{align-self:flex-end;background:linear-gradient(135deg,rgba(124,58,237,.55),rgba(219,39,119,.45));color:#fff}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.grid img,.grid video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
-.preview{width:100%;height:220px;border:1px solid var(--line);border-radius:8px;overflow:hidden;position:relative;background:#fff;margin:6px 0}
+.grid img,.grid video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
+.preview{width:100%;height:220px;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;background:#fff;margin:6px 0}
 .preview iframe{width:250%;height:250%;transform:scale(.4);transform-origin:0 0;border:0;pointer-events:none}
-.big{font-size:26px;font-weight:700}
+.big{font-size:26px;font-weight:800}
+.hero-card{border-radius:16px;padding:16px;margin-bottom:12px;color:#fff;background:linear-gradient(120deg,#7c3aed,#db2777 60%,#f97316);box-shadow:0 8px 30px rgba(219,39,119,.3)}
+.req-group{--ag:#8b5cf6;border-radius:16px;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--ag) 16%,var(--panel)),var(--panel));
+  border:1px solid color-mix(in srgb,var(--ag) 45%,transparent);box-shadow:var(--shadow)}
+.req-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}.req-head .av{--ag:inherit}
+.req{background:var(--panel2);border-radius:12px;padding:10px;margin-top:8px;border-left:4px solid var(--ag)}
+.req-kind{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:3px}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;place-items:center;z-index:50;cursor:zoom-out;padding:20px}
 #lightbox.open{display:grid}#lightbox img{max-width:100%;max-height:100%;border-radius:8px}
 nav#bottom{display:none}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--accent) 35%,transparent);border-radius:9px}
 @media (max-width:1000px){
   main{display:block;position:relative}
   #agents,#chat,#side{position:absolute;inset:0;display:none}
   body.v-team #agents{display:block}body.v-chat #chat{display:flex}body.v-more #side{display:flex}
   #agents{border:0}#side{border:0}
-  nav#bottom{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom)}
+  nav#bottom{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom);backdrop-filter:blur(10px)}
   nav#bottom button{flex:1;border:0;border-radius:0;background:none;padding:10px 0;font-size:12px;color:var(--muted)}
-  nav#bottom button.sel{color:var(--text);background:var(--panel2)}
-  .msg{max-width:92%}.pill.hide-m{display:none}.lbl{display:none}header .bar{display:none}header{flex-wrap:nowrap;gap:6px;padding:8px 10px}header h1{font-size:16px}header button{padding:6px 9px}
+  nav#bottom button.sel{color:var(--text);background:linear-gradient(180deg,rgba(139,92,246,.25),transparent)}
+  .msg{max-width:92%}.pill.hide-m{display:none}.lbl{display:none}.hide-mi{display:none}header h1 span{display:none}header .bar{display:none}header{flex-wrap:nowrap;gap:6px;padding:8px 10px}header h1{font-size:16px}header button{padding:6px 9px}
   .att img{max-width:150px}.att video{max-width:170px;max-height:240px}
 }
 </style>
 </head>
 <body class="v-chat">
 <header>
-  <h1><img src="/icon-192.png" alt="">Fusée</h1>
+  <h1><img src="/icon-192.png" alt=""><span>Fusée</span></h1>
   <span class="pill hide-m" id="model"></span>
   <span class="pill" title="Argent restant · dépense IA du jour">💶 <span id="cost"></span><span class="bar"><i id="costbar"></i></span></span>
   <span style="flex:1"></span>
+  <button id="themeBtn" title="Thème clair / sombre">🌗</button>
   <button id="installBtn" hidden>📲<span class="lbl"> Installer l'app</span></button>
   <button id="browserBtn" title="Autoriser les agents à naviguer sur internet avec un vrai navigateur"></button>
   <button id="directiveBtn" title="Consigne permanente lue par tous les agents">🎯<span class="lbl"> Consigne</span></button>
@@ -137,7 +166,7 @@ const api = (u, opt) => fetch(u, opt).then(r => r.json());
 const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
 let openProduct = null, S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
-const TABS = {setup:"🚀 Démarrage", agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", products:"📦 Produits", content:"📅 Contenus", outreach:"🎯 Prospection", contacts:"👥 Prospects", money:"💰 Argent",
+const TABS = {setup:"🚀 Démarrage", owner:"📥 Demandes", agent:"🤖 Agent", approvals:"✅ Validations", products:"📦 Produits", content:"📅 Contenus", outreach:"🎯 Prospection", contacts:"👥 Prospects", money:"💰 Argent",
   vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse",
   notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
@@ -157,8 +186,8 @@ function attHtml(att) {
 function renderAgents() {
   $("#agents").innerHTML = S.agents.map(a => {
     const st = a.status || "en attente", cls = st === "travaille" ? "on" : st.startsWith("erreur") || st.startsWith("budget") ? "err" : "";
-    return `<div class="agent ${selected===a.name?"sel":""}" data-n="${a.name}">
-      <div class="av" style="background:${a.color}33">${a.emoji}</div>
+    return `<div class="agent ${selected===a.name?"sel":""}" data-n="${a.name}" style="--ag:${a.color}">
+      <div class="av">${a.emoji}</div>
       <div style="min-width:0"><b>${a.name}</b><small>${esc(a.kind)} · ${esc(a.title)}</small>
       <small><span class="tag">${a.model.replace("claude-","").replace(/-(\d)-(\d)$/," $1.$2")}</span> <span class="tag">${a.interval_min ? "toutes les " + a.interval_min + " min" : "à la demande"}</span></small>
       <small><span class="dot ${cls}"></span>${esc(st)}</small>
@@ -173,7 +202,7 @@ function addMessages(list) {
   for (const m of list) {
     lastId = Math.max(lastId, m.id);
     const me = m.sender === "Patron";
-    box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}"><div class="who" style="color:${colorOf(m.sender)}">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/(^|\s)@(\w+)/g,"$1<b>@$2</b>")}${attHtml(m.attachments)}<div class="t">${time(m.ts)}</div></div>`);
+    box.insertAdjacentHTML("beforeend", `<div class="msg ${me?"me":""}" style="--ag:${colorOf(m.sender)}"><div class="who">${emojiOf(m.sender)} ${esc(m.sender)}</div>${esc(m.content).replace(/(^|\s)@(\w+)/g,"$1<b>@$2</b>")}${attHtml(m.attachments)}<div class="t">${time(m.ts)}</div></div>`);
   }
   if (list.length && stick) box.scrollTop = box.scrollHeight;
 }
@@ -184,7 +213,7 @@ async function poll() {
     S = r;
     if (!selected) selected = r.agents[0]?.name;
     $("#model").textContent = "plan " + r.plan;
-    $("#cost").textContent = `${r.budget.remaining_eur.toFixed(2)} € · IA ${r.budget.api_today_eur.toFixed(2)}/${r.budget.api_daily_cap_eur.toFixed(2)} €`;
+    $("#cost").innerHTML = `${r.budget.remaining_eur.toFixed(0)} €<span class="hide-mi"> · IA ${r.budget.api_today_eur.toFixed(2)}/${r.budget.api_daily_cap_eur.toFixed(2)} €</span>`;
     $("#costbar").style.width = Math.min(100, 100 * r.budget.api_today_eur / Math.max(r.budget.api_daily_cap_eur, 0.01)) + "%";
     $("#pauseBtn").innerHTML = r.paused ? "▶️<span class=lbl> Reprendre</span>" : "⏸️<span class=lbl> Pause</span>";
     $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
@@ -199,7 +228,7 @@ async function poll() {
 
 function renderTabs() {
   const b = {approvals: S.pending_approvals, notifs: S.unread_notifications, contacts: S.waiting_contacts,
-    owner: (S.open_questions || 0) + (S.open_owner_tasks || 0)};
+    owner: (S.open_questions || 0) + (S.open_owner_tasks || 0) + (S.pending_approvals || 0)};
   $("#tabs").innerHTML = Object.entries(TABS).map(([k, v]) => `<button class="${tab===k?"sel":""}" data-t="${k}">${v}${b[k] ? ` <span class="badge">${b[k]}</span>` : ""}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(x => x.onclick = () => { tab = x.dataset.t; openContact = null; renderTabs(); renderPane(); });
 }
@@ -274,18 +303,32 @@ async function renderPane(soft) {
     } else if (tab === "owner") {
       const d = await api("/api/owner");
       if (soft && pane.querySelector("input:focus, textarea:focus")) return;
-      const openQ = d.questions.filter(q => !q.answer), doneQ = d.questions.filter(q => q.answer);
-      const todo = d.tasks.filter(t => !t.done), done = d.tasks.filter(t => t.done);
-      pane.innerHTML = `<p class="muted">Ce que l'équipe attend de toi. Clara regroupe les questions et prépare tes tâches pas à pas.</p>
-        <h4>❓ Questions (${openQ.length})</h4>` + (openQ.map(q => `<div class="card pending"><b>${esc(q.question)}</b>
-          ${q.context ? `<div class="muted">${esc(q.context)}</div>` : ""}<div class="muted">de ${q.agent} · ${time(q.ts)}</div>
+      const openQ = d.questions.filter(q => !q.answer), todo = d.tasks.filter(t => !t.done);
+      const doneQ = d.questions.filter(q => q.answer), done = d.tasks.filter(t => t.done);
+      const ag = n => S.agents.find(a => a.name === n) || {emoji: "👤", color: "#64748b", title: ""};
+      const groups = {};
+      const push = (who, html) => (groups[who] = groups[who] || []).push(html);
+      d.approvals.forEach(a => push(a.agent, `<div class="req req-ok"><div class="req-kind">🛡️ Validation · ${esc(a.kind)}${a.amount_eur ? ` · 💶 ${a.amount_eur} €` : ""}</div>
+          <b>${esc(a.title)}</b><div class="md" style="margin:6px 0">${md(a.details)}</div>${attHtml(a.attachments)}
+          <input id="c${a.id}" placeholder="Commentaire (optionnel)" style="width:100%;margin:6px 0">
+          <button class="primary" onclick="decide(${a.id},true)">✅ Oui</button> <button onclick="decide(${a.id},false)">❌ Non</button></div>`));
+      openQ.forEach(q => push(q.agent, `<div class="req req-q"><div class="req-kind">❓ Question${q.via && q.via !== q.agent ? ` · présentée par ${esc(q.via)}` : ""}</div>
+          <b>${esc(q.question)}</b>${q.context ? `<div class="muted">${esc(q.context)}</div>` : ""}
           <div style="margin-top:6px">${q.options.map(o => `<button onclick='answerQ(${q.id}, ${JSON.stringify(o).replace(/'/g, "&#39;")})'>${esc(o)}</button> `).join("")}</div>
-          <div class="send" style="display:flex;gap:6px;margin-top:6px"><input id="qa${q.id}" placeholder="Ta réponse…" style="flex:1"><button class="primary" onclick="answerQ(${q.id})">Répondre</button></div></div>`).join("") || "<p class=muted>Aucune question.</p>") +
-        `<h4>📝 À faire (${todo.length})</h4>` + (todo.map(t => `<div class="card ${t.priority === "haute" ? "pending" : ""}">
+          <div style="display:flex;gap:6px;margin-top:6px"><input id="qa${q.id}" placeholder="Ta réponse…" style="flex:1"><button class="primary" onclick="answerQ(${q.id})">Répondre</button></div></div>`));
+      todo.forEach(t => push(t.agent, `<div class="req req-t"><div class="req-kind">📝 À faire · priorité ${esc(t.priority)}</div>
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" onchange="doneTask(${t.id}, this.checked)" style="margin-top:4px">
-          <div><b>${esc(t.title)}</b> <span class="tag">${esc(t.priority)}</span><div class="md">${md(t.steps)}</div><div class="muted">par ${t.agent} · ${time(t.ts)}</div></div></label></div>`).join("") || "<p class=muted>Rien à faire pour l'instant 🎉</p>") +
-        (done.length ? `<details class="card"><summary>Tâches faites (${done.length})</summary>${done.map(t => `<div class="act">✔️ ${esc(t.title)}</div>`).join("")}</details>` : "") +
-        (doneQ.length ? `<details class="card"><summary>Questions répondues (${doneQ.length})</summary>${doneQ.map(q => `<div class="act">${esc(q.question)}<br><b>→ ${esc(q.answer)}</b></div>`).join("")}</details>` : "");
+          <div><b>${esc(t.title)}</b><div class="md">${md(t.steps)}</div></div></label></div>`));
+      const who = Object.keys(groups);
+      pane.innerHTML = `<div class="hero-card"><div class="big">${who.length ? who.length + " agent" + (who.length > 1 ? "s ont" : " a") + " besoin de toi" : "Rien ne t'attend 🎉"}</div>
+          <div>${d.approvals.length} validation(s) · ${openQ.length} question(s) · ${todo.length} chose(s) à faire</div>
+          ${d.needs_in_progress.length ? `<div class="muted2">🙋 Clara prépare encore ${d.needs_in_progress.length} demande(s) de l'équipe…</div>` : ""}</div>` +
+        who.map(n => { const a = ag(n); return `<div class="req-group" style="--ag:${a.color}">
+          <div class="req-head"><span class="av">${a.emoji}</span><div><b>${esc(n)}</b>${a.title ? ` <span class="muted">(${esc(a.title)})</span>` : ""}<div>a besoin de toi pour ${groups[n].length} chose${groups[n].length > 1 ? "s" : ""}</div></div></div>
+          ${groups[n].join("")}</div>`; }).join("") +
+        (done.length || doneQ.length ? `<details class="card"><summary>Historique (${done.length + doneQ.length})</summary>
+          ${doneQ.map(q => `<div class="act">${ag(q.agent).emoji} ${esc(q.question)}<br><b>→ ${esc(q.answer)}</b></div>`).join("")}
+          ${done.map(t => `<div class="act">✔️ ${ag(t.agent).emoji} ${esc(t.title)}</div>`).join("")}</details>` : "");
     } else if (tab === "setup") {
       if (soft) return;
       const st = await api("/api/setup"), v = st.values;
@@ -452,15 +495,11 @@ async function renderPane(soft) {
           ${ok(S.browser_enabled)} Navigateur web des agents
           <p class="muted">Tout se règle dans le fichier .env (voir le README), puis redémarre Fusée.</p>
           <button onclick="post('/api/test_notification')">📱 Envoyer une notification de test</button></div>
-        <div class="card"><h4>🦅 Autonomie de l'équipe</h4>
-          <select id="amode"><option value="autonome">Autonome — les sites gratuits qui passent l'audit (≥ 90) se publient seuls</option><option value="prudent">Prudent — je valide chaque mise en ligne</option></select>
-          <p class="muted">Dans tous les cas, l'argent (dépenses, prix et liens de paiement, investissements), les recrues et ce qui engage ton nom passent toujours par toi.</p></div>
+        <div class="card"><h4>🛡️ Publication</h4><p class="muted">Rien n'est jamais publié sans ton accord : chaque mise en ligne, prix, lien de paiement, campagne de prospection, dépense ou recrue arrive dans 📥 Demandes.</p></div>
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
       $("#smode").value = S.support_mode;
-      $("#amode").value = S.autonomy;
-      $("#amode").onchange = e => post("/api/autonomy?mode=" + e.target.value).then(poll);
       $("#smode").onchange = e => post("/api/support_mode?mode=" + e.target.value).then(poll);
     }
     if (soft) pane.scrollTop = keep;
@@ -475,9 +514,10 @@ const SETUP_STEPS = [
   {title: "Notifications sur ton téléphone", need: "conseillé", test: "ntfy",
    help: `Installe l'app gratuite **ntfy** (App Store / Google Play) → bouton **+** → « S'abonner à un sujet » → tape exactement le nom ci-dessous (garde-le secret : n'importe qui le connaissant pourrait lire tes notifications).`,
    fields: [{k: "NTFY_TOPIC", label: "Nom secret du sujet", ph: "ex. " + randTopic()}]},
-  {title: "Mot de passe de l'appli", need: "conseillé",
-   help: `Protège l'appli quand tu l'ouvres depuis ton téléphone (n'importe quel nom d'utilisateur + ce mot de passe). Indispensable avant de rendre Fusée accessible hors de chez toi.`,
-   fields: [{k: "DASHBOARD_PASSWORD", label: "Mot de passe", type: "password"}]},
+  {title: "Accès et mot de passe", need: "conseillé",
+   help: `Par défaut, Fusée ne s'ouvre **que sur ce Mac** : personne d'autre ne peut y accéder. Pour l'ouvrir aussi depuis ton téléphone (même Wi-Fi), choisis l'autre option **et** mets un mot de passe (n'importe quel nom d'utilisateur + ce mot de passe).`,
+   fields: [{k: "HOST", label: "Qui peut ouvrir Fusée ?", type: "select", def: "127.0.0.1", options: [["127.0.0.1", "Seulement ce Mac (recommandé)"], ["0.0.0.0", "Aussi mes autres appareils sur le Wi-Fi (téléphone) — mot de passe obligatoire"]]},
+            {k: "DASHBOARD_PASSWORD", label: "Mot de passe", type: "password"}]},
   {title: "Ton profil et le plan IA", need: "conseillé",
    help: `Le plan règle le coût : **Éco** pour démarrer avec un petit budget, **Équilibré** ou **Max** quand ça rapporte.`,
    fields: [{k: "OWNER_MINOR", label: "As-tu moins de 18 ans ?", type: "select", def: "true", options: [["true", "Oui (un parent ouvre les comptes)"], ["false", "Non, j'ai 18 ans ou plus"]]},
@@ -576,6 +616,9 @@ $("#directiveBtn").onclick = async () => {
   const d = prompt("Consigne permanente pour toute l'équipe (ex. « Priorité : sites pour artisans et jeux mobiles, pas de crypto »)", S.directive || "");
   if (d !== null) await post("/api/directive", {content: d});
 };
+const applyTheme = t => { document.documentElement.dataset.theme = t; document.querySelector('meta[name="theme-color"]').content = t === "light" ? "#7c3aed" : "#6d28d9"; };
+try { applyTheme(localStorage.getItem("fusee-theme") || "dark"); } catch (e) { applyTheme("dark"); }
+$("#themeBtn").onclick = () => { const t = document.documentElement.dataset.theme === "light" ? "dark" : "light"; applyTheme(t); try { localStorage.setItem("fusee-theme", t); } catch (e) {} };
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#installBtn").hidden = false; });
 $("#installBtn").onclick = async () => { if (installEvt) { installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#installBtn").hidden = true; } };

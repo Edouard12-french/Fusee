@@ -116,7 +116,6 @@ def state(after: int = 0):
         "waiting_contacts": len(db.unanswered_contacts()),
         "support_mode": db.get_setting("support_mode", "auto"),
         "browser_enabled": db.get_setting("browser_enabled", "1") == "1",
-        "autonomy": db.get_setting("autonomy", "autonome"),
         "capabilities": {"email": mailbox.ENABLED, "netlify": bool(integrations.NETLIFY_TOKEN),
                          "stripe": bool(integrations.STRIPE_KEY), "public_url": PUBLIC_URL,
                          "push": bool(os.getenv("NTFY_TOPIC"))},
@@ -279,16 +278,6 @@ def directive(msg: Msg):
 def pause(on: bool):
     db.set_setting("paused", "1" if on else "0")
     return {"paused": on}
-
-
-@app.post("/api/autonomy")
-def autonomy(mode: str):
-    if mode not in ("autonome", "prudent"):
-        raise HTTPException(400)
-    db.set_setting("autonomy", mode)
-    db.post_message(OWNER, "🦅 Mode autonome : les sites gratuits et impeccables se publient sans m'attendre."
-                    if mode == "autonome" else "🛡️ Mode prudent : je valide chaque mise en ligne.")
-    return {"autonomy": mode}
 
 
 @app.post("/api/browser")
@@ -469,7 +458,16 @@ def owner_items():
         x["options"] = json.loads(x["options"] or "[]")
     ts = db.q("SELECT * FROM owner_tasks ORDER BY done, CASE priority WHEN 'haute' THEN 0 WHEN 'normale' THEN 1 "
               "ELSE 2 END, id DESC LIMIT 80")
-    return {"questions": qs, "tasks": ts}
+    approvals = db.q("SELECT * FROM approvals WHERE status='en attente' ORDER BY id")
+    for r in approvals:
+        try:
+            r["attachments"] = json.loads(r["payload"]) if r["kind"] != "réponse client" and r["payload"] else {}
+        except ValueError:
+            r["attachments"] = {}
+        if r["kind"] in ("équipe", "prospection"):
+            r["attachments"] = {}
+    in_progress = db.q("SELECT id, agent, need, urgency FROM needs WHERE status='nouveau' ORDER BY id")
+    return {"questions": qs, "tasks": ts, "approvals": approvals, "needs_in_progress": in_progress}
 
 
 class Answer(BaseModel):
@@ -483,6 +481,8 @@ def answer_question(qid: int, a: Answer):
         raise HTTPException(400)
     qrow = rows[0]
     db.x("UPDATE owner_questions SET answer=?, answered_ts=? WHERE id=?", (a.answer.strip()[:4000], time.time(), qid))
+    for n in json.loads(qrow.get("need_ids") or "[]"):
+        db.x("UPDATE needs SET status='résolu', result=?, resolved_ts=? WHERE id=?", (a.answer.strip()[:4000], time.time(), n))
     db.post_message(OWNER, f"💬 Réponse à la question #{qid} ({qrow['question'][:120]}) : {a.answer.strip()}")
     scheduler.wake(qrow["agent"], f"{OWNER} a répondu à ta question #{qid} « {qrow['question'][:200]} » : {a.answer[:1000]}")
     return {"ok": True}
@@ -495,6 +495,8 @@ def toggle_task(tid: int, done: bool):
         raise HTTPException(404)
     db.x("UPDATE owner_tasks SET done=?, done_ts=? WHERE id=?", (1 if done else 0, time.time() if done else None, tid))
     if done:
+        for n in json.loads(rows[0].get("need_ids") or "[]"):
+            db.x("UPDATE needs SET status='résolu', result='fait par Patron', resolved_ts=? WHERE id=?", (time.time(), n))
         db.post_message(OWNER, f"✔️ Fait : {rows[0]['title']}")
         scheduler.wake(rows[0]["agent"], f"{OWNER} a fait la tâche #{tid} « {rows[0]['title']} »")
     return {"ok": True}

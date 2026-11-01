@@ -37,6 +37,7 @@ cat > "$PLIST" <<PLISTEOF
 PLISTEOF
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
+/bin/bash "$DIR/creer-app-mac.sh" >/dev/null 2>&1 && echo "✅ Icône « Fusée » créée dans ~/Applications (glisse-la dans le Dock)."
 echo "✅ Fusée est installé : il tourne maintenant et redémarrera tout seul à chaque ouverture de session."
 echo "   Appli : http://localhost:8000   ·   Journal : $DIR/logs/fusee.log"
 echo ""

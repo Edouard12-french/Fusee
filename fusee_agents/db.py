@@ -66,10 +66,14 @@ CREATE TABLE IF NOT EXISTS prospects (id INTEGER PRIMARY KEY, ts REAL, agent TEX
     email TEXT, website TEXT, sector TEXT, city TEXT, source_url TEXT, notes TEXT, status TEXT DEFAULT 'à contacter',
     contact_id INTEGER, sends INTEGER DEFAULT 0, last_sent_ts REAL, subject TEXT, message TEXT);
 CREATE TABLE IF NOT EXISTS suppression (email TEXT PRIMARY KEY, ts REAL, reason TEXT);
+CREATE TABLE IF NOT EXISTS needs (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, need TEXT, why TEXT, urgency TEXT,
+    options TEXT, status TEXT DEFAULT 'nouveau', result TEXT, resolved_ts REAL);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )
-for _sql in ("ALTER TABLE payment_links ADD COLUMN product_id INTEGER",):
+for _sql in ("ALTER TABLE payment_links ADD COLUMN product_id INTEGER",
+             "ALTER TABLE owner_questions ADD COLUMN via TEXT", "ALTER TABLE owner_questions ADD COLUMN need_ids TEXT",
+             "ALTER TABLE owner_tasks ADD COLUMN via TEXT", "ALTER TABLE owner_tasks ADD COLUMN need_ids TEXT"):
     try:
         _conn.execute(_sql)
     except sqlite3.OperationalError:

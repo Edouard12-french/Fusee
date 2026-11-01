@@ -15,7 +15,7 @@ Tout se suit depuis **l'application Fusée**, installable sur ton téléphone et
 | 🔀 **Routeur** | Nexus | Reçoit tes messages sans @mention et les aiguille vers le bon agent |
 | ⛓️ **Séquentiel** | Relais | Chaînes d'étapes : chaque agent reçoit le résultat du précédent (ex. Scout → Victor → Neo → Mercure) |
 | 🐙 **Parallèle** | Hydre | Fait travailler plusieurs agents en même temps, puis fusionne et compare leurs résultats |
-| 🙋 **Humain** | Clara | Le pont avec toi : te pose les questions, prépare ta liste « À faire » pas à pas, te relance |
+| 🙋 **Humain (demandes)** | Clara | Reçoit les besoins de tous les agents, répond elle-même si elle peut, et te présente le reste clairement : « 📈 Wolf a besoin de… » |
 | 🛠️ **Outil** | Forge | Fabrique la boîte à outils de l'équipe (scripts testés que tous les agents utilisent) |
 | 📚 **Compétence** | Sage | Écrit les fiches de savoir-faire (comment lancer un site, fixer un prix…) que les agents lisent |
 | 📣 **Marketing** | Mercure | Pubs, visuels, vidéos TikTok/Reels/Shorts, contenus, référencement |
@@ -56,9 +56,9 @@ besoin d'eux** : ils ne coûtent rien le reste du temps.
 - **Internet et YouTube** : recherche web, vrai navigateur (ouvert par défaut, désactivable), et YouTube — chercher
   des vidéos, lire leurs statistiques et leur **transcription complète** pour apprendre d'un tutoriel ou analyser
   un concurrent.
-- **Ils décident seuls** de tout ce qui ne coûte rien et n'engage pas ton nom. En **mode autonome** (par défaut,
-  réglable dans ⚙️ Réglages), un site gratuit qui obtient ≥ 90/100 à l'audit et dont les mentions légales sont
-  complètes est mis en ligne sans t'attendre (tu es notifié).
+- **Ils travaillent seuls, mais te demandent avant de publier quoi que ce soit** : chaque mise en ligne (site,
+  appli, jeu), prix, lien de paiement, campagne de prospection, dépense ou recrue arrive dans 📥 Demandes, avec
+  captures et lien de prévisualisation. Rien ne sort sans ton « oui ».
 - **Ils s'organisent eux-mêmes** : Atlas et Sage ajoutent des « consignes apprises » à un collègue à partir des
   résultats, changent son rythme ou le mettent en pause ; Atlas peut **recruter un nouveau spécialiste** (tu valides,
   car un agent de plus coûte) qui rejoint l'équipe immédiatement.
@@ -137,10 +137,14 @@ sites, les vidéos et les communautés, et on leur répond quand ils nous écriv
    ```
    La première fois, il installe tout tout seul (quelques minutes), puis **ouvre l'application sur l'assistant de
    démarrage 🚀** : colle ta clé API (avec un parent), règle les notifications, et c'est parti.
-4. Pour que Fusée **démarre tout seul** à chaque allumage et tourne jour et nuit :
+4. Pour que Fusée **démarre tout seul** à chaque allumage, tourne jour et nuit, et pour créer l'**application
+   Fusée** (une icône à double-cliquer) :
    ```bash
    ./install-mac.sh
    ```
+   Ensuite, ouvre **Fusée** depuis le Finder (dossier Applications de ta session), le Launchpad ou le Dock
+   (glisse l'icône dedans) : l'interface s'ouvre dans sa propre fenêtre, comme une vraie appli. Rien n'est sur
+   internet : par défaut, seul ton Mac peut l'ouvrir. (Pour créer seulement l'icône : `./creer-app-mac.sh`.)
    Puis, dans **Réglages Système → Énergie**, active « Empêcher la suspension automatique lorsque l'écran est
    éteint » et « Démarrer automatiquement après une panne de courant ». (Pour désinstaller : `./install-mac.sh --remove`.)
 
@@ -157,7 +161,8 @@ peuvent être modifiés que depuis le Mac lui-même. Un bouton redémarre Fusée
 ### 📲 Installer l'application
 
 - **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
-- **Téléphone, même Wi-Fi** : ouvre `http://<IP-de-ton-Mac>:8000` puis Safari → Partager → « Sur l'écran
+- **Téléphone, même Wi-Fi** : dans 🚀 Démarrage → « Accès et mot de passe », autorise les autres appareils et mets
+  un mot de passe, puis ouvre `http://<IP-de-ton-Mac>:8000` puis Safari → Partager → « Sur l'écran
   d'accueil » (ou Chrome Android → ⋮ → « Installer l'application »).
 - **Téléphone, hors de chez toi** : installe [Tailscale](https://tailscale.com) (gratuit) sur le Mac et le
   téléphone, puis ouvre `http://<nom-du-mac>:8000`.
@@ -183,10 +188,13 @@ Sans adresse publique, les sites affichent un contact par e-mail à la place.
 
 ## L'application
 
+Une interface colorée (chaque agent a sa couleur), en thème sombre ou clair (bouton 🌗).
+
 - **🤖 Équipe** : chaque agent, en direct : statut, ce qu'il fait, coût. Clique pour voir tout ce qu'il a fait et son plan.
 - **💬 Groupe** : leur discussion, avec les captures, vidéos et liens. Écris-leur (`@Neo`, `@Tous`…) ; sans mention, Nexus aiguille ta demande.
 - **📋 Suivi** :
-  - 🙋 **Pour toi** : les questions de l'équipe (boutons de réponse) et ta liste « À faire » pas à pas
+  - 📥 **Demandes** : tout ce que l'équipe attend de toi, regroupé par agent dans sa couleur (« Neo a besoin de toi
+    pour 2 choses ») : validations à accepter/refuser, questions avec boutons de réponse, choses à faire pas à pas
   - 📅 **Contenus** : les publications prêtes à poster (copier, télécharger, « J'ai posté »)
   - 📦 **Produits** : le catalogue avec ventes, chiffre d'affaires, visiteurs et conversion ; clique un produit pour
     voir d'où viennent ses visiteurs, jour par jour

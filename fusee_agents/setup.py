@@ -20,6 +20,7 @@ FIELDS = {
     "DASHBOARD_URL": {"secret": False}, "IMAP_HOST": {"secret": False}, "SMTP_HOST": {"secret": False},
     "SMTP_PORT": {"secret": False}, "EMAIL_USER": {"secret": False}, "EMAIL_PASSWORD": {"secret": True},
     "EMAIL_SIGNATURE": {"secret": False}, "FUSEE_PLAN": {"secret": False}, "OWNER_MINOR": {"secret": False},
+    "HOST": {"secret": False},
 }
 
 
