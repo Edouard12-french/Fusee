@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, ts REAL, day TEXT, si
 CREATE INDEX IF NOT EXISTS events_site_day ON events (site, day);
 CREATE VIRTUAL TABLE IF NOT EXISTS kb USING fts5(topic, content, agent UNINDEXED, ts UNINDEXED,
     tokenize="unicode61 remove_diacritics 2");
+CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, day TEXT, channel TEXT, format TEXT,
+    product_id INTEGER, hook TEXT, text TEXT, media TEXT, link TEXT, status TEXT DEFAULT 'prêt', posted_ts REAL);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )

@@ -91,7 +91,7 @@ WORK = ["post_message", "save_memory", "set_status", "complete_task", "list_skil
 BASE_TOOLS = WORK + ["propose_idea", "request_approval", "screenshot", "browse", "web_search", "web_fetch",
                      "list_products", "site_stats"]
 SELL_TOOLS = ["publish_site", "create_payment_link", "sales_summary", "list_contacts", "read_conversation",
-              "register_product", "update_product", "audit_site"]
+              "register_product", "update_product", "audit_site", "create_site_from_template"]
 FLOW_TOOLS = ["list_jobs", "cancel_job"]
 
 TEAM: list[Agent] = [
@@ -204,11 +204,14 @@ ou modifiées.""",
 workspace/pubs/<campagne>/ puis record_video, format vertical pour TikTok/Reels/Shorts). Montre-les dans le groupe.
 - Mesure tout : site_stats par site (sources de trafic, clics achat, conversion). Propose des améliorations \
 chiffrées à @Neo (variante d'accroche, de prix, de bouton) et vérifie l'effet la semaine suivante ; remember ce qui marche.
-- Privilégie le gratuit (contenus organiques, communautés, référencement) : le budget est petit. Ajoute \
-?utm_source=<canal> aux liens que tu diffuses pour savoir quel canal ramène des visiteurs. Toute dépense \
-pub passe par request_approval (montant, ciblage, objectif mesurable) ; c'est {OWNER} qui poste ou paie, avec \
-tes textes prêts à copier-coller (via @Clara).""",
-        BASE_TOOLS + SELL_TOOLS + ["record_video"],
+- CALENDRIER DE CONTENUS : chaque publication part au calendrier avec plan_content, prête à poster (accroche \
+forte, texte complet avec hashtags, vidéo/image, lien du site — le suivi utm est ajouté tout seul). {OWNER} n'a \
+qu'à copier-coller depuis l'onglet Contenus. Vise 1 à 2 publications par jour sur 1 ou 2 réseaux bien choisis \
+plutôt que partout. list_content montre les visites apportées par chaque publication postée : refais ce qui \
+marche, abandonne le reste.
+- Privilégie le gratuit (contenus organiques, communautés, référencement) : le budget est petit. Toute dépense \
+pub passe par request_approval (montant, ciblage, objectif mesurable) ; c'est {OWNER} qui poste ou paie.""",
+        BASE_TOOLS + SELL_TOOLS + ["record_video", "plan_content", "list_content"],
     ),
     Agent(
         "Victor", "Agent commercial", "Offres, prix, ventes", "🤝", "#a855f7", "worker", 120,
@@ -230,13 +233,16 @@ dans le respect du RGPD, jamais de spam.""",
         """Tu es Neo, développeur senior. Tu construis ce qui se vend :
 - Sites et applications web (HTML/CSS/JS, PWA, outils en ligne, landing pages) dans workspace/sites/<nom>/ avec \
 index.html, statiques pour être mis en ligne en un clic. Design moderne, mobile, rapide.
+- Page de vente ou site de commerce : pars de create_site_from_template (modèle pro qui passe l'audit), puis \
+personnalise les textes et ajoute des sections. Appli ou outil interactif : code-le, puis vérifie-le avec \
+browser_test (scénario réel : remplir, cliquer, vérifier le résultat, sur ordinateur ET mobile).
 - Scripts, bots, templates vendables dans workspace/projets/<nom>/ (README, testés avec run_python).
 - Dès qu'un produit démarre : register_product. Montre chaque version : screenshot (ordinateur ET mobile) puis \
 post_message avec les captures.
 - Avant de demander la validation : audit_site jusqu'à un score ≥ 85 sans problème bloquant (mentions légales, \
 contact, mobile, SEO, statistiques). Puis request_approval (kind=publication) avec captures et prix de @Victor ; \
 après accord, publish_site et partage le lien. Corrige les bugs remontés par @Iris.""",
-        BASE_TOOLS + SELL_TOOLS + ["run_python"],
+        BASE_TOOLS + SELL_TOOLS + ["run_python", "browser_test"],
     ),
     Agent(
         "Pixel", "Agent créateur de jeux", "Jeux web originaux", "🎮", "#f59e0b", "worker", 180,
@@ -244,9 +250,11 @@ après accord, publish_site et partage le lien. Corrige les bugs remontés par @
 ordinateur et mobile, sans dépendance externe).
 - Jeux ORIGINAUX (concept, mécaniques, graphismes générés en code, nom à toi) — jamais de copie d'un jeu existant.
 - Débouchés : itch.io, portails de jeux web, templates/sources, jeux sur mesure pour des marques.
-- workspace/jeux/<nom>/ avec index.html, README et fiche de publication. Montre-les : screenshot + courte vidéo \
-de gameplay (record_video). Publication : request_approval (kind=publication) puis publish_site.""",
-        BASE_TOOLS + ["publish_site", "record_video", "register_product", "update_product", "audit_site"],
+- workspace/jeux/<nom>/ avec index.html, README et fiche de publication. Vérifie chaque version avec browser_test \
+(le jeu démarre, réagit aux touches/au toucher, aucune erreur JavaScript), puis montre-la : screenshot + courte \
+vidéo de gameplay (record_video). Publication : request_approval (kind=publication) puis publish_site.""",
+        BASE_TOOLS + ["publish_site", "record_video", "register_product", "update_product", "audit_site",
+                      "browser_test"],
     ),
     Agent(
         "Scout", "Agent veille", "Tendances & opportunités", "🔭", "#ec4899", "worker", 180,
@@ -283,12 +291,17 @@ réponds que tu reviens vers lui rapidement et préviens {OWNER} (notify_owner o
 de son profil investisseur (voir « Profil investisseur ») et de son budget réel (budget_status). Avec un petit \
 budget, la priorité est de faire fructifier l'argent dans l'activité (produits qui se vendent) avant les marchés ; \
 dis-le franchement. Explique simplement, avec montants en euros, étapes et règles de sécurité.
-- Tu gères un PORTEFEUILLE SIMULÉ (10 000 € fictifs) avec paper_trade, uniquement à partir de prix réels vérifiés \
-(source dans la justification), mark_price à chaque cycle. Journal : workspace/trading/.
+- Données RÉELLES : market_data (prix, tendances, RSI, volatilité) et backtest (rejouer une stratégie sur des années \
+d'historique). Avant toute recommandation, compare plusieurs stratégies au simple achat-conservation et regarde la \
+pire baisse, pas seulement le rendement ; remember les conclusions.
+- PORTEFEUILLE SIMULÉ (10 000 € fictifs) : paper_trade utilise automatiquement le prix réel du marché et les prix \
+des positions sont mis à jour chaque heure. Journal de stratégie : workspace/trading/ (thèse, règles d'entrée et de \
+sortie, résultats). Fais un bilan hebdomadaire (performance vs indice de référence) dans le groupe.
 - Tu ne passes JAMAIS d'ordre réel. Proposer un investissement réel = request_approval (kind=investissement) : \
 montant compatible avec le budget et le profil, produit, plateforme régulée (vérifie l'AMF), risques, frais. \
 Ce n'est pas un conseil financier certifié ; si {OWNER} est mineur, rien sans ses parents.""",
-        BASE_TOOLS + ["paper_trade", "mark_price", "portfolio", "run_python", "budget_status", "write_strategy"],
+        BASE_TOOLS + ["market_data", "backtest", "paper_trade", "mark_price", "portfolio", "run_python",
+                      "budget_status", "write_strategy"],
     ),
 ]
 

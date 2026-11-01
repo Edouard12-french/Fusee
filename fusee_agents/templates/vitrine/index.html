@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{NOM}} — {{ACCROCHE_COURTE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta property="og:title" content="{{NOM}} — {{ACCROCHE_COURTE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:image" content="og.png">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="{{COULEUR}}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>{{EMOJI}}</text></svg>">
+<style>{{CSS}} .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:860px;margin:0 auto}</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="./">{{EMOJI}} {{NOM}}</a><a class="btn small" href="#contact">Nous contacter</a></div></header>
+<main>
+  <section class="hero"><div class="wrap">
+    <h1>{{ACCROCHE}}</h1>
+    <p class="lead">{{DESCRIPTION}}</p>
+    <a class="btn" href="#contact">{{TEXTE_BOUTON}}</a> <a class="btn ghost" href="#services">Nos services</a>
+    <div class="price">{{PRIX_DETAIL}} <b>{{PRIX}}</b></div>
+  </div></section>
+  <section id="services"><div class="wrap">
+    <h2>Nos services</h2>
+    <div class="grid3">
+      <div class="card"><div class="ico">⭐</div><h3>{{POINT_1_TITRE}}</h3><p>{{POINT_1}}</p></div>
+      <div class="card"><div class="ico">🛠️</div><h3>{{POINT_2_TITRE}}</h3><p>{{POINT_2}}</p></div>
+      <div class="card"><div class="ico">🤝</div><h3>{{POINT_3_TITRE}}</h3><p>{{POINT_3}}</p></div>
+    </div>
+  </div></section>
+  <section class="alt"><div class="wrap">
+    <h2>Infos pratiques</h2>
+    <div class="info">
+      <div class="card"><h3>📍 Où nous trouver</h3><p>{{ADRESSE}}</p></div>
+      <div class="card"><h3>🕒 Horaires</h3><p>{{HORAIRES}}</p></div>
+    </div>
+  </div></section>
+  <section class="cta" id="contact"><div class="wrap">
+    <h2>Parlons de votre projet</h2>
+    <p>Réponse rapide, devis gratuit et sans engagement.</p>
+    {{CONTACT_HTML}}
+  </div></section>
+</main>
+<footer><div class="wrap"><span>© {{ANNEE}} {{NOM}}</span><span><a href="mentions-legales.html">Mentions légales</a>{{CONTACT_FOOTER}}</span></div></footer>
+{{SCRIPT_FUSEE}}
+</body>
+</html>

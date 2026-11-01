@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{NOM}} — {{ACCROCHE_COURTE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta property="og:title" content="{{NOM}} — {{ACCROCHE_COURTE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:image" content="og.png">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="{{COULEUR}}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>{{EMOJI}}</text></svg>">
+<style>{{CSS}}</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="./">{{EMOJI}} {{NOM}}</a><a class="btn small" href="{{LIEN_ACHAT}}" {{DATA_BUY}}>{{TEXTE_BOUTON}}</a></div></header>
+<main>
+  <section class="hero"><div class="wrap">
+    <h1>{{ACCROCHE}}</h1>
+    <p class="lead">{{DESCRIPTION}}</p>
+    <a class="btn" href="{{LIEN_ACHAT}}" {{DATA_BUY}}>{{TEXTE_BOUTON}}</a>
+    <div class="price"><b>{{PRIX}}</b> {{PRIX_DETAIL}}</div>
+  </div></section>
+  <section><div class="wrap">
+    <h2>Pourquoi {{NOM}} ?</h2>
+    <div class="grid3">
+      <div class="card"><div class="ico">⚡</div><h3>{{POINT_1_TITRE}}</h3><p>{{POINT_1}}</p></div>
+      <div class="card"><div class="ico">🎯</div><h3>{{POINT_2_TITRE}}</h3><p>{{POINT_2}}</p></div>
+      <div class="card"><div class="ico">💡</div><h3>{{POINT_3_TITRE}}</h3><p>{{POINT_3}}</p></div>
+    </div>
+  </div></section>
+  <section class="alt"><div class="wrap steps">
+    <h2>Comment ça marche</h2>
+    <div class="grid3">
+      <div class="card"><h3>Vous choisissez</h3><p>Découvrez {{NOM}} et ce qu'il vous apporte, sans engagement.</p></div>
+      <div class="card"><h3>Vous payez en sécurité</h3><p>Paiement par carte sécurisé par Stripe, en quelques secondes.</p></div>
+      <div class="card"><h3>Vous en profitez</h3><p>Accès immédiat. Une question ? On vous répond rapidement.</p></div>
+    </div>
+  </div></section>
+  <section><div class="wrap">
+    <h2>Questions fréquentes</h2>
+    <details class="faq"><summary>Comment se passe le paiement ?</summary><p>Le paiement est sécurisé par Stripe. Vous recevez une confirmation par e-mail.</p></details>
+    <details class="faq"><summary>Et si j'ai une question ?</summary><p>Écrivez-nous via le chat ou par e-mail : nous répondons rapidement.</p></details>
+  </div></section>
+  <section class="alt cta" id="contact"><div class="wrap">
+    <h2>Prêt à essayer {{NOM}} ?</h2>
+    <p>{{PRIX}} {{PRIX_DETAIL}}</p>
+    <a class="btn" href="{{LIEN_ACHAT}}" {{DATA_BUY}}>{{TEXTE_BOUTON}}</a>
+    {{CONTACT_HTML}}
+  </div></section>
+</main>
+<footer><div class="wrap"><span>© {{ANNEE}} {{NOM}}</span><span><a href="mentions-legales.html">Mentions légales</a>{{CONTACT_FOOTER}}</span></div></footer>
+{{SCRIPT_FUSEE}}
+</body>
+</html>

@@ -3,6 +3,7 @@ import io
 import json
 import os
 import re
+import unicodedata
 import urllib.parse
 import urllib.request
 import zipfile
@@ -28,7 +29,8 @@ def deploy_site(folder: Path, site_name: str, site_id: str | None) -> dict:
         raise RuntimeError("NETLIFY_TOKEN manquant dans .env")
     auth = {"Authorization": f"Bearer {NETLIFY_TOKEN}"}
     if not site_id:
-        name = re.sub(r"[^a-z0-9-]+", "-", site_name.lower()).strip("-")[:50]
+        plain = unicodedata.normalize("NFKD", site_name).encode("ascii", "ignore").decode()
+        name = re.sub(r"[^a-z0-9-]+", "-", plain.lower()).strip("-")[:50]
         try:
             site = _req("https://api.netlify.com/api/v1/sites", data=json.dumps({"name": name}).encode(),
                         headers={**auth, "Content-Type": "application/json"}, method="POST")

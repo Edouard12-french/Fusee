@@ -3,6 +3,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import secrets
 import time
 from collections import defaultdict, deque
@@ -15,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import analytics, budget, db, integrations, mailbox
+from . import setup as setup_mod
 from .agents import OWNER, TEAM
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
 from .notify import notify
@@ -544,4 +546,65 @@ async def save_profile(request: Request):
     db.set_setting("investor_profile", json.dumps(clean, ensure_ascii=False))
     db.post_message(OWNER, "🧾 J'ai rempli mon profil investisseur. @Wolf, mets à jour ma stratégie.")
     scheduler.wake("Wolf", f"{OWNER} a rempli son profil investisseur : rédige ou mets à jour sa stratégie (write_strategy)")
+    return {"ok": True}
+
+
+# --- assistant de démarrage -----------------------------------------------------
+def _setup_allowed(request: Request) -> None:
+    """Sans mot de passe d'appli, la configuration ne se modifie que depuis l'ordinateur lui-même."""
+    if not PASSWORD and (request.client is None or request.client.host not in ("127.0.0.1", "::1", "localhost")):
+        raise HTTPException(403, "Définis d'abord un mot de passe d'appli depuis l'ordinateur qui fait tourner Fusée.")
+
+
+@app.get("/api/setup")
+def setup_state(request: Request):
+    cur = setup_mod.current()
+    return {"values": cur, "needs_key": not cur["ANTHROPIC_API_KEY"]["set"],
+            "local": request.client is not None and request.client.host in ("127.0.0.1", "::1", "localhost"),
+            "has_password": bool(PASSWORD)}
+
+
+@app.post("/api/setup/save")
+async def setup_save(request: Request):
+    _setup_allowed(request)
+    data = await request.json()
+    changed = setup_mod.save(data if isinstance(data, dict) else {})
+    return {"ok": True, "changed": changed}
+
+
+@app.post("/api/setup/test")
+async def setup_test(request: Request):
+    _setup_allowed(request)
+    data = await request.json()
+    return await asyncio.to_thread(setup_mod.test, str(data.get("service", "")), data.get("values") or {})
+
+
+@app.post("/api/setup/restart")
+async def setup_restart(request: Request):
+    _setup_allowed(request)
+    asyncio.get_running_loop().call_later(1.0, setup_mod.restart)
+    return {"ok": True}
+
+
+# --- calendrier de contenus -------------------------------------------------------
+@app.get("/api/content")
+def content_list():
+    rows = db.q("SELECT * FROM content WHERE status!='abandonné' ORDER BY (status='prêt') DESC, day, id LIMIT 100")
+    for r in rows:
+        m = re.search(r"utm_source=([^&]+)", r["link"] or "")
+        r["visits"] = (db.q("SELECT COUNT(DISTINCT visitor) n FROM events WHERE utm=? AND event='vue' AND ts>=?",
+                            (m.group(1), r["posted_ts"]))[0]["n"] if m and r["posted_ts"] else None)
+    return rows
+
+
+@app.post("/api/content/{cid}")
+def content_status(cid: int, status: str):
+    rows = db.q("SELECT * FROM content WHERE id=?", (cid,))
+    if not rows or status not in ("posté", "abandonné", "prêt"):
+        raise HTTPException(400)
+    db.x("UPDATE content SET status=?, posted_ts=? WHERE id=?", (status, time.time() if status == "posté" else None, cid))
+    if status == "posté":
+        db.post_message(OWNER, f"📤 J'ai posté la publication #{cid} sur {rows[0]['channel']}.")
+        scheduler.wake(rows[0]["agent"], f"{OWNER} a posté la publication #{cid} ({rows[0]['channel']}) : suis ses "
+                                         "visites dans les jours qui viennent (list_content)")
     return {"ok": True}

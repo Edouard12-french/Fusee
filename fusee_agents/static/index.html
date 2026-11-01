@@ -137,7 +137,7 @@ const api = (u, opt) => fetch(u, opt).then(r => r.json());
 const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
 let openProduct = null, S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
-const TABS = {agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", products:"📦 Produits", contacts:"👥 Prospects", money:"💰 Argent",
+const TABS = {setup:"🚀 Démarrage", agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", products:"📦 Produits", content:"📅 Contenus", contacts:"👥 Prospects", money:"💰 Argent",
   vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse",
   notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
@@ -285,6 +285,45 @@ async function renderPane(soft) {
           <div><b>${esc(t.title)}</b> <span class="tag">${esc(t.priority)}</span><div class="md">${md(t.steps)}</div><div class="muted">par ${t.agent} · ${time(t.ts)}</div></div></label></div>`).join("") || "<p class=muted>Rien à faire pour l'instant 🎉</p>") +
         (done.length ? `<details class="card"><summary>Tâches faites (${done.length})</summary>${done.map(t => `<div class="act">✔️ ${esc(t.title)}</div>`).join("")}</details>` : "") +
         (doneQ.length ? `<details class="card"><summary>Questions répondues (${doneQ.length})</summary>${doneQ.map(q => `<div class="act">${esc(q.question)}<br><b>→ ${esc(q.answer)}</b></div>`).join("")}</details>` : "");
+    } else if (tab === "setup") {
+      if (soft) return;
+      const st = await api("/api/setup"), v = st.values;
+      const field = f => {
+        const cur = v[f.k] || {}, ph = cur.set && f.type === "password" ? "déjà enregistrée (" + cur.value + ") — laisse vide pour garder" : (f.ph || "");
+        if (f.type === "select") return `<label class="muted">${f.label}</label><select data-k="${f.k}" style="width:100%">${f.options.map(([val, lab]) => `<option value="${val}" ${(cur.value || f.def) === val ? "selected" : ""}>${lab}</option>`).join("")}</select>`;
+        return `<label class="muted">${f.label}</label><input data-k="${f.k}" type="${f.type || "text"}" autocomplete="off" placeholder="${esc(ph)}" value="${f.type === "password" ? "" : esc(cur.value || "")}" style="width:100%">`;
+      };
+      const done = s => s.fields.every(f => f.optional || (v[f.k] || {}).set);
+      pane.innerHTML = `<div class="card"><h4>🚀 Bienvenue dans Fusée !</h4><p class="muted">Configure ici tout ce dont l'équipe a besoin, étape par étape.
+          Seule la clé API est obligatoire pour démarrer ; le reste peut attendre que le premier produit soit prêt.
+          ${st.local || st.has_password ? "" : "<br><b>⚠️ Pour modifier les réglages depuis cet appareil, définis d'abord un mot de passe d'appli depuis l'ordinateur de Fusée.</b>"}</p></div>` +
+        SETUP_STEPS.map((stp, i) => `<details class="card ${done(stp) ? "" : (stp.need === "obligatoire" ? "pending" : "")}" ${!done(stp) && (i === 0 || stp.need === "obligatoire") ? "open" : ""}>
+          <summary><b>${done(stp) ? "✅" : "⚪"} ${i + 1}. ${stp.title}</b> <span class="tag">${stp.need}</span></summary>
+          <div class="md" style="margin:8px 0">${md(stp.help)}</div>
+          <div style="display:grid;gap:6px">${stp.fields.map(field).join("")}</div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="primary" onclick="setupSave(${i})">💾 Enregistrer</button>
+            ${stp.test ? `<button onclick="setupTest(${i})">🧪 Tester</button>` : ""}<span id="sres${i}" class="muted"></span></div></details>`).join("") +
+        `<div class="card"><h4>♻️ Appliquer les réglages</h4><p class="muted">Après avoir enregistré, redémarre Fusée pour que les agents utilisent les nouveaux réglages (10 secondes).</p>
+          <button class="primary" onclick="setupRestart()">Redémarrer Fusée</button> <span id="srestart" class="muted"></span></div>`;
+    } else if (tab === "content") {
+      if (soft) return;
+      const list = await api("/api/content"), ready = list.filter(c => c.status === "prêt"), posted = list.filter(c => c.status === "posté");
+      const ICON = {"TikTok": "🎵", "Instagram": "📸", "YouTube Shorts": "▶️", "Facebook": "📘", "LinkedIn": "💼", "X": "✖️", "Pinterest": "📌", "Reddit": "👽", "itch.io": "🎮"};
+      const card = c => `<div class="card ${c.status === "prêt" ? "" : ""}">
+          <h4>${ICON[c.channel] || "📣"} ${esc(c.channel)} · ${esc(c.format)} <span class="muted">· ${c.day.slice(8)}/${c.day.slice(5, 7)}</span></h4>
+          <div><b>${esc(c.hook)}</b></div>
+          ${c.media ? attHtml({files: [c.media]}) + `<a class="lnk" href="${wpath(c.media)}" download>⬇️ Télécharger le média</a>` : ""}
+          <textarea id="ct${c.id}" rows="5" readonly style="width:100%;margin-top:6px">${esc(c.text)}${c.link ? "\n\n" + esc(c.link) : ""}</textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            <button onclick="copyText('ct${c.id}', this)">📋 Copier le texte</button>
+            ${c.status === "prêt" ? `<button class="primary" onclick="contentStatus(${c.id}, 'posté')">✔️ J'ai posté</button>
+              <button onclick="contentStatus(${c.id}, 'abandonné')">✕ Ignorer</button>`
+              : `<span class="tag">posté ${time(c.posted_ts)}</span> <span class="tag">👀 ${c.visits ?? 0} visiteur(s) apporté(s)</span>`}</div>
+          <div class="muted">par ${c.agent}</div></div>`;
+      pane.innerHTML = `<p class="muted">Publications prêtes à poster, préparées par Mercure : copie le texte, télécharge la vidéo ou l'image, poste-la, puis clique « J'ai posté » pour qu'il mesure les visites apportées.</p>
+        <h4>À poster (${ready.length})</h4>${ready.map(card).join("") || "<p class=muted>Rien à poster pour l'instant.</p>"}
+        ${posted.length ? `<h4>Déjà postées</h4>${posted.map(card).join("")}` : ""}`;
     } else if (tab === "products") {
       if (soft) return;
       const eur = v => (+v).toFixed(2).replace(".", ",") + " €";
@@ -396,6 +435,63 @@ async function renderPane(soft) {
   } finally { busy = false; }
 }
 
+const randTopic = () => "fusee-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
+const SETUP_STEPS = [
+  {title: "Clé API Anthropic (le cerveau des agents)", need: "obligatoire", test: "anthropic",
+   help: `**Avec un parent** (il faut avoir 18 ans) : va sur https://platform.claude.com → crée le compte → **Billing** : ajoute un moyen de paiement et un petit crédit (ex. 20 €) → **Limits** : fixe une **limite de dépense mensuelle** (sécurité) → **API Keys** → *Create Key* → copie la clé ici.`,
+   fields: [{k: "ANTHROPIC_API_KEY", label: "Clé API (commence par sk-ant-)", type: "password"}]},
+  {title: "Notifications sur ton téléphone", need: "conseillé", test: "ntfy",
+   help: `Installe l'app gratuite **ntfy** (App Store / Google Play) → bouton **+** → « S'abonner à un sujet » → tape exactement le nom ci-dessous (garde-le secret : n'importe qui le connaissant pourrait lire tes notifications).`,
+   fields: [{k: "NTFY_TOPIC", label: "Nom secret du sujet", ph: "ex. " + randTopic()}]},
+  {title: "Mot de passe de l'appli", need: "conseillé",
+   help: `Protège l'appli quand tu l'ouvres depuis ton téléphone (n'importe quel nom d'utilisateur + ce mot de passe). Indispensable avant de rendre Fusée accessible hors de chez toi.`,
+   fields: [{k: "DASHBOARD_PASSWORD", label: "Mot de passe", type: "password"}]},
+  {title: "Ton profil et le plan IA", need: "conseillé",
+   help: `Le plan règle le coût : **Éco** pour démarrer avec un petit budget, **Équilibré** ou **Max** quand ça rapporte.`,
+   fields: [{k: "OWNER_MINOR", label: "As-tu moins de 18 ans ?", type: "select", def: "true", options: [["true", "Oui (un parent ouvre les comptes)"], ["false", "Non, j'ai 18 ans ou plus"]]},
+            {k: "FUSEE_PLAN", label: "Plan IA", type: "select", def: "eco", options: [["eco", "Éco — le moins cher"], ["equilibre", "Équilibré"], ["max", "Max — le plus intelligent, le plus cher"]]}]},
+  {title: "Netlify — mettre les sites en ligne", need: "quand un site est prêt", test: "netlify",
+   help: `Gratuit. https://app.netlify.com/signup (avec un parent) → avatar → **User settings** → **Applications** → **Personal access tokens** → *New access token* → copie-le ici.`,
+   fields: [{k: "NETLIFY_TOKEN", label: "Jeton Netlify", type: "password"}]},
+  {title: "Stripe — encaisser les ventes", need: "quand un produit est prêt", test: "stripe",
+   help: `**Compte au nom d'un parent** (l'argent arrive sur son compte bancaire). https://dashboard.stripe.com/register → **Développeurs** → **Clés API** → *Clé secrète*. Commence par une clé **sk_test_** pour tout essayer sans vrai paiement.`,
+   fields: [{k: "STRIPE_SECRET_KEY", label: "Clé secrète Stripe", type: "password"}]},
+  {title: "Adresse publique — chat sur les sites en ligne", need: "plus tard", test: "public_url",
+   help: `Sur ton Mac : installe l'app **Tailscale** (https://tailscale.com/download), connecte-toi, puis dans le Terminal : \`tailscale funnel --bg 8000\`. Il affiche une adresse en **https://…ts.net** : colle-la ici. Seul le chat des sites est accessible sans mot de passe.`,
+   fields: [{k: "PUBLIC_URL", label: "Adresse publique", ph: "https://ton-mac.tailxxxx.ts.net"}]},
+  {title: "E-mail des clients", need: "optionnel", test: "email",
+   help: `Une adresse dédiée au business (ex. Gmail avec un **mot de passe d'application** : compte Google → Sécurité → Validation en 2 étapes → Mots de passe des applications).`,
+   fields: [{k: "EMAIL_USER", label: "Adresse e-mail"}, {k: "EMAIL_PASSWORD", label: "Mot de passe d'application", type: "password"},
+            {k: "IMAP_HOST", label: "Serveur IMAP", ph: "imap.gmail.com"}, {k: "SMTP_HOST", label: "Serveur SMTP", ph: "smtp.gmail.com"}]},
+];
+function setupValues(i) {
+  const o = {}; document.querySelectorAll("#pane details")[i].querySelectorAll("[data-k]").forEach(el => { if (el.value.trim()) o[el.dataset.k] = el.value.trim(); });
+  if (o.NTFY_TOPIC === undefined) { const el = document.querySelector('[data-k="NTFY_TOPIC"]'); if (el && !el.value && i === 1) { o.NTFY_TOPIC = el.placeholder.replace("ex. ", ""); el.value = o.NTFY_TOPIC; } }
+  return o;
+}
+async function setupSave(i) {
+  const r = await post("/api/setup/save", setupValues(i));
+  $("#sres" + i).textContent = r.ok ? "Enregistré ✅ (redémarre Fusée pour appliquer)" : "Erreur : " + (await r.text());
+  if (r.ok) { const sm = document.querySelectorAll("#pane details")[i].querySelector("summary b"); sm.textContent = sm.textContent.replace("⚪", "✅"); }
+}
+async function setupTest(i) {
+  $("#sres" + i).textContent = "Test en cours…";
+  const r = await post("/api/setup/test", {service: SETUP_STEPS[i].test, values: setupValues(i)});
+  const d = r.ok ? await r.json() : {ok: false, message: await r.text()};
+  $("#sres" + i).textContent = d.message; $("#sres" + i).style.color = d.ok ? "var(--ok)" : "var(--bad)";
+}
+async function setupRestart() {
+  const r = await post("/api/setup/restart"); if (!r.ok) { alert(await r.text()); return; }
+  $("#srestart").textContent = "Redémarrage… la page se recharge toute seule.";
+  setTimeout(function wait() { fetch("/manifest.webmanifest").then(x => x.ok ? location.reload() : setTimeout(wait, 1500)).catch(() => setTimeout(wait, 1500)); }, 3000);
+}
+function copyText(id, btn) {
+  const el = document.getElementById(id); el.select();
+  const done = () => { btn.textContent = "✅ Copié"; setTimeout(() => btn.textContent = "📋 Copier le texte", 1500); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(el.value).then(done);
+  else { document.execCommand("copy"); done(); }
+}
+async function contentStatus(id, status) { await post(`/api/content/${id}?status=${encodeURIComponent(status)}`); renderPane(); }
 async function answerQ(id, value) {
   const answer = value ?? ($("#qa" + id) || {}).value ?? "";
   if (!answer.trim()) return;
@@ -450,6 +546,7 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); instal
 $("#installBtn").onclick = async () => { if (installEvt) { installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#installBtn").hidden = true; } };
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 setView("chat");
+api("/api/setup").then(st => { if (st.needs_key) { tab = "setup"; setView("more"); } renderTabs(); renderPane(); }).catch(() => {});
 renderTabs(); poll(); setInterval(poll, 3000);
 </script>
 </body>

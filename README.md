@@ -68,31 +68,57 @@ besoin d'eux** : ils ne coûtent rien le reste du temps.
 - **🔒 Tes clés restent secrètes** : le code écrit par les agents tourne sans aucune clé ni mot de passe de ton
   `.env` (API, Stripe, e-mail, notifications).
 
-## Installation
+## Les spécialistes sont équipés
 
-1. Installe [Python 3.11+](https://www.python.org/downloads/) (sur Windows, coche « Add Python to PATH »).
-2. Télécharge ce projet, puis dans le dossier : copie `.env.example` en `.env` et mets au minimum ta clé
-   `ANTHROPIC_API_KEY` (sur [platform.claude.com](https://platform.claude.com)) et un `DASHBOARD_PASSWORD`.
-3. Lance :
-   - **Windows** : double-clic sur `start.bat`
-   - **Mac / Linux** : `./start.sh`
+- **📈 Wolf — vraies données de bourse** : prix, tendances, moyennes, RSI, volatilité, pire baisse de n'importe quel
+  actif (actions, ETF, indices, crypto : `AAPL`, `CW8.PA`, `^FCHI`, `BTC-EUR`…), et **backtests** qui rejouent une
+  stratégie (achat-conservation, croisement de moyennes, RSI, investissement mensuel) sur des années d'historique
+  réel, comparée à un simple achat-conservation. Le portefeuille simulé utilise **toujours le prix réel** (impossible
+  d'inventer un prix) et se met à jour chaque heure.
+- **💻 Neo — sites pro en quelques secondes** : deux modèles (« produit » = page de vente, « vitrine » = site de
+  commerce ou d'artisan) avec design moderne, version mobile, référencement, **image d'aperçu générée** pour les
+  partages, mentions légales, contact, statistiques et bouton d'achat — ils obtiennent 100/100 à l'audit dès le
+  départ. Et des **tests automatiques** dans un vrai navigateur (remplir, cliquer, vérifier le résultat, sur
+  ordinateur et mobile) pour ses applis et les jeux de Pixel.
+- **📣 Mercure — calendrier de contenus** : des publications **prêtes à poster** (accroche, texte avec hashtags,
+  vidéo ou image, lien suivi). Dans l'onglet 📅 Contenus, tu copies, tu télécharges, tu postes, tu cliques
+  « J'ai posté » — et Mercure voit combien de visiteurs chaque publication a apportés.
 
-   Le script installe tout (y compris le navigateur des agents) et **ouvre l'application**.
-   Il redémarre tout seul en cas de plantage.
+## Installation sur ton Mac (iMac / Mac mini)
+
+1. Installe **Python 3.12** depuis https://www.python.org/downloads/macos/ (le paquet `.pkg`, puis double-clic sur
+   « Install Certificates.command » dans le dossier Python des Applications).
+2. Télécharge ce projet (bouton vert **Code → Download ZIP** sur GitHub), dézippe-le dans ton dossier personnel.
+3. Ouvre le **Terminal**, tape `cd ` (avec un espace), glisse le dossier Fusee dans la fenêtre, appuie sur Entrée, puis :
+   ```bash
+   ./start.sh
+   ```
+   La première fois, il installe tout tout seul (quelques minutes), puis **ouvre l'application sur l'assistant de
+   démarrage 🚀** : colle ta clé API (avec un parent), règle les notifications, et c'est parti.
+4. Pour que Fusée **démarre tout seul** à chaque allumage et tourne jour et nuit :
+   ```bash
+   ./install-mac.sh
+   ```
+   Puis, dans **Réglages Système → Énergie**, active « Empêcher la suspension automatique lorsque l'écran est
+   éteint » et « Démarrer automatiquement après une panne de courant ». (Pour désinstaller : `./install-mac.sh --remove`.)
+
+Sur Windows : `start.bat`. Sur un serveur Linux : `fusee.service`.
+
+### 🚀 L'assistant de démarrage
+
+Au premier lancement, l'appli s'ouvre dessus (et il reste dans l'onglet 🚀 Démarrage). Pour chaque service — clé API,
+notifications, mot de passe, profil et plan IA, Netlify, Stripe, adresse publique, e-mail — il explique quoi faire,
+enregistre la valeur dans `.env` (fichier lisible seulement par toi), et un bouton **🧪 Tester** vérifie que la
+connexion marche. Les clés ne sont jamais réaffichées en clair. Sans mot de passe d'appli, les réglages ne
+peuvent être modifiés que depuis le Mac lui-même. Un bouton redémarre Fusée pour appliquer les changements.
 
 ### 📲 Installer l'application
 
 - **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
-- **Téléphone, même Wi-Fi** : ouvre `http://<IP-de-ton-ordi>:8000` puis Chrome (Android) → ⋮ → « Installer
-  l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ».
-- **Téléphone, hors de chez toi** : installe [Tailscale](https://tailscale.com) (gratuit) sur l'ordinateur et le
-  téléphone, puis ouvre `http://<nom-de-ton-ordi>:8000`.
-
-### 24h/24
-
-L'ordinateur doit rester **allumé et connecté**. Désactive la mise en veille (Windows : Paramètres → Système →
-Alimentation → Jamais ; sur Mac, `start.sh` l'empêche tout seul). Le plus fiable : un petit serveur (VPS,
-~5 €/mois) avec `fusee.service`.
+- **Téléphone, même Wi-Fi** : ouvre `http://<IP-de-ton-Mac>:8000` puis Safari → Partager → « Sur l'écran
+  d'accueil » (ou Chrome Android → ⋮ → « Installer l'application »).
+- **Téléphone, hors de chez toi** : installe [Tailscale](https://tailscale.com) (gratuit) sur le Mac et le
+  téléphone, puis ouvre `http://<nom-du-mac>:8000`.
 
 ## Brancher les fonctions (fichier `.env`, puis redémarrer)
 
@@ -119,6 +145,7 @@ Sans adresse publique, les sites affichent un contact par e-mail à la place.
 - **💬 Groupe** : leur discussion, avec les captures, vidéos et liens. Écris-leur (`@Neo`, `@Tous`…) ; sans mention, Nexus aiguille ta demande.
 - **📋 Suivi** :
   - 🙋 **Pour toi** : les questions de l'équipe (boutons de réponse) et ta liste « À faire » pas à pas
+  - 📅 **Contenus** : les publications prêtes à poster (copier, télécharger, « J'ai posté »)
   - 📦 **Produits** : le catalogue avec ventes, chiffre d'affaires, visiteurs et conversion ; clique un produit pour
     voir d'où viennent ses visiteurs, jour par jour
   - ✅ **Validations** : leurs demandes (avec captures) → Accepter / Refuser
@@ -180,6 +207,7 @@ des mentions légales/CGV sur les sites et la déclaration de tes revenus.
 ```
 main.py                        lancement (serveur + agents), ouvre l'appli
 start.sh / start.bat           lancement 24h/24 avec installation et redémarrage auto
+install-mac.sh                 démarrage automatique sur Mac (service launchd)
 fusee.service                  service pour serveur Linux
 fusee_agents/
   agents.py                    l'équipe et leurs instructions
@@ -190,6 +218,9 @@ fusee_agents/
   budget.py                    budget réel en euros, plafonds IA
   sales.py                     détection des ventes Stripe en temps réel
   analytics.py                 statistiques des sites (sans cookies)
+  markets.py                   données de bourse réelles, indicateurs, backtests
+  sites.py, templates/         sites pro à partir de modèles
+  setup.py                     assistant de démarrage (.env, tests des connexions)
   browser.py                   navigateur : captures, navigation, vidéos
   integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)
   mailbox.py                   e-mails clients (IMAP/SMTP)

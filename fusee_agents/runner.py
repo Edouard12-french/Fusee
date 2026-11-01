@@ -1,5 +1,6 @@
 """Un « cycle » de travail d'un agent : boucle d'appels Claude + exécution des outils."""
 import json
+import os
 import time
 from datetime import datetime
 
@@ -20,6 +21,14 @@ MINOR_TXT = f"""
 - Business adaptés : produits numériques, jeux, sites et outils, petits services en ligne — encaissés via le
   compte d'un parent. Contenus et communication adaptés à son âge.
 - Ne collecte que le strict nécessaire sur les clients (RGPD) et ne donne jamais ses informations personnelles."""
+DEFAULT_DIRECTIVE = f"""Phase 1 — choisir le premier business (aucune consigne précise de {OWNER} : l'équipe choisit).
+- @Scout repère des pistes ; @Hydre lance une comparaison PARALLÈLE de 3 à 5 pistes (ex. jeux web, sites pour
+  commerces et artisans locaux, outils ou templates numériques, autres trouvailles), chacune notée sur 10 pour :
+  demande prouvée (sources), concurrence, prix possible, coût de départ (proche de 0 €), délai avant la première
+  vente, faisabilité avec l'équipe, compatibilité avec la situation de {OWNER}.
+- @Atlas choisit UNE piste avec les chiffres, demande la validation de {OWNER} (request_approval, kind=business),
+  puis fait enchaîner la création par @Relais (étude → offre et prix → produit → page de vente → pub).
+- Ensuite : un seul produit à la fois jusqu'à la première vente."""
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
@@ -103,7 +112,7 @@ Raison du réveil : {reason}
 {budget_txt}{MINOR_TXT if OWNER_MINOR else ""}
 
 ## Consigne permanente de {OWNER}
-{owner_directive or "(aucune — objectif général : faire gagner de l'argent légalement)"}
+{owner_directive or DEFAULT_DIRECTIVE}
 
 ## Catalogue produits (ventes réelles)
 {prods_txt}
@@ -144,6 +153,9 @@ Travaille maintenant sur ton rôle. Agis avec les outils, puis termine en mettan
 
 
 async def run_cycle(agent: Agent, reason: str, wake) -> None:
+    if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
+        db.set_state(agent.name, status="en attente de la clé API (onglet 🚀 Démarrage)")
+        return
     if budget.api_exhausted():
         db.set_state(agent.name, status="budget IA épuisé")
         return

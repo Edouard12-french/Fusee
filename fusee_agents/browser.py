@@ -171,6 +171,7 @@ _AUDIT_JS = """() => {
   const links = qa("a[href]").map(a => a.getAttribute("href"));
   return {
     title: document.title || "", lang: document.documentElement.lang || "",
+    charset: !!q("meta[charset]") || !!q('meta[http-equiv="Content-Type" i]'),
     description: (q('meta[name="description"]') || {}).content || "",
     viewport: !!q('meta[name="viewport"]'), ogTitle: !!q('meta[property="og:title"]'), ogImage: !!q('meta[property="og:image"]'),
     favicon: !!q('link[rel~="icon"]'), h1: qa("h1").length,
@@ -178,8 +179,7 @@ _AUDIT_JS = """() => {
     internalLinks: links.filter(h => h && !/^(https?:|mailto:|tel:|#|javascript:)/i.test(h)),
     emptyLinks: links.filter(h => !h || h === "#").length,
     legal: /mentions legales|mentions-legales|cgv|conditions generales/.test(text + " " + links.join(" ").toLowerCase()),
-    contact: /\\/public\\/chat\\.js/.test(html) || links.some(h => /^mailto:|^tel:/i.test(h || "")) || !!q("form")
-             || /contact/.test(text),
+    contact: /\\/public\\/chat\\.js/.test(html) || links.some(h => /^mailto:|^tel:/i.test(h || "")) || !!q("form"),
     buy: links.some(h => /buy\\.stripe\\.com|checkout\\.stripe\\.com/.test(h || "")) || !!q("[data-buy]"),
     price: /\\d\\s?(€|eur)|€\\s?\\d/.test(text),
     analytics: /\\/public\\/(a|chat)\\.js/.test(html),
@@ -248,6 +248,8 @@ async def audit(folder: str, base_url: str = "", password: str = "", kind: str =
                     add("avertissement", f"titre de {len(info['title'])} caractères (idéal 10-70)")
                 if not info["description"]:
                     add("erreur", "pas de meta description (référencement Google)")
+                if not info["charset"]:
+                    add("erreur", "pas de <meta charset=\"utf-8\"> : accents et € peuvent s'afficher en caractères bizarres")
                 if not info["lang"]:
                     add("avertissement", "attribut lang manquant sur <html>")
                 if not info["viewport"]:
@@ -296,3 +298,70 @@ async def audit(folder: str, base_url: str = "", password: str = "", kind: str =
     blocking = [i for i in issues if i["niveau"] == "bloquant"]
     return {"site": rel, "score": score, "ok_pour_publier": score >= 70 and not blocking,
             "problemes": issues, "mesures": metrics, "captures": shots}
+
+
+async def render_html(html: str, width: int, height: int, out: Path) -> None:
+    """Rend un bout de HTML en image PNG (ex. image d'aperçu pour les partages sur les réseaux)."""
+    b = await _get_browser()
+    page = await b.new_page(viewport={"width": width, "height": height})
+    try:
+        await page.set_content(html, wait_until="load")
+        await page.screenshot(path=str(out))
+    finally:
+        await page.close()
+
+
+TEST_ACTIONS = ("click", "fill", "press", "wait", "expect_text", "expect_visible", "expect_title")
+
+
+async def run_test(target: str, steps: list[dict], mobile: bool = False) -> dict:
+    """Test automatique d'un site, d'une appli ou d'un jeu : rejoue des actions et vérifie le résultat."""
+    b = await _get_browser()
+    ctx = await b.new_context(viewport={"width": 390, "height": 844} if mobile else {"width": 1366, "height": 850},
+                              is_mobile=mobile, has_touch=mobile)
+    await _no_tracking(ctx)
+    page = await ctx.new_page()
+    errors: list[str] = []
+    page.on("pageerror", lambda e: errors.append(str(e)[:200]))
+    page.on("console", lambda m: errors.append(m.text[:200]) if m.type == "error" and "/public/" not in
+            str((m.location or {}).get("url", "")) else None)
+    results, ok = [], True
+    try:
+        await page.goto(_target(target), wait_until="load", timeout=30000)
+        for i, st in enumerate(steps[:40], 1):
+            action, sel, val = st.get("action"), st.get("selector", ""), st.get("value", "")
+            try:
+                if action == "click":
+                    await page.click(sel, timeout=5000)
+                elif action == "fill":
+                    await page.fill(sel, val, timeout=5000)
+                elif action == "press":
+                    await (page.press(sel, val, timeout=5000) if sel else page.keyboard.press(val))
+                elif action == "wait":
+                    await page.wait_for_timeout(min(int(float(val or 500)), 10000))
+                elif action == "expect_text":
+                    scope = page.locator(sel) if sel else page.locator("body")
+                    txt = await scope.first.inner_text(timeout=5000)
+                    if val.lower() not in txt.lower():
+                        raise AssertionError(f"texte « {val} » absent (trouvé : « {txt[:120]} »)")
+                elif action == "expect_visible":
+                    await page.wait_for_selector(sel, state="visible", timeout=5000)
+                elif action == "expect_title":
+                    title = await page.title()
+                    if val.lower() not in title.lower():
+                        raise AssertionError(f"titre « {title} »")
+                else:
+                    raise ValueError(f"action inconnue {action}")
+                results.append({"etape": i, "action": action, "ok": True})
+            except Exception as e:  # noqa: BLE001
+                ok = False
+                results.append({"etape": i, "action": action, "ok": False, "erreur": str(e).split("\n")[0][:200]})
+                break
+        out = _out("test-" + Path(target).name, "png")
+        await page.screenshot(path=str(out))
+    finally:
+        await ctx.close()
+    if errors:
+        ok = False
+    return {"reussi": ok, "etapes": results, "erreurs_javascript": list(dict.fromkeys(errors))[:10],
+            "capture": str(out.relative_to(WORKSPACE))}

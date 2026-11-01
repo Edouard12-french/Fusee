@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from . import analytics, browser, budget, db, integrations, mailbox, workflow
+from . import analytics, browser, budget, db, integrations, mailbox, markets, sites, workflow
 from .agents import BY_NAME, OWNER
 from .config import ALLOW_CODE_EXEC, PORT, WORKSPACE
 from .notify import notify
@@ -162,6 +162,59 @@ CLIENT_TOOLS: dict[str, dict] = {
                         "légales, prix, poids, vitesse. Score /100. publish_site exige un audit réussi."),
         "input_schema": _schema({"folder": S}),
     },
+    "create_site_from_template": {
+        "description": ("Crée en quelques secondes un site PRO à partir d'un modèle qui passe l'audit qualité "
+                        "(design moderne, mobile, référencement, image d'aperçu, mentions légales, contact, statistiques, "
+                        "bouton d'achat). 'produit' = page de vente d'un produit ; 'vitrine' = site d'un commerce/artisan. "
+                        "Ensuite, personnalise les textes avec write_file et vérifie avec audit_site."),
+        "input_schema": _schema({
+            "template": {"type": "string", "enum": ["produit", "vitrine"]},
+            "folder": {"type": "string", "description": "nom court du dossier, ex. devis-eclair"},
+            "name": S, "emoji": S, "color": {"type": "string", "description": "couleur principale #rrggbb"},
+            "tagline": {"type": "string", "description": "grande accroche (titre principal)"},
+            "description": {"type": "string", "description": "1-2 phrases : bénéfice concret (aussi pour Google)"},
+            "points": {"type": "array", "items": {"type": "object", "properties": {"title": S, "text": S},
+                       "required": ["title", "text"], "additionalProperties": False},
+                       "description": "3 bénéfices (produit) ou 3 services (vitrine)"},
+            "price_eur": {"type": "number", "description": "0 si pas de prix affiché"},
+            "price_detail": {"type": "string", "description": "ex. « par mois, sans engagement » ou « devis gratuit »"},
+            "button_text": S, "payment_link": {"type": "string", "description": "lien Stripe, ou '' s'il n'existe pas encore"},
+            "contact_email": S, "address": S, "hours": S,
+            "editor": {"type": "string", "description": "éditeur pour les mentions légales, '' si inconnu"},
+        }),
+    },
+    "browser_test": {
+        "description": ("Test automatique d'un site, d'une appli web ou d'un jeu du workspace (ex. 'sites/calc' ou "
+                        "'jeux/x/index.html') dans un vrai navigateur : rejoue des étapes (click, fill, press, wait, "
+                        "expect_text, expect_visible, expect_title) et signale les erreurs JavaScript. Capture finale."),
+        "input_schema": _schema({
+            "target": S, "mobile": {"type": "boolean"},
+            "steps": {"type": "array", "items": {"type": "object", "properties": {
+                "action": {"type": "string", "enum": list(browser.TEST_ACTIONS)},
+                "selector": {"type": "string", "description": "sélecteur CSS ('' si inutile)"},
+                "value": {"type": "string", "description": "texte, touche (ex. ArrowUp) ou durée en ms"}},
+                "required": ["action", "selector", "value"], "additionalProperties": False}},
+        }),
+    },
+    # --- calendrier de contenus (marketing) ----------------------------------
+    "plan_content": {
+        "description": (f"Ajoute une publication PRÊTE À POSTER au calendrier de contenus : {OWNER} n'a plus qu'à copier "
+                        "le texte et la vidéo/l'image. Le lien reçoit automatiquement un utm_source pour mesurer le canal."),
+        "input_schema": _schema({
+            "day": {"type": "string", "description": "date AAAA-MM-JJ"},
+            "channel": {"type": "string", "enum": ["TikTok", "Instagram", "YouTube Shorts", "Facebook", "LinkedIn", "X", "Pinterest", "Reddit", "itch.io", "Autre"]},
+            "format": {"type": "string", "enum": ["vidéo courte", "image", "carrousel", "texte", "story"]},
+            "product_id": {"type": "integer", "description": "0 si aucun"},
+            "hook": {"type": "string", "description": "l'accroche des 2 premières secondes / première ligne"},
+            "text": {"type": "string", "description": "texte complet prêt à copier (légende, hashtags)"},
+            "media": {"type": "string", "description": "chemin workspace de la vidéo/image, '' si aucun"},
+            "link": {"type": "string", "description": "lien à mettre (site), '' si aucun"},
+        }),
+    },
+    "list_content": {
+        "description": "Calendrier de contenus : publications prêtes, postées (avec les visites qu'elles ont apportées).",
+        "input_schema": _schema({}),
+    },
     # --- mémoire collective -------------------------------------------------
     "remember": {
         "description": ("Enregistre un apprentissage durable dans la mémoire collective de l'équipe (ce qui marche, "
@@ -266,6 +319,20 @@ CLIENT_TOOLS: dict[str, dict] = {
     "write_strategy": {
         "description": f"Enregistre la stratégie d'investissement personnalisée de {OWNER} (markdown, remplace l'ancienne).",
         "input_schema": _schema({"content": S}),
+    },
+    # --- marchés (données réelles) -------------------------------------------
+    "market_data": {
+        "description": ("Données de marché RÉELLES d'un actif (symboles Yahoo : AAPL, MC.PA, CW8.PA, ^FCHI, BTC-EUR, "
+                        "EURUSD=X…) : dernier prix, variations, moyennes 20/50/200 j, RSI, volatilité, pire baisse, tendance."),
+        "input_schema": _schema({"symbol": S}),
+    },
+    "backtest": {
+        "description": ("Rejoue une stratégie sur l'historique RÉEL d'un actif : achat_conservation, croisement_moyennes "
+                        "(fast/slow jours), rsi (rsi_low/rsi_high), dca (versement mensuel). Donne rendement, rendement "
+                        "annuel, pire baisse, nombre d'ordres, et la comparaison avec un simple achat-conservation."),
+        "input_schema": _schema({"symbol": S, "strategy": {"type": "string", "enum": list(markets.STRATEGIES)},
+                                 "days": {"type": "integer", "description": "Durée d'historique (ex. 730 = ~3 ans de bourse)"},
+                                 "capital_eur": N, "fast": I, "slow": I, "rsi_low": N, "rsi_high": N, "monthly_eur": N}),
     },
     # --- trading simulé -----------------------------------------------------
     "paper_trade": {
@@ -613,6 +680,50 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         au = await run_audit(args["folder"])
         db.log(agent, "audit", f"audit {au['site']} : {au['score']}/100", json.dumps(au, ensure_ascii=False, indent=1))
         return json.dumps(au, ensure_ascii=False)
+    if name == "create_site_from_template":
+        r = await sites.create(args["template"], args["folder"], args["name"], args["emoji"], args["color"],
+                               args["tagline"], args["description"], args["points"], float(args["price_eur"]),
+                               args["price_detail"], args["button_text"], args["payment_link"].strip(),
+                               args["contact_email"], args["address"], args["hours"], args["editor"])
+        db.log(agent, "fichier", f"site créé depuis le modèle {args['template']} : {r['dossier']}")
+        return json.dumps(r, ensure_ascii=False) + "\nPersonnalise maintenant les textes (write_file), puis audit_site."
+    if name == "browser_test":
+        r = await browser.run_test(args["target"], args["steps"], args["mobile"])
+        db.log(agent, "test", f"test {'réussi ✅' if r['reussi'] else 'échoué ❌'} : {args['target']}",
+               json.dumps(r, ensure_ascii=False, indent=1))
+        return json.dumps(r, ensure_ascii=False)
+    # --- calendrier de contenus ---------------------------------------------
+    if name == "plan_content":
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args["day"]):
+            return "Erreur : date au format AAAA-MM-JJ."
+        media = ""
+        if args["media"].strip():
+            files = _clean_attachments([args["media"]])
+            if not files:
+                return "Erreur : fichier média introuvable dans le workspace."
+            media = files[0]
+        link = args["link"].strip()
+        if link:
+            if not re.match(r"^https?://", link):
+                return "Erreur : lien http(s) attendu."
+            if "utm_source=" not in link:
+                src = re.sub(r"[^a-z0-9]+", "", args["channel"].lower())
+                link += ("&" if "?" in link else "?") + f"utm_source={src}"
+        i = db.x("INSERT INTO content (ts, agent, day, channel, format, product_id, hook, text, media, link) "
+                 "VALUES (?,?,?,?,?,?,?,?,?,?)", (time.time(), agent, args["day"], args["channel"], args["format"],
+                                                  args["product_id"] or None, args["hook"], args["text"], media, link))
+        db.post_message(agent, f"📅 Publication #{i} prête pour {args['channel']} le {args['day']} : {args['hook'][:120]}",
+                        _attach_json([media] if media else [], [link] if link else []))
+        return f"Publication #{i} ajoutée au calendrier ({OWNER} la verra dans l'onglet Contenus)."
+    if name == "list_content":
+        rows = db.q("SELECT id, day, channel, format, hook, link, status, posted_ts FROM content "
+                    "WHERE status!='abandonné' ORDER BY day DESC LIMIT 40")
+        for r in rows:
+            src = re.search(r"utm_source=([^&]+)", r["link"] or "")
+            r["visites_apportees"] = (db.q("SELECT COUNT(DISTINCT visitor) n FROM events WHERE utm=? AND event='vue' "
+                                           "AND ts>=?", (src.group(1), r["posted_ts"] or 0))[0]["n"]
+                                      if src and r["posted_ts"] else None)
+        return json.dumps(rows, ensure_ascii=False) or "Calendrier vide."
     # --- mémoire collective -------------------------------------------------
     if name == "remember":
         db.kb_add(agent, args["topic"], args["content"])
@@ -736,9 +847,29 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         db.post_message(agent, f"📈 Stratégie d'investissement de @{OWNER} mise à jour (onglet Argent).")
         notify("rapport", "Ta stratégie d'investissement est à jour", args["content"][:800])
         return "Stratégie enregistrée."
+    # --- marchés -----------------------------------------------------------
+    if name == "market_data":
+        return json.dumps(await asyncio.to_thread(markets.analyze, args["symbol"]), ensure_ascii=False)
+    if name == "backtest":
+        r = await asyncio.to_thread(
+            markets.backtest, args["symbol"], args["strategy"], max(60, min(int(args["days"] or 730), 1800)),
+            float(args["capital_eur"] or 1000), int(args["fast"] or 20), int(args["slow"] or 50),
+            float(args["rsi_low"] or 30), float(args["rsi_high"] or 70), float(args["monthly_eur"] or 100))
+        db.log(agent, "backtest", f"{r['strategie']} sur {r['symbole']} : {r['rendement_total_pct']} % "
+                                  f"(pire baisse {r['pire_baisse_pct']} %)", json.dumps(r, ensure_ascii=False, indent=1))
+        return json.dumps(r, ensure_ascii=False)
     # --- trading simulé -----------------------------------------------------
     if name == "paper_trade":
         qty, price = float(args["quantity"]), float(args["price"])
+        note = ""
+        try:  # le prix réel du marché fait foi : impossible d'inventer un prix
+            real = await asyncio.to_thread(markets.last_price, args["symbol"])
+            if real > 0:
+                if abs(real - price) / real > 0.02:
+                    note = f" (prix proposé {price} remplacé par le prix réel {real})"
+                price = real
+        except Exception:  # noqa: BLE001
+            note = " (prix réel indisponible : prix fourni utilisé)"
         if qty <= 0 or price <= 0:
             return "Erreur : quantité et prix doivent être positifs."
         sym = args["symbol"].upper()
@@ -752,7 +883,7 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
              "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?)",
              (agent, sym, args["side"], qty, price, args["rationale"]))
         db.x("INSERT OR REPLACE INTO marks (symbol, price, ts) VALUES (?,?,CAST(strftime('%s','now') AS REAL))", (sym, price))
-        return "Ordre simulé exécuté. " + json.dumps(db.portfolio(), ensure_ascii=False)
+        return f"Ordre simulé exécuté{note}. " + json.dumps(db.portfolio(), ensure_ascii=False)
     if name == "mark_price":
         db.x("INSERT OR REPLACE INTO marks (symbol, price, ts) VALUES (?,?,CAST(strftime('%s','now') AS REAL))",
              (args["symbol"].upper(), float(args["price"])))
