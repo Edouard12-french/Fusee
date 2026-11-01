@@ -60,6 +60,18 @@ def explain_api_error(e: "anthropic.APIStatusError") -> str:
     return f"erreur API {code} : {(getattr(e, 'message', '') or '')[:120]}"
 
 
+NO_STRICT: set[str] = set()  # agents pour qui l'API a refusé le mode strict (grammaire trop grande)
+
+
+def _strip_strict(tools: list[dict]) -> list[dict]:
+    return [{k: v for k, v in t.items() if k != "strict"} for t in tools]
+
+
+def _grammar_too_large(e: Exception) -> bool:
+    m = (getattr(e, "message", "") or str(e)).lower()
+    return "grammar" in m or "strict tools" in m
+
+
 def _cost(usage, model: str) -> float:
     pin, pout, pread, pwrite = PRICING.get(model, PRICING["claude-opus-5-5"])
     c = (usage.input_tokens * pin + usage.output_tokens * pout
@@ -200,6 +212,8 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
     db.log(agent.name, "cycle", f"début du cycle ({reason[:200]})")
 
     tools = tool_defs(agent.tools, model)
+    if agent.name in NO_STRICT:
+        tools = _strip_strict(tools)
     extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
              if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
     system = [{"type": "text", "text": system_prompt(agent), "cache_control": {"type": "ephemeral"}}]
@@ -208,17 +222,18 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
 
     try:
         for _ in range(MAX_STEPS_PER_CYCLE):
-            resp = await client.beta.messages.create(
-                model=model,
-                max_tokens=16000,
-                system=system,
-                tools=tools,
-                messages=messages,
-                thinking={"type": "adaptive", "display": "summarized"},
-                output_config={"effort": effort},
-                cache_control={"type": "ephemeral"},
-                **extra,
-            )
+            params = dict(model=model, max_tokens=16000, system=system, messages=messages,
+                          thinking={"type": "adaptive", "display": "summarized"}, output_config={"effort": effort},
+                          cache_control={"type": "ephemeral"}, **extra)
+            try:
+                resp = await client.beta.messages.create(tools=tools, **params)
+            except anthropic.BadRequestError as e:
+                if not _grammar_too_large(e) or not any(t.get("strict") for t in tools):
+                    raise
+                NO_STRICT.add(agent.name)  # l'API trouve les schémas stricts trop lourds : on réessaie sans
+                tools = _strip_strict(tools)
+                db.log(agent.name, "info", "mode strict désactivé pour cet agent (grammaire trop grande)")
+                resp = await client.beta.messages.create(tools=tools, **params)
             c = _cost(resp.usage, getattr(resp, "model", None) or model)
             cycle_cost += c
             db.add_cost(agent.name, c)
@@ -408,12 +423,20 @@ async def diagnose(agents: list[Agent]) -> list[dict]:
                  if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
         t0 = time.time()
         try:
-            resp = await client.beta.messages.create(
-                model=model, max_tokens=256,
-                system=[{"type": "text", "text": system_prompt(agent), "cache_control": {"type": "ephemeral"}}],
-                tools=tool_defs(agent.tools, model),
-                messages=[{"role": "user", "content": "Diagnostic technique : réponds seulement « OK », sans outil."}],
-                thinking={"type": "adaptive", "display": "summarized"}, output_config={"effort": "low"}, **extra)
+            params = dict(model=model, max_tokens=256,
+                          system=[{"type": "text", "text": system_prompt(agent), "cache_control": {"type": "ephemeral"}}],
+                          messages=[{"role": "user", "content": "Diagnostic technique : réponds seulement « OK », sans outil."}],
+                          thinking={"type": "adaptive", "display": "summarized"}, output_config={"effort": "low"}, **extra)
+            tools = tool_defs(agent.tools, model)
+            if agent.name in NO_STRICT:
+                tools = _strip_strict(tools)
+            try:
+                resp = await client.beta.messages.create(tools=tools, **params)
+            except anthropic.BadRequestError as e:
+                if not _grammar_too_large(e):
+                    raise
+                NO_STRICT.add(agent.name)
+                resp = await client.beta.messages.create(tools=_strip_strict(tools), **params)
             cost = _cost(resp.usage, getattr(resp, "model", None) or model)
             db.add_cost(agent.name, cost)
             return {"agent": agent.name, "ok": True, "model": model, "secondes": round(time.time() - t0, 1),

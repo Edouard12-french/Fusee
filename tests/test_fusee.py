@@ -1,6 +1,7 @@
 """Tests de Fusée : python -m pytest -q   (aucun appel réel à l'IA, à Stripe, à Netlify ou à Apple)."""
 import asyncio
 import json
+import os
 import time
 from types import SimpleNamespace as NS
 
@@ -229,3 +230,37 @@ def test_full_context_builds_for_every_agent():
         ctx = runner.build_context(a, "test")
         assert "## Budget" in ctx and "## Derniers messages du groupe" in ctx, a.name
         assert len(system_prompt(a)) > 1000
+
+
+def test_grammar_too_large_retries_without_strict():
+    """Si l'API refuse les schémas stricts (« compiled grammar is too large »), l'agent réessaie sans et continue."""
+    import anthropic
+    try:
+        import httpx2 as httpx
+    except ImportError:
+        import httpx
+    from fusee_agents import runner
+    calls = []
+
+    def handler(req):
+        body = json.loads(req.content)
+        strict = any(t.get("strict") for t in body.get("tools", []))
+        calls.append(strict)
+        if strict:
+            return httpx.Response(400, json={"type": "error", "error": {"type": "invalid_request_error",
+                                  "message": "The compiled grammar is too large. Reduce the number of strict tools."}})
+        return httpx.Response(200, json={"id": "m", "type": "message", "role": "assistant", "model": body["model"],
+                              "content": [{"type": "text", "text": "OK"}], "stop_reason": "end_turn", "stop_sequence": None,
+                              "usage": {"input_tokens": 1, "output_tokens": 1}})
+
+    old = runner.client
+    runner.client = anthropic.AsyncAnthropic(api_key="sk-ant-test", max_retries=0,
+                                             http_client=anthropic.DefaultAsyncHttpxClient(transport=httpx.MockTransport(handler)))
+    os.environ["ANTHROPIC_API_KEY"] = "sk-ant-test"
+    try:
+        runner.NO_STRICT.discard("Victor")
+        asyncio.run(runner.run_cycle(BY_NAME["Victor"], "test", lambda *a: None))
+        assert calls[:2] == [True, False] and "Victor" in runner.NO_STRICT
+        assert db.get_states()["Victor"]["status"] == "en attente"
+    finally:
+        runner.client = old

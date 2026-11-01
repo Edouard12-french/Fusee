@@ -462,14 +462,12 @@ BASIC_SERVER_TOOLS = {
 }
 
 
-# L'API limite le nombre d'outils « stricts » (arguments garantis conformes) par requête : on réserve ce mode aux
-# outils où une erreur d'argument coûterait cher (argent, publication, ventes, fichiers, coordination).
-MAX_STRICT_TOOLS = 20
+# Mode « strict » (arguments garantis conformes) : l'API compile tous les schémas stricts d'une requête en une
+# grammaire dont la taille est limitée. On le réserve donc à quelques outils critiques et petits (argent,
+# publication, validations) ; les autres restent normaux (arguments complétés par normalize_args).
+MAX_STRICT_TOOLS = 6
 STRICT_PRIORITY = ["request_approval", "publish_site", "create_payment_link", "paper_trade", "send_prospect_email",
-                   "create_campaign", "add_prospect", "reply_to_contact", "update_contact", "complete_task",
-                   "start_sequence", "start_parallel", "register_product", "update_product", "write_file",
-                   "post_message", "ask_owner", "add_owner_task", "submit_need", "hire_agent", "adjust_agent",
-                   "route_to", "create_site_from_template", "plan_content", "save_memory", "remember"]
+                   "complete_task", "reply_to_contact"]
 
 
 def tool_defs(names: list[str], model: str = "") -> list[dict]:
@@ -477,7 +475,7 @@ def tool_defs(names: list[str], model: str = "") -> list[dict]:
     client_names = [n for n in names if n not in SERVER_TOOLS
                     and not (n in ("run_python", "run_tool") and not ALLOW_CODE_EXEC)]
     ranked = sorted(client_names, key=lambda n: STRICT_PRIORITY.index(n) if n in STRICT_PRIORITY else 999)
-    strict = set(ranked[:MAX_STRICT_TOOLS])
+    strict = set([n for n in ranked if n in STRICT_PRIORITY][:MAX_STRICT_TOOLS])
     out = []
     for n in names:
         if n in SERVER_TOOLS:
