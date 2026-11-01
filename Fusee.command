@@ -8,6 +8,12 @@ echo "   (la première fois : 3 à 10 minutes. Ne ferme pas cette fenêtre.)"
 echo ""
 pause_and_quit() { echo ""; read -r -p "Appuie sur Entrée pour fermer cette fenêtre…" _; exit "${1:-1}"; }
 
+# 0. Dernière version (si installé avec git) : sans rien casser si ça échoue
+if [ -d .git ]; then
+  echo "🔄 Recherche de mises à jour…"
+  git pull --ff-only --quiet 2>/dev/null && echo "   ✅ À jour." || echo "   (mise à jour impossible pour l'instant, on continue)"
+fi
+
 # 1. Outil qui installe la bonne version de Python tout seul (uv, gratuit, officiel d'Astral)
 if ! command -v uv >/dev/null 2>&1; then
   echo "📦 Installation de l'outil Python…"
