@@ -281,9 +281,10 @@ const actHtml = a => `<div class="act ${a.kind}"><span class="muted">${time(a.ts
 
 function scoreBar(s) { const c = s >= 70 ? "var(--ok)" : s >= 40 ? "var(--warn)" : "#64748b"; return `<div class="score"><i style="width:${s}%;background:${c}"></i></div>`; }
 
-let busy = false;
+let busy = false, again = false;
 async function renderPane(soft) {
-  if (busy) return; busy = true;
+  if (busy) { if (!soft) again = true; return; }  // affichage demandé pendant un autre : rejoué juste après
+  busy = true; const myTab = tab;
   const pane = $("#pane"), keep = soft ? pane.scrollTop : 0;
   try {
     if (tab === "agent") {
@@ -562,6 +563,8 @@ async function renderPane(soft) {
           <div class="muted" style="margin-top:6px">Pendant le silence, tout reste dans l'appli (onglet 🔔 Notifs) : rien n'est perdu.${ns.quiet_now ? " <b>Silence en cours.</b>" : ""}
             ${ns.phone ? "📱 Aussi envoyées sur ton téléphone (ntfy)." : "Pour les recevoir aussi sur ton téléphone : étape « Notifications sur ton téléphone » dans 🚀 Démarrage (optionnel)."}</div>
           <button style="margin-top:8px" onclick="testNotif(this)">🔔 Envoyer une notification de test</button></div>
+        <div class="card" style="border-left:4px solid #22c55e"><h4>📱 Notifications sur cet appareil (iPhone…)</h4>
+          <div id="pushBox" class="muted">…</div></div>
         <div class="card"><h4>Ce qui est branché</h4>
           ${ok(c.push)} Notifications téléphone (ntfy)<br>${ok(c.netlify)} Mise en ligne des sites (Netlify)<br>${ok(c.stripe)} Paiements (Stripe)<br>
           ${ok(c.email)} E-mail clients<br>${ok(c.public_url)} Chat sur les sites ${c.public_url ? "(" + esc(c.public_url) + ")" : "(PUBLIC_URL)"}<br>
@@ -572,6 +575,7 @@ async function renderPane(soft) {
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
+      renderPushBox();
       ["nMac", "nSound", "nQuiet", "nFrom", "nTo"].forEach(id => $("#" + id).onchange = () => post("/api/notif_settings", {
         mac: $("#nMac").checked, sound: $("#nSound").checked, quiet: $("#nQuiet").checked, quiet_from: +$("#nFrom").value, quiet_to: +$("#nTo").value})
         .then(() => { S._sound = $("#nSound").checked; }));
@@ -579,7 +583,10 @@ async function renderPane(soft) {
       $("#smode").onchange = e => post("/api/support_mode?mode=" + e.target.value).then(poll);
     }
     if (soft) pane.scrollTop = keep;
-  } finally { busy = false; }
+  } finally {
+    busy = false;
+    if (again || tab !== myTab) { again = false; renderPane(); }  // l'onglet a changé entre-temps : on réaffiche
+  }
 }
 
 const randTopic = () => "fusee-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
@@ -604,8 +611,15 @@ const SETUP_STEPS = [
   {title: "Stripe — encaisser les ventes", need: "quand un produit est prêt", test: "stripe",
    help: `**Compte au nom d'un parent** (l'argent arrive sur son compte bancaire). https://dashboard.stripe.com/register → **Développeurs** → **Clés API** → *Clé secrète*. Commence par une clé **sk_test_** pour tout essayer sans vrai paiement.`,
    fields: [{k: "STRIPE_SECRET_KEY", label: "Clé secrète Stripe", type: "password"}]},
+  {title: "📱 Fusée sur ton iPhone (privé, rien que pour toi)", need: "conseillé", test: "dashboard_url",
+   help: `1. Installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac) **et** sur ton iPhone (App Store), connecte-toi **avec le même compte** sur les deux.
+2. Sur le Mac, dans le dossier Fusee : \`./activer-iphone.sh\` — il affiche ton adresse privée en **https://…ts.net** et l'enregistre ici tout seul.
+3. Sur l'iPhone (Tailscale allumé) : ouvre cette adresse dans **Safari** → **Partager** → **Sur l'écran d'accueil**.
+4. Ouvre **Fusée** depuis l'icône → ⚙️ Réglages → **Activer les notifications sur cet iPhone**.
+Seuls **tes** appareils connectés à ton compte Tailscale peuvent ouvrir cette adresse : personne d'autre.`,
+   fields: [{k: "DASHBOARD_URL", label: "Adresse privée de Fusée (rempli par ./activer-iphone.sh)", ph: "https://ton-mac.tailxxxx.ts.net"}]},
   {title: "Adresse publique — chat sur les sites en ligne", need: "plus tard", test: "public_url",
-   help: `Sur ton Mac : installe l'app **Tailscale** (https://tailscale.com/download), connecte-toi, puis dans le Terminal : \`tailscale funnel --bg 8000\`. Il affiche une adresse en **https://…ts.net** : colle-la ici. Seul le chat des sites est accessible sans mot de passe.`,
+   help: `Uniquement quand un site est en ligne et doit avoir le chat. Sur le Mac : \`./activer-iphone.sh --chat\`. Il ouvre au public **seulement** la petite partie « chat et statistiques » de Fusée (un serveur séparé) : ton application, elle, reste privée.`,
    fields: [{k: "PUBLIC_URL", label: "Adresse publique", ph: "https://ton-mac.tailxxxx.ts.net"}]},
   {title: "E-mail des clients", need: "optionnel", test: "email",
    help: `Une adresse dédiée au business (ex. Gmail avec un **mot de passe d'application** : compte Google → Sécurité → Validation en 2 étapes → Mots de passe des applications).`,
@@ -662,6 +676,38 @@ async function saveOwnerProfile(btn) {
   const o = {}; document.querySelectorAll("[data-p]").forEach(el => o[el.dataset.p] = el.value.trim());
   if (!o.prenom) { alert("Mets au moins ton prénom 🙂"); return; }
   await post("/api/owner_profile", o); btn.textContent = "✅ Enregistré : l'équipe te connaît !"; poll();
+}
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+async function renderPushBox() {
+  const box = $("#pushBox"); if (!box) return;
+  const info = await api("/api/push");
+  const devices = info.devices.length ? `<div style="margin-top:6px">✅ Abonnés : ${info.devices.map(d => `${esc(d.device)} <span class="muted">(${time(d.ts)})</span>`).join(", ")}
+    — <a href="#" onclick="post('/api/push/forget').then(renderPushBox);return false">tout désactiver</a></div>` : "";
+  let html;
+  if (!window.isSecureContext) {
+    html = `Pour les notifications sur ton iPhone, ouvre Fusée avec ton <b>adresse privée https</b> (étape « 📱 Fusée sur ton iPhone » dans 🚀 Démarrage), pas avec une adresse en http.`;
+  } else if (isIOS && !standalone) {
+    html = `Sur iPhone, Apple n'autorise les notifications que pour les apps de l'écran d'accueil :<br>1. touche <b>Partager</b> (carré avec une flèche) → <b>Sur l'écran d'accueil</b> → Ajouter ;<br>2. ouvre <b>Fusée</b> depuis sa nouvelle icône ;<br>3. reviens ici et touche « Activer ». (iOS 16.4 ou plus récent.)`;
+  } else if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    html = `Cet appareil ou ce navigateur ne gère pas les notifications web. Sur iPhone : iOS 16.4+ et Fusée ajoutée à l'écran d'accueil.`;
+  } else {
+    html = `<button class="primary" onclick="enablePush(this)">🔔 Activer les notifications ${isIOS ? "sur cet iPhone" : "sur cet appareil"}</button>
+      <div class="muted" style="margin-top:4px">Chiffrées de bout en bout : seul ton appareil peut les lire.</div>`;
+  }
+  box.innerHTML = html + devices;
+}
+async function enablePush(btn) {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { btn.textContent = "Autorisation refusée : Réglages de l'iPhone → Notifications → Fusée"; return; }
+    const reg = await navigator.serviceWorker.ready, info = await api("/api/push");
+    const key = Uint8Array.from(atob(info.key.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((info.key.length + 3) % 4)), c => c.charCodeAt(0));
+    const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: key});
+    const r = await post("/api/push/subscribe", {subscription: sub.toJSON(), device: isIOS ? "iPhone" : (navigator.userAgentData?.platform || "appareil")});
+    btn.textContent = r.ok ? "✅ Activé : une notification de test arrive" : "Erreur : " + await r.text();
+    setTimeout(renderPushBox, 2500);
+  } catch (e) { btn.textContent = "Impossible : " + e.message; }
 }
 async function testNotif(btn) {
   const d = await (await post("/api/test_notification")).json();
@@ -731,8 +777,14 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); instal
 $("#installBtn").onclick = async () => { if (installEvt) { installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#installBtn").hidden = true; } };
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 setView("chat");
-api("/api/setup").then(st => { if (st.needs_key) { tab = "setup"; setView("more"); } renderTabs(); renderPane(); }).catch(() => {});
-renderTabs(); poll(); setInterval(poll, 3000);
+const hashTab = () => { const h = location.hash.slice(1); if (h && TABS[h]) { tab = h; setView("more"); renderTabs(); renderPane(); return true; } return false; };
+window.addEventListener("hashchange", hashTab);
+renderTabs();
+poll().then(() => api("/api/setup")).then(st => {  // d'abord les données, ensuite l'onglet demandé
+  if (!hashTab() && st && st.needs_key) { tab = "setup"; setView("more"); }
+  renderTabs(); renderPane();
+}).catch(() => renderPane());
+setInterval(poll, 3000);
 </script>
 </body>
 </html>

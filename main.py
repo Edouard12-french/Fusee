@@ -1,4 +1,5 @@
 """Lance l'équipe d'agents Fusée et son tableau de bord : python main.py"""
+import asyncio
 import os
 import sys
 import threading
@@ -17,4 +18,14 @@ if __name__ == "__main__":
     # Par défaut, Fusée n'est accessible que depuis ce Mac (HOST=127.0.0.1).
     # HOST=0.0.0.0 l'ouvre aux autres appareils du Wi-Fi (téléphone) : mets alors un mot de passe d'appli.
     host = os.getenv("HOST", "127.0.0.1").strip() or "127.0.0.1"
-    uvicorn.run("fusee_agents.web:app", host=host, port=PORT, log_level="warning")
+    # Second petit serveur, uniquement pour le public (chat des sites, statistiques, désinscription) :
+    # c'est LUI, et lui seul, qu'on expose sur internet (tailscale funnel). L'appli reste privée.
+    public_port = int(os.getenv("PUBLIC_PORT", "8001"))
+
+    async def serve() -> None:
+        servers = [uvicorn.Server(uvicorn.Config("fusee_agents.web:app", host=host, port=PORT, log_level="warning")),
+                   uvicorn.Server(uvicorn.Config("fusee_agents.web:public_app", host="127.0.0.1", port=public_port,
+                                                 log_level="warning"))]
+        await asyncio.gather(*(s.serve() for s in servers))
+
+    asyncio.run(serve())

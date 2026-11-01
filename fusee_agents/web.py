@@ -10,7 +10,7 @@ from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -37,6 +37,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Fusée", lifespan=lifespan)
+# Routes publiques (chat des sites, statistiques, désinscription) : servies AUSSI par un petit serveur séparé
+# (public_app, port PUBLIC_PORT) — c'est le seul à exposer sur internet. L'application elle-même ne l'est jamais.
+public = APIRouter()
 
 
 @app.middleware("http")
@@ -47,7 +50,9 @@ async def guard(request: Request, call_next):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
         return resp
-    if PASSWORD:
+    tailnet_user = (request.headers.get("tailscale-user-login") and request.client is not None
+                    and request.client.host in ("127.0.0.1", "::1"))  # passé par « tailscale serve » (privé)
+    if PASSWORD and not tailnet_user:
         try:
             _, pwd = base64.b64decode(request.headers.get("authorization", "")[6:]).decode().split(":", 1)
         except Exception:  # noqa: BLE001
@@ -432,12 +437,12 @@ def _rate_ok(key: str, limit: int, window: int) -> bool:
     return True
 
 
-@app.get("/public/a.js")
+@public.get("/public/a.js")
 def analytics_js():
     return FileResponse(STATIC / "analytics.js", media_type="application/javascript")
 
 
-@app.post("/public/t")
+@public.post("/public/t")
 async def track(request: Request):
     try:
         d = json.loads(await request.body())
@@ -453,12 +458,12 @@ async def track(request: Request):
     return Response(status_code=204)
 
 
-@app.get("/public/chat.js")
+@public.get("/public/chat.js")
 def chat_js():
     return FileResponse(STATIC / "chat-widget.js", media_type="application/javascript")
 
 
-@app.post("/public/chat/send")
+@public.post("/public/chat/send")
 async def chat_send(request: Request):
     try:
         data = json.loads(await request.body())  # envoyé en text/plain → pas de pré-vol CORS
@@ -483,7 +488,7 @@ async def chat_send(request: Request):
     return {"ok": True}
 
 
-@app.get("/public/chat/poll")
+@public.get("/public/chat/poll")
 def chat_poll(session: str, after: int = 0):
     c = db.q("SELECT id FROM contacts WHERE session=?", (session[:64],))
     if not c or len(session) < 16:
@@ -723,7 +728,7 @@ def prospect_stop(pid: int):
     return {"ok": True}
 
 
-@app.get("/public/stop", response_class=HTMLResponse)
+@public.get("/public/stop", response_class=HTMLResponse)
 def public_stop(e: str = "", t: str = ""):
     """Lien de désinscription des e-mails de prospection (sans mot de passe)."""
     ok = bool(e) and outreach.check_stop_token(e, t)
@@ -785,3 +790,43 @@ async def save_owner_profile(request: Request):
             + (f" J'aime : {clean['aime']}." if clean.get("aime") else "") + (f" Mon objectif : {clean['objectif']}." if clean.get("objectif") else "")
         db.post_message(OWNER, intro)
     return {"ok": True}
+
+
+# --- notifications sur l'iPhone (Web Push) ------------------------------------------------------------
+@app.get("/api/push")
+def push_info():
+    from . import webpush
+    return {"key": webpush.public_key_b64(),
+            "devices": [{"device": r["device"], "ts": r["ts"]} for r in webpush.subscriptions()]}
+
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(request: Request):
+    from . import webpush
+    d = await request.json()
+    try:
+        webpush.add_subscription(d.get("subscription") or {}, str(d.get("device") or "appareil"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    await asyncio.to_thread(webpush.broadcast, "🔔 Notifications activées", "Fusée pourra te prévenir ici. 🚀", "/#settings")
+    return {"ok": True}
+
+
+@app.post("/api/push/forget")
+def push_forget():
+    db.x("DELETE FROM push_subs")
+    return {"ok": True}
+
+
+# --- serveur public séparé ------------------------------------------------------------------------------
+app.include_router(public)
+public_app = FastAPI(title="Fusée — public", docs_url=None, redoc_url=None, openapi_url=None)
+public_app.include_router(public)
+
+
+@public_app.middleware("http")
+async def public_cors(request: Request, call_next):
+    resp = Response() if request.method == "OPTIONS" else await call_next(request)
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp

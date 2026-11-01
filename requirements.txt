@@ -6,3 +6,4 @@ imageio-ffmpeg>=0.5
 playwright>=1.48
 yt-dlp>=2025.1
 youtube-transcript-api>=1.0
+cryptography>=42

@@ -71,11 +71,22 @@ def _push(title: str, body: str, priority: str, tags: str) -> None:
         db.log("système", "erreur", f"notification push échouée : {e}")
 
 
+TARGET_TAB = {"validation": "owner", "rapport": "reports", "client": "contacts", "alerte": "notifs"}
+
+
 def _deliver(kind: str, title: str, body: str, priority: str) -> None:
     s = settings()
     quiet = is_quiet() and priority != "urgent"
     if s["mac"] and mac_available() and not quiet:
         _mac(f"{ICONS.get(kind, '🔔')} {title}", body, s["sound"])
+    if not quiet:  # iPhone / autres appareils où l'app Fusée est installée (Web Push chiffré)
+        try:
+            from . import webpush
+            if webpush.subscriptions():
+                webpush.broadcast(f"{ICONS.get(kind, '🔔')} {title}", body, f"/#{TARGET_TAB.get(kind, 'notifs')}",
+                                  "high" if priority in ("high", "urgent") else "normal")
+        except Exception as e:  # noqa: BLE001
+            db.log("système", "erreur", f"notification iPhone : {str(e)[:150]}")
     if not quiet or priority in ("high", "urgent"):
         tags = {"validation": "question", "rapport": "page_facing_up", "client": "envelope", "alerte": "warning"}.get(kind, "rocket")
         _push(title, body, priority if not quiet else "low", tags)

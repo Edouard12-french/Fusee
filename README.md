@@ -161,11 +161,16 @@ peuvent être modifiés que depuis le Mac lui-même. Un bouton redémarre Fusée
 ### 📲 Installer l'application
 
 - **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
-- **Téléphone, même Wi-Fi** : dans 🚀 Démarrage → « Accès et mot de passe », autorise les autres appareils et mets
-  un mot de passe, puis ouvre `http://<IP-de-ton-Mac>:8000` puis Safari → Partager → « Sur l'écran
-  d'accueil » (ou Chrome Android → ⋮ → « Installer l'application »).
-- **Téléphone, hors de chez toi** : installe [Tailscale](https://tailscale.com) (gratuit) sur le Mac et le
-  téléphone, puis ouvre `http://<nom-du-mac>:8000`.
+- **📱 iPhone (recommandé), rien que pour toi, partout (même en 4G)** :
+  1. installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac) et sur ton iPhone (App Store),
+     connecte-toi avec **le même compte** ;
+  2. sur le Mac, dans le dossier Fusee : `./activer-iphone.sh` → il affiche ton adresse privée `https://…ts.net` ;
+  3. sur l'iPhone : ouvre cette adresse dans **Safari** → **Partager** → **Sur l'écran d'accueil** ;
+  4. ouvre **Fusée** depuis l'icône → ⚙️ Réglages → **Activer les notifications sur cet iPhone** (iOS 16.4+).
+
+  Seuls **tes** appareils connectés à ton compte Tailscale peuvent l'ouvrir : personne d'autre au monde. Les
+  notifications sont **chiffrées de bout en bout** (même Apple ne peut pas les lire). `./activer-iphone.sh --off`
+  coupe l'accès.
 
 ## Brancher les fonctions (fichier `.env`, puis redémarrer)
 
@@ -174,17 +179,18 @@ L'onglet **⚙️ Réglages** de l'appli montre ce qui est branché.
 | Fonction | Ce qu'il faut | Coût |
 |---|---|---|
 | 🔔 Notifications sur le Mac | Rien à faire : Fusée envoie ses propres notifications (réglages dans ⚙️ Réglages) | gratuit |
-| 📱 Notifications aussi sur le téléphone (optionnel) | App **ntfy** + un nom secret dans `NTFY_TOPIC` | gratuit |
+| 📱 Fusée + notifications sur l'iPhone | Tailscale sur le Mac et l'iPhone + `./activer-iphone.sh` (voir plus haut) | gratuit |
+| 📱 Notifications via ntfy (autre option) | App **ntfy** + un nom secret dans `NTFY_TOPIC` | gratuit |
 | 🌍 Mise en ligne des sites | Compte [Netlify](https://netlify.com) + `NETLIFY_TOKEN` | gratuit pour démarrer |
 | 💳 Paiements | Compte [Stripe](https://stripe.com) + `STRIPE_SECRET_KEY` (essaie d'abord avec une clé `sk_test_`) | commission Stripe par vente |
 | 💬 Chat en direct sur les sites | Une adresse publique pour Fusée dans `PUBLIC_URL` (ci-dessous) | gratuit |
 | ✉️ E-mails clients | Une adresse dédiée (ex. Gmail + mot de passe d'application) : `IMAP_HOST`, `SMTP_HOST`, `EMAIL_USER`, `EMAIL_PASSWORD` | gratuit |
 | 🌐 Navigateur des agents | Bouton **🌐 Navigateur** dans l'appli (tu l'autorises ou le bloques quand tu veux) | — |
 
-**Adresse publique pour le chat** : les sites en ligne doivent pouvoir joindre Fusée sur ton ordinateur.
-Le plus simple : [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) (`tailscale funnel 8000`) qui donne
-une adresse fixe du type `https://ton-ordi.tailXXXX.ts.net` → mets-la dans `PUBLIC_URL`. Seul le chat
-(`/public/...`) est accessible sans mot de passe ; le reste de l'appli est protégé par `DASHBOARD_PASSWORD`.
+**Adresse publique pour le chat** : les sites en ligne doivent pouvoir joindre Fusée sur ton ordinateur. Lance
+`./activer-iphone.sh --chat` : il ouvre au public, via Tailscale Funnel, **uniquement** un petit serveur séparé
+(port `PUBLIC_PORT`, 8001) qui ne contient que le chat, les statistiques et la désinscription — **l'application
+elle-même n'est jamais exposée sur internet**. L'adresse (`https://…ts.net:8443`) est enregistrée dans `PUBLIC_URL`.
 Sans adresse publique, les sites affichent un contact par e-mail à la place.
 
 ## Notifications 🔔
@@ -283,7 +289,9 @@ des mentions légales/CGV sur les sites et la déclaration de tes revenus.
 ```
 main.py                        lancement (serveur + agents), ouvre l'appli
 start.sh / start.bat           lancement 24h/24 avec installation et redémarrage auto
-install-mac.sh                 démarrage automatique sur Mac (service launchd)
+install-mac.sh                 démarrage automatique sur Mac (service launchd) + app Fusée
+creer-app-mac.sh               crée l'icône Fusée.app à double-cliquer
+activer-iphone.sh              accès privé depuis l'iPhone (Tailscale) et, en option, chat public
 fusee.service                  service pour serveur Linux
 fusee_agents/
   agents.py                    l'équipe et leurs instructions
@@ -303,7 +311,8 @@ fusee_agents/
   browser.py                   navigateur : captures, navigation, vidéos
   integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)
   mailbox.py                   e-mails clients (IMAP/SMTP)
-  notify.py                    notifications (Mac, fenêtre Fusée, téléphone en option)
+  notify.py                    notifications (Mac, fenêtre Fusée, iPhone, ntfy en option)
+  webpush.py                   notifications chiffrées vers l'iPhone (Web Push, RFC 8291/8292)
   db.py                        base SQLite (data/fusee.db)
   web.py                       serveur de l'appli + chat public des sites
   static/                      l'application (PWA), le widget de chat, les icônes
