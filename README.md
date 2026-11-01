@@ -192,6 +192,12 @@ Une interface colorée (chaque agent a sa couleur), en thème sombre ou clair (b
 
 - **🤖 Équipe** : chaque agent, en direct : statut, ce qu'il fait, coût. Clique pour voir tout ce qu'il a fait et son plan.
 - **💬 Groupe** : leur discussion, avec les captures, vidéos et liens. Écris-leur (`@Neo`, `@Tous`…) ; sans mention, Nexus aiguille ta demande.
+- **💬 Discussion privée** : clique sur un agent (colonne de gauche) pour lui parler **seul à seul** — les autres
+  ne voient pas cette conversation. Il te répond en quelques secondes et peut aussi t'écrire en privé de lui-même
+  (badge 💬 sur sa carte + notification). S'il annonce une action, il s'y met juste après.
+- **🙋 Me présenter** (onglets 🚀 Démarrage et ⚙️ Réglages) : ton prénom, comment t'appeler, ta ville, ce que tu
+  aimes, ton objectif, ton temps disponible. Les 14 agents lisent cette fiche en permanence : ils t'appellent par
+  ton prénom et adaptent leurs idées (par exemple les commerces de ta ville).
 - **🎙️ Réunion** : écris ton message et clique « 🎙️ Réunion » : **les 14 agents te répondent en même temps**, en
   quelques secondes, chacun avec son métier (une barre montre qui a déjà répondu). Ceux qui annoncent une action
   (« ➡️ Je m'en occupe ») se mettent au travail juste après. Mentionne des agents (`@Neo @Victor`) pour une

@@ -17,7 +17,8 @@ from pydantic import BaseModel
 
 from . import analytics, budget, db, integrations, knowledge, mailbox, outreach, runner
 from . import setup as setup_mod
-from .agents import BY_NAME, OWNER, TEAM, add_agent, agent_settings, make_custom, save_team_config, team_config
+from .agents import (BY_NAME, OWNER, PROFILE_LABELS, TEAM, add_agent, agent_settings, make_custom, owner_profile,
+                     save_team_config, team_config)
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
 from .notify import notify
 from .scheduler import scheduler
@@ -109,6 +110,9 @@ def state(after: int = 0):
                                      "api_spent_eur", "api_budget_eur")},
         "open_questions": db.q("SELECT COUNT(*) n FROM owner_questions WHERE answer IS NULL")[0]["n"],
         "open_owner_tasks": db.q("SELECT COUNT(*) n FROM owner_tasks WHERE done=0")[0]["n"],
+        "unread_dms": {r["agent"]: r["n"] for r in db.q(
+            "SELECT agent, COUNT(*) n FROM dms WHERE sender!=? AND read=0 GROUP BY agent", (OWNER,))},
+        "profile_done": bool(owner_profile().get("prenom")),
         "paused": scheduler.paused,
         "directive": db.get_setting("directive", ""),
         "pending_approvals": db.q("SELECT COUNT(*) n FROM approvals WHERE status='en attente'")[0]["n"],
@@ -710,3 +714,53 @@ def public_stop(e: str = "", t: str = ""):
     return f"""<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Désinscription</title><body style="font-family:system-ui;max-width:560px;margin:80px auto;padding:20px;text-align:center">
 <h1>{"✅" if ok else "ℹ️"} Désinscription</h1><p>{msg}</p><p style="color:#666">Toutes nos excuses pour le dérangement.</p></body></html>"""
+
+
+# --- discussion privée avec un agent -------------------------------------------------------------------
+@app.get("/api/dm/{agent}")
+def dm_get(agent: str):
+    if agent not in BY_NAME:
+        raise HTTPException(404)
+    db.x("UPDATE dms SET read=1 WHERE agent=? AND sender!=?", (agent, OWNER))
+    rows = runner.dm_thread(agent, 100)
+    for r in rows:
+        _msg(r)
+    return {"messages": rows, "typing": db.get_states().get(agent, {}).get("status") == "en discussion privée"}
+
+
+@app.post("/api/dm/{agent}")
+async def dm_send(agent: str, msg: Msg):
+    if agent not in BY_NAME:
+        raise HTTPException(404)
+    text = msg.content.strip()
+    if not text:
+        raise HTTPException(400, "message vide")
+    if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
+        raise HTTPException(400, "Il faut d'abord la clé API (onglet 🚀 Démarrage).")
+    if budget.api_exhausted() or budget.today_exhausted():
+        raise HTTPException(400, "Le budget IA du jour est atteint : il te répondra demain (ou augmente le budget).")
+    db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)", (time.time(), agent, OWNER, text))
+    asyncio.create_task(runner.dm_reply(BY_NAME[agent], scheduler.wake))
+    return {"ok": True}
+
+
+# --- se présenter à l'équipe ------------------------------------------------------------------------------
+@app.get("/api/owner_profile")
+def get_owner_profile():
+    return {"profile": owner_profile(), "labels": PROFILE_LABELS}
+
+
+@app.post("/api/owner_profile")
+async def save_owner_profile(request: Request):
+    data = await request.json()
+    if not isinstance(data, dict):
+        raise HTTPException(400)
+    clean = {k: str(data.get(k, "")).strip()[:400] for k in PROFILE_LABELS if str(data.get(k, "")).strip()}
+    first = not owner_profile().get("prenom")
+    db.set_setting("owner_profile", json.dumps(clean, ensure_ascii=False))
+    name = clean.get("appel") or clean.get("prenom") or OWNER
+    if first and clean.get("prenom"):
+        intro = f"👋 Salut l'équipe, c'est {name} !" + (f" J'habite vers {clean['ville']}." if clean.get("ville") else "") \
+            + (f" J'aime : {clean['aime']}." if clean.get("aime") else "") + (f" Mon objectif : {clean['objectif']}." if clean.get("objectif") else "")
+        db.post_message(OWNER, intro)
+    return {"ok": True}

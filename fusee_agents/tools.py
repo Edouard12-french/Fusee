@@ -367,6 +367,12 @@ CLIENT_TOOLS: dict[str, dict] = {
         "input_schema": _schema({"name": S}),
     },
     # --- lien avec Patron (agent humain) ------------------------------------
+    "message_owner_private": {
+        "description": (f"Écrit EN PRIVÉ à {OWNER} (les autres agents ne voient pas). Pour un échange personnel ou "
+                        "confidentiel lié à ton métier, ou pour répondre à ce qu'il t'a dit en privé. attachments/links : "
+                        "comme post_message. Pour une validation : request_approval ; pour un besoin : submit_need."),
+        "input_schema": _schema({"content": S, "attachments": LIST, "links": LIST}),
+    },
     "submit_need": {
         "description": (f"Signale un besoin que l'équipe ne peut pas régler seule : une information ou une décision de "
                         f"{OWNER}, un compte à créer, un accès, un blocage. @Clara le traite et le présente à {OWNER} ; "
@@ -1022,6 +1028,11 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         p = WORKSPACE / "competences" / f"{Path(args['name']).stem}.md"
         return p.read_text(errors="replace")[:30000] if p.is_file() else "Erreur : fiche inconnue. Vois list_skills."
     # --- lien avec Patron ---------------------------------------------------
+    if name == "message_owner_private":
+        db.x("INSERT INTO dms (ts, agent, sender, content, attachments, read) VALUES (?,?,?,?,?,0)",
+             (time.time(), agent, agent, args["content"].strip(), _attach_json(args["attachments"], args["links"])))
+        notify("client", f"💬 {agent} t'écrit en privé", args["content"][:500], priority="default")
+        return f"Message privé envoyé à {OWNER}."
     if name == "submit_need":
         dup = db.q("SELECT id FROM needs WHERE agent=? AND need=? AND status!='résolu'", (agent, args["need"]))
         if dup:

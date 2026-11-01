@@ -193,7 +193,7 @@ function renderAgents() {
     const st = a.status || "en attente", cls = st === "travaille" ? "on" : st.startsWith("erreur") || st.startsWith("budget") ? "err" : "";
     return `<div class="agent ${selected===a.name?"sel":""}" data-n="${a.name}" style="--ag:${a.color}">
       <div class="av">${a.emoji}</div>
-      <div style="min-width:0"><b>${a.name}</b><small>${esc(a.kind)} · ${esc(a.title)}</small>
+      <div style="min-width:0"><b>${a.name}${(S.unread_dms || {})[a.name] ? ` <span class="badge" title="Message privé">💬 ${S.unread_dms[a.name]}</span>` : ""}</b><small>${esc(a.kind)} · ${esc(a.title)}</small>
       <small><span class="tag">${a.model.replace("claude-","").replace(/-(\d)-(\d)$/," $1.$2")}</span> <span class="tag">${a.interval_min ? "toutes les " + a.interval_min + " min" : "à la demande"}</span></small>
       <small><span class="dot ${cls}"></span>${esc(st)}</small>
       <small title="${esc(a.task)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.task || "—")}</small>
@@ -261,15 +261,34 @@ async function renderPane(soft) {
   try {
     if (tab === "agent") {
       const a = S.agents.find(x => x.name === selected); if (!a) return;
+      const dm = await api("/api/dm/" + a.name);
+      const thread = dm.messages.map(m => `<div class="bub ${m.sender === "Patron" ? "out" : "in"}">${esc(m.content)}${attHtml(m.attachments)}<br><span class="muted">${time(m.ts)}</span></div>`).join("")
+        + (dm.typing ? `<div class="bub in muted">${a.emoji} ${a.name} écrit…</div>` : "");
+      const input = pane.querySelector("#dmInput");
+      if (soft && input && (input.value || document.activeElement === input)) {  // ne pas effacer ce que tu tapes
+        const th = pane.querySelector("#dmThread"); const stick = th.scrollHeight - th.scrollTop - th.clientHeight < 60;
+        th.innerHTML = thread || `<p class="muted">Écris-lui en privé : les autres agents ne verront pas cette discussion.</p>`; if (stick) th.scrollTop = th.scrollHeight; return;
+      }
       const [acts, mem] = await Promise.all([api("/api/activity?agent=" + a.name), api("/api/memory/" + a.name)]);
       const open = soft && pane.querySelector("#memd")?.open;
-      pane.innerHTML = `<div class="card"><h4>${a.emoji} ${a.name} — ${esc(a.title)}</h4>
-        <div class="muted">Statut : ${esc(a.status)} · cycle toutes les ${a.interval_min} min · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
+      pane.innerHTML = `<div class="card" style="border-left:4px solid ${a.color}"><h4>${a.emoji} ${a.name} — ${esc(a.kind)}</h4>
+        <div class="muted">${esc(a.title)} · statut : ${esc(a.status)} · ${a.interval_min ? "cycle toutes les " + a.interval_min + " min" : "à la demande"} · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
         <p><b>En ce moment :</b> ${esc(a.task || "—")}</p>
         <button onclick="post('/api/wake/${a.name}')">⚡ Lancer un cycle maintenant</button></div>
+        <div class="card" style="--ag:${a.color};border-color:color-mix(in srgb,${a.color} 45%,transparent)"><h4>💬 Discussion privée avec ${a.name}</h4>
+          <div id="dmThread" class="thread" style="max-height:340px;overflow:auto">${thread || `<p class="muted">Écris-lui en privé : les autres agents ne verront pas cette discussion.</p>`}</div>
+          <form class="send" id="dmForm" style="padding:0;border:0;background:none"><textarea id="dmInput" rows="2" placeholder="Message privé à ${a.name}…"></textarea><button class="primary">Envoyer</button></form></div>
         ${a.learned ? `<div class="card"><b>📘 Consignes apprises</b><div class="md">${md(a.learned)}</div></div>` : ""}
         <details class="card" id="memd" ${open?"open":""}><summary><b>🧠 Mémoire / plan</b></summary><div class="md">${md(mem.content || "(vide)")}</div></details>
         <h4>Ce qu'il a fait</h4>${acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>"}`;
+      const th = pane.querySelector("#dmThread"); th.scrollTop = th.scrollHeight;
+      $("#dmInput").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#dmForm").requestSubmit(); } };
+      $("#dmForm").onsubmit = async e => {
+        e.preventDefault(); const t = $("#dmInput").value.trim(); if (!t) return;
+        const r = await post("/api/dm/" + a.name, {content: t});
+        if (!r.ok) { alert((await r.json().catch(() => ({}))).detail || "Envoi impossible"); return; }
+        $("#dmInput").value = ""; $("#dmInput").blur(); renderPane();
+      };
     } else if (tab === "feed") {
       pane.innerHTML = (await api("/api/activity?limit=200")).map(actHtml).join("") || "<p class=muted>Rien encore.</p>";
     } else if (tab === "approvals") {
@@ -356,6 +375,7 @@ async function renderPane(soft) {
       pane.innerHTML = `<div class="card"><h4>🚀 Bienvenue dans Fusée !</h4><p class="muted">Configure ici tout ce dont l'équipe a besoin, étape par étape.
           Seule la clé API est obligatoire pour démarrer ; le reste peut attendre que le premier produit soit prêt.
           ${st.local || st.has_password ? "" : "<br><b>⚠️ Pour modifier les réglages depuis cet appareil, définis d'abord un mot de passe d'appli depuis l'ordinateur de Fusée.</b>"}</p></div>` +
+        await profileCard() +
         SETUP_STEPS.map((stp, i) => `<details class="card ${done(stp) ? "" : (stp.need === "obligatoire" ? "pending" : "")}" ${!done(stp) && (i === 0 || stp.need === "obligatoire") ? "open" : ""}>
           <summary><b>${done(stp) ? "✅" : "⚪"} ${i + 1}. ${stp.title}</b> <span class="tag">${stp.need}</span></summary>
           <div class="md" style="margin:8px 0">${md(stp.help)}</div>
@@ -504,7 +524,7 @@ async function renderPane(soft) {
     } else if (tab === "settings") {
       if (soft) return;
       const c = S.capabilities, ok = b => b ? "✅" : "⚪";
-      pane.innerHTML = `<div class="card"><h4>Ce qui est branché</h4>
+      pane.innerHTML = await profileCard() + `<div class="card"><h4>Ce qui est branché</h4>
           ${ok(c.push)} Notifications téléphone (ntfy)<br>${ok(c.netlify)} Mise en ligne des sites (Netlify)<br>${ok(c.stripe)} Paiements (Stripe)<br>
           ${ok(c.email)} E-mail clients<br>${ok(c.public_url)} Chat sur les sites ${c.public_url ? "(" + esc(c.public_url) + ")" : "(PUBLIC_URL)"}<br>
           ${ok(S.browser_enabled)} Navigateur web des agents
@@ -582,6 +602,26 @@ async function campaignStatus(id, status) { const r = await post(`/api/campaigns
 async function prospectSent(id) { await post(`/api/prospects/${id}/sent`); renderPane(); }
 async function prospectStop(id) { if (confirm("Ne plus jamais contacter cette adresse ?")) { await post(`/api/prospects/${id}/stop`); renderPane(); } }
 async function contentStatus(id, status) { await post(`/api/content/${id}?status=${encodeURIComponent(status)}`); renderPane(); }
+const PROFILE_FIELDS = [["prenom", "Ton prénom", "text", ""], ["appel", "Comment veux-tu qu'ils t'appellent ?", "text", "ex. Ed, Patron, Boss…"],
+  ["age", "Ton âge", "select", ["", "Moins de 15 ans", "15-17 ans", "18-25 ans", "Plus de 25 ans"]], ["ville", "Ta ville ou ta région (pour les commerces près de chez toi)", "text", "ex. Lyon"],
+  ["aime", "Ce que tu aimes, tes passions", "text", "ex. jeux vidéo, foot, dessin, tech…"], ["competences", "Ce que tu sais faire", "text", "ex. montage vidéo, parler aux gens…"],
+  ["objectif", "Ton objectif", "text", "ex. gagner 200 € avant l'été, apprendre le business…"],
+  ["temps", "Temps que tu peux y passer", "select", ["", "Moins de 2 h par semaine", "2 à 5 h par semaine", "Plus de 5 h par semaine"]],
+  ["autre", "Autre chose à savoir", "text", ""]];
+async function profileCard() {
+  const p = (await api("/api/owner_profile")).profile || {};
+  return `<div class="card" style="border-left:4px solid var(--accent2)"><h4>🙋 Me présenter à l'équipe</h4>
+    <p class="muted">Les 14 agents liront cette fiche en permanence : ils t'appelleront par ton prénom et adapteront leurs idées à ta ville, tes goûts et ton temps. Ne mets pas ton adresse, ton école ou d'infos très personnelles.</p>
+    <div style="display:grid;gap:6px">${PROFILE_FIELDS.map(([k, label, type, extra]) => `<label class="muted">${label}</label>` + (type === "select"
+      ? `<select data-p="${k}">${extra.map(o => `<option ${p[k] === o ? "selected" : ""} value="${esc(o)}">${o || "—"}</option>`).join("")}</select>`
+      : `<input data-p="${k}" value="${esc(p[k] || "")}" placeholder="${esc(extra)}">`)).join("")}</div>
+    <button class="primary" style="margin-top:8px" onclick="saveOwnerProfile(this)">💾 Enregistrer</button></div>`;
+}
+async function saveOwnerProfile(btn) {
+  const o = {}; document.querySelectorAll("[data-p]").forEach(el => o[el.dataset.p] = el.value.trim());
+  if (!o.prenom) { alert("Mets au moins ton prénom 🙂"); return; }
+  await post("/api/owner_profile", o); btn.textContent = "✅ Enregistré : l'équipe te connaît !"; poll();
+}
 async function answerQ(id, value) {
   const answer = value ?? ($("#qa" + id) || {}).value ?? "";
   if (!answer.trim()) return;

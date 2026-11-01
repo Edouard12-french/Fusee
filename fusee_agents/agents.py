@@ -32,6 +32,8 @@ plusieurs agents en même temps puis fusionne les résultats. 🙋 Clara (agent 
 ou quand une tâche de workflow t'est confiée.
 - PRIORITÉ : si « Tes tâches en cours » contient une tâche, fais-la d'abord et termine-la avec complete_task \
 (le résultat doit se suffire à lui-même : l'étape suivante ne voit que lui).
+- {OWNER} peut aussi te parler EN PRIVÉ : sa discussion privée récente est dans ton contexte ; réponds-lui en
+  privé avec message_owner_private si besoin (jamais dans le groupe ce qu'il t'a confié en privé).
 - Le groupe est un chat type WhatsApp. Écris-y avec post_message : messages courts, concrets, en français. \
 Mentionne @Nom seulement quand tu as vraiment besoin de quelqu'un.
 - Besoin d'une réponse ou d'une action de {OWNER} ? submit_need (Clara le lui présente) ; pour publier ou dépenser :
@@ -105,7 +107,8 @@ class Agent:
 
 
 WORK = ["post_message", "save_memory", "set_status", "complete_task", "list_skills", "read_skill",
-        "list_toolbox", "run_tool", "list_files", "read_file", "write_file", "remember", "recall", "submit_need"]
+        "list_toolbox", "run_tool", "list_files", "read_file", "write_file", "remember", "recall", "submit_need",
+        "message_owner_private"]
 BASE_TOOLS = WORK + ["propose_idea", "request_approval", "screenshot", "browse", "web_search", "web_fetch",
                      "youtube_search", "youtube_video", "list_products", "site_stats"]
 SELL_TOOLS = ["publish_site", "create_payment_link", "sales_summary", "list_contacts", "read_conversation",
@@ -389,9 +392,32 @@ for _d in team_config().get("custom_agents", []):  # recrues validées par Patro
         pass
 
 
+PROFILE_LABELS = {"prenom": "Prénom", "appel": "Comment l'appeler", "age": "Âge", "ville": "Ville / région",
+                  "aime": "Ce qu'il aime, ses passions", "competences": "Ce qu'il sait faire", "objectif": "Son objectif",
+                  "temps": "Temps disponible", "autre": "À savoir aussi"}
+
+
+def owner_profile() -> dict:
+    try:
+        return json.loads(db.get_setting("owner_profile", "{}"))
+    except ValueError:
+        return {}
+
+
+def owner_profile_text() -> str:
+    p = owner_profile()
+    lines = [f"- {PROFILE_LABELS.get(k, k)} : {v}" for k, v in p.items() if v]
+    if not lines:
+        return ""
+    call = p.get("appel") or p.get("prenom") or OWNER
+    return (f"\n\n## Qui est {OWNER} (il s'est présenté à l'équipe)\n" + "\n".join(lines)
+            + f"\nAdresse-toi à lui en l'appelant « {call} », comme un coéquipier. Tiens compte de sa ville, de ses "
+              "goûts et de son temps disponible dans tes propositions.")
+
+
 def system_prompt(agent: Agent) -> str:
     team = "\n".join(f"- {a.emoji} {a.name} — {a.kind} ({a.title})" for a in TEAM)
     extra = agent_settings(agent.name).get("extra", "")
     learned = f"\n\n## Consignes apprises (ajoutées par l'équipe)\n{extra}" if extra else ""
     return (f"{COMMON_PROMPT}\n## L'équipe\n{team}\n- 👤 {OWNER} — le propriétaire (humain)\n\n"
-            f"## Ton rôle ({agent.kind})\n{agent.prompt}{learned}")
+            f"## Ton rôle ({agent.kind})\n{agent.prompt}{learned}{owner_profile_text()}")

@@ -70,6 +70,8 @@ def build_context(agent: Agent, reason: str) -> str:
                   f"(aujourd'hui {b['api_today_eur']:.2f} / {b['api_daily_cap_eur']:.2f} €). "
                   f"Disponible pour de vraies dépenses (hors IA) : {b['free_to_spend_eur']:.2f} €.")
     my_tasks = workflow.agent_context(agent.name)
+    private = dm_thread(agent.name, 8)
+    private_txt = "\n".join(f"[{_fmt_ts(m['ts'])}] {m['sender']}: {m['content'][:500]}" for m in private) or "(aucune)"
     prods = products_overview()
     prods_txt = "\n".join(
         f"#{p['id']} {p['nom']} [{p['statut']}] {p['prix_eur']:.2f} € — {p['visiteurs_7j']} visiteurs/7 j, "
@@ -120,6 +122,9 @@ Raison du réveil : {reason}
 
 ## Souvenirs utiles de la mémoire collective (recall pour chercher plus)
 {mem_txt}
+
+## Ta discussion privée récente avec {OWNER} (les autres ne la voient pas)
+{private_txt}
 
 ## Tes tâches en cours (workflows)
 {my_tasks or "(aucune)"}
@@ -306,3 +311,63 @@ async def run_meeting(agents: list[Agent], owner_text: str, wake, parallel: int 
 
     await asyncio.gather(*(one(a) for a in agents))
     db.log("système", "réunion", f"réunion terminée ({len(agents)} agents)")
+
+
+
+# --- discussion privée avec un agent ------------------------------------------------------------------
+DM_RULES = f"""
+## Discussion privée
+{OWNER} te parle EN PRIVÉ (les autres agents ne voient pas cette conversation). Réponds-lui directement, en ton nom,
+de façon naturelle, utile et concrète (en général 1 à 6 phrases ; plus seulement s'il demande une explication).
+Tu n'as pas d'outils dans cette discussion. Si une action de ta part est utile, termine par une ligne seule :
+ACTION: <ce que tu vas faire concrètement>
+et tu t'y mettras juste après (avec tes outils). Rien n'est publié ni dépensé sans validation de {OWNER}."""
+
+
+def dm_thread(agent_name: str, limit: int = 30) -> list[dict]:
+    return db.q("SELECT * FROM dms WHERE agent=? ORDER BY id DESC LIMIT ?", (agent_name, limit))[::-1]
+
+
+async def dm_reply(agent: Agent, wake) -> None:
+    """L'agent répond en privé au dernier message de Patron."""
+    model, _ = model_for(agent.tier)
+    history = dm_thread(agent.name, 30)
+    messages: list[dict] = []
+    for m in history:
+        role = "user" if m["sender"] == OWNER else "assistant"
+        if messages and messages[-1]["role"] == role:
+            messages[-1]["content"] += "\n\n" + m["content"]
+        else:
+            messages.append({"role": role, "content": m["content"]})
+    while messages and messages[0]["role"] != "user":
+        messages.pop(0)
+    if not messages or messages[-1]["role"] != "user":
+        return
+    memory = db.get_memory(agent.name)[:2000] or "(vide)"
+    messages[0]["content"] = f"(Contexte — ta mémoire : {memory})\n\n" + messages[0]["content"]
+    extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+             if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
+    db.set_state(agent.name, status="en discussion privée")
+    try:
+        resp = await client.beta.messages.create(
+            model=model, max_tokens=3000,
+            system=[{"type": "text", "text": system_prompt(agent) + DM_RULES, "cache_control": {"type": "ephemeral"}}],
+            messages=messages, output_config={"effort": "medium"}, **extra)
+        db.add_cost(agent.name, _cost(resp.usage, getattr(resp, "model", None) or model))
+        text = "".join(b.text for b in resp.content if b.type == "text").strip()
+        action = ""
+        lines = text.splitlines()
+        for i, line in enumerate(lines):
+            if line.strip().upper().startswith("ACTION:"):
+                action, text = line.split(":", 1)[1].strip(), "\n".join(lines[:i]).strip()
+                break
+        db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)",
+             (time.time(), agent.name, agent.name, (text or "👍") + (f"\n➡️ Je m'en occupe : {action}" if action else "")))
+        if action:
+            wake(agent.name, f"en privé, {OWNER} t'a parlé et tu as annoncé : « {action} ». Fais-le maintenant "
+                             "(la discussion privée est dans ton contexte)")
+    except Exception as e:  # noqa: BLE001
+        db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)",
+             (time.time(), agent.name, agent.name, f"(Je n'ai pas pu répondre : {type(e).__name__}. Réessaie dans un instant.)"))
+    finally:
+        db.set_state(agent.name, status="en attente")

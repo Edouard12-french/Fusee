@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS prospects (id INTEGER PRIMARY KEY, ts REAL, agent TEX
 CREATE TABLE IF NOT EXISTS suppression (email TEXT PRIMARY KEY, ts REAL, reason TEXT);
 CREATE TABLE IF NOT EXISTS needs (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, need TEXT, why TEXT, urgency TEXT,
     options TEXT, status TEXT DEFAULT 'nouveau', result TEXT, resolved_ts REAL);
+CREATE TABLE IF NOT EXISTS dms (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, sender TEXT, content TEXT,
+    attachments TEXT, read INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )
