@@ -149,7 +149,7 @@ def test(service: str, given: dict) -> dict:
         if service == "dashboard_url":
             url = _value("DASHBOARD_URL", given.get("DASHBOARD_URL", "")).rstrip("/")
             if not url.startswith("https://"):
-                return {"ok": False, "message": "L'adresse privée doit commencer par https:// (lance ./activer-iphone.sh)."}
+                return {"ok": False, "message": "L'adresse privée doit commencer par https:// (double-clique « Activer iPhone et iPad » dans le dossier Fusee)."}
             code, body = _get(f"{url}/manifest.webmanifest", {})
             if code in (200, 401) and ("Fusée" in body or code == 401):
                 return {"ok": True, "message": "Adresse privée joignable ✅ : ouvre-la dans Safari sur ton iPhone."}

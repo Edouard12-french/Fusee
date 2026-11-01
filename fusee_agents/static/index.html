@@ -614,15 +614,15 @@ const SETUP_STEPS = [
   {title: "Stripe — encaisser les ventes", need: "quand un produit est prêt", test: "stripe",
    help: `**Compte au nom d'un parent** (l'argent arrive sur son compte bancaire). https://dashboard.stripe.com/register → **Développeurs** → **Clés API** → *Clé secrète*. Commence par une clé **sk_test_** pour tout essayer sans vrai paiement.`,
    fields: [{k: "STRIPE_SECRET_KEY", label: "Clé secrète Stripe", type: "password"}]},
-  {title: "📱 Fusée sur ton iPhone (privé, rien que pour toi)", need: "conseillé", test: "dashboard_url",
-   help: `1. Installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac) **et** sur ton iPhone (App Store), connecte-toi **avec le même compte** sur les deux.
-2. Sur le Mac, dans le dossier Fusee : \`./activer-iphone.sh\` — il affiche ton adresse privée en **https://…ts.net** et l'enregistre ici tout seul.
-3. Sur l'iPhone (Tailscale allumé) : ouvre cette adresse dans **Safari** → **Partager** → **Sur l'écran d'accueil**.
-4. Ouvre **Fusée** depuis l'icône → ⚙️ Réglages → **Activer les notifications sur cet iPhone**.
+  {title: "📱 Fusée sur ton iPhone et ton iPad (privé, rien que pour toi)", need: "conseillé", test: "dashboard_url",
+   help: `1. Installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac), ton iPhone et ton iPad (App Store), connecte-toi **avec le même compte** partout.
+2. Sur le Mac : Finder → dossier **Fusee** → double-clique **« Activer iPhone et iPad »** — ton adresse privée **https://…ts.net** s'enregistre ici toute seule.
+3. ⚙️ Réglages → scanne le **QR code** avec l'appareil photo de l'iPhone / l'iPad → **Safari** → **Partager** → **Sur l'écran d'accueil**.
+4. Ouvre **Fusée** depuis l'icône → ⚙️ Réglages → **Activer les notifications**.
 Seuls **tes** appareils connectés à ton compte Tailscale peuvent ouvrir cette adresse : personne d'autre.`,
-   fields: [{k: "DASHBOARD_URL", label: "Adresse privée de Fusée (rempli par ./activer-iphone.sh)", ph: "https://ton-mac.tailxxxx.ts.net"}]},
+   fields: [{k: "DASHBOARD_URL", label: "Adresse privée de Fusée (remplie toute seule)", ph: "https://ton-mac.tailxxxx.ts.net"}]},
   {title: "Adresse publique — chat sur les sites en ligne", need: "plus tard", test: "public_url",
-   help: `Uniquement quand un site est en ligne et doit avoir le chat. Sur le Mac : \`./activer-iphone.sh --chat\`. Il ouvre au public **seulement** la petite partie « chat et statistiques » de Fusée (un serveur séparé) : ton application, elle, reste privée.`,
+   help: `Uniquement quand un site est en ligne et doit avoir le chat. Sur le Mac : Finder → dossier **Fusee** → double-clique **« Activer le chat des sites »**. Il ouvre au public **seulement** la petite partie « chat et statistiques » de Fusée (un serveur séparé) : ton application, elle, reste privée.`,
    fields: [{k: "PUBLIC_URL", label: "Adresse publique", ph: "https://ton-mac.tailxxxx.ts.net"}]},
   {title: "E-mail des clients", need: "optionnel", test: "email",
    help: `Une adresse dédiée au business (ex. Gmail avec un **mot de passe d'application** : compte Google → Sécurité → Validation en 2 étapes → Mots de passe des applications).`,

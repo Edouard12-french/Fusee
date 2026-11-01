@@ -196,7 +196,7 @@ les 7 derniers jours.
 
   Seuls **tes** appareils connectés à ton compte Tailscale peuvent l'ouvrir : personne d'autre au monde. Les
   notifications sont **chiffrées de bout en bout** (même Apple ne peut pas les lire). `./activer-iphone.sh --off`
-  coupe l'accès.
+  (ou double-clic sur **« Couper l'acces iPhone et chat »**) coupe l'accès.
 
 ## Brancher les fonctions (fichier `.env`, puis redémarrer)
 
@@ -214,7 +214,7 @@ L'onglet **⚙️ Réglages** de l'appli montre ce qui est branché.
 | 🌐 Navigateur des agents | Bouton **🌐 Navigateur** dans l'appli (tu l'autorises ou le bloques quand tu veux) | — |
 
 **Adresse publique pour le chat** : les sites en ligne doivent pouvoir joindre Fusée sur ton ordinateur. Lance
-`./activer-iphone.sh --chat` : il ouvre au public, via Tailscale Funnel, **uniquement** un petit serveur séparé
+double-clique **« Activer le chat des sites »** (ou `./activer-iphone.sh --chat`) : il ouvre au public, via Tailscale Funnel, **uniquement** un petit serveur séparé
 (port `PUBLIC_PORT`, 8001) qui ne contient que le chat, les statistiques et la désinscription — **l'application
 elle-même n'est jamais exposée sur internet**. L'adresse (`https://…ts.net:8443`) est enregistrée dans `PUBLIC_URL`.
 Sans adresse publique, les sites affichent un contact par e-mail à la place.
@@ -320,6 +320,13 @@ Aucun appel réel à l'IA, à Stripe, à Netlify ou à Apple.
 ## Structure
 
 ```
+À double-cliquer (pas besoin de taper quoi que ce soit) :
+  Fusee.command                         installe et ouvre Fusée
+  Mettre a jour Fusee.command           met Fusée à jour (tes réglages et données sont gardés)
+  Activer iPhone et iPad.command        accès privé depuis l'iPhone / l'iPad + QR code
+  Activer le chat des sites.command     le chat (et le 🎤) des sites en ligne peut joindre Fusée
+  Couper l'acces iPhone et chat.command coupe l'accès depuis l'iPhone / l'iPad et le chat public
+
 main.py                        lancement (serveur + agents), ouvre l'appli
 start.sh / start.bat           lancement 24h/24 avec installation et redémarrage auto
 install-mac.sh                 démarrage automatique sur Mac (service launchd) + app Fusée
