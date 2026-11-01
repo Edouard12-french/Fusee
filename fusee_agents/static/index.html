@@ -101,6 +101,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px;borde
 .req-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}.req-head .av{--ag:inherit}
 .req{background:var(--panel2);border-radius:12px;padding:10px;margin-top:8px;border-left:4px solid var(--ag)}
 .req-kind{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:3px}
+#toasts{position:fixed;top:70px;right:16px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 32px))}
+.toast{background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-left:5px solid var(--accent2);border-radius:14px;padding:10px 14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.4);cursor:pointer;animation:tin .35s ease}
+.toast b{display:block;margin-bottom:2px}.toast .muted{display:block;max-height:3.2em;overflow:hidden}
+@keyframes tin{from{opacity:0;transform:translateX(30px)}}
 button.meet{background:linear-gradient(135deg,#0ea5e9,#22c55e);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(14,165,233,.35);white-space:nowrap}
 #meetBar{margin:0 12px 8px;padding:8px 12px;border-radius:12px;color:#fff;font-size:13px;background:linear-gradient(135deg,#0ea5e9,#22c55e);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 #meetBar[hidden]{display:none}#meetBar .who{opacity:.45}#meetBar .who.done{opacity:1}
@@ -152,6 +157,7 @@ nav#bottom{display:none}
   <button data-v="more" id="moreBtn">📋<br>Suivi</button>
 </nav>
 <div id="lightbox"><img alt=""></div>
+<div id="toasts"></div>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -202,6 +208,24 @@ function renderAgents() {
   document.querySelectorAll(".agent").forEach(el => el.onclick = () => { selected = el.dataset.n; tab = "agent"; renderAgents(); renderTabs(); renderPane(); setView("more"); });
 }
 
+let lastNotif = null;
+function ding() {  // petit son doux, sans fichier
+  try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(880, c.currentTime); o.frequency.exponentialRampToValueAtTime(1320, c.currentTime + .12);
+    g.gain.setValueAtTime(.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(.12, c.currentTime + .02); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + .45);
+    o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + .5); } catch (e) {}
+}
+function toast(n) {
+  const icon = {validation: "🛡️", rapport: "📄", client: "💬", alerte: "🔔"}[n.kind] || "🔔";
+  const target = {validation: "owner", rapport: "reports", client: "contacts", alerte: "notifs"}[n.kind] || "notifs";
+  const el = document.createElement("div"); el.className = "toast";
+  el.innerHTML = `<b>${icon} ${esc(n.title)}</b><span class="muted">${esc(n.body)}</span>`;
+  el.onclick = () => { tab = n.title.includes("t'écrit en privé") ? "agent" : target;
+    if (tab === "agent") selected = (S.agents.find(a => n.title.includes(a.name)) || {}).name || selected;
+    renderTabs(); renderPane(); setView("more"); el.remove(); };
+  $("#toasts").prepend(el); setTimeout(() => el.remove(), 9000);
+  while ($("#toasts").children.length > 3) $("#toasts").lastChild.remove();
+}
 let meet = null;
 function updateMeet() {
   if (!meet) return;
@@ -234,6 +258,9 @@ async function poll() {
     $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
     $("#browserBtn").classList.toggle("on", r.browser_enabled);
     renderAgents(); addMessages(r.messages);
+    const ln = r.latest_notification;
+    if (lastNotif === null) lastNotif = ln ? ln.id : 0;  // au chargement : pas d'alerte pour les anciennes
+    else if (ln && ln.id > lastNotif) { toast(ln); if (S._sound !== false) ding(); lastNotif = ln.id; }
     const sig = [r.pending_approvals, r.unread_notifications, r.waiting_contacts, r.open_questions, r.open_owner_tasks].join("/");
     if (sig !== lastSig) { lastSig = sig; renderTabs(); if (["approvals","contacts","owner"].includes(tab)) renderPane(true); }
     if (["agent", "feed", "flows"].includes(tab) || (tab === "contacts" && openContact)) renderPane(true);
@@ -524,16 +551,30 @@ async function renderPane(soft) {
     } else if (tab === "settings") {
       if (soft) return;
       const c = S.capabilities, ok = b => b ? "✅" : "⚪";
-      pane.innerHTML = await profileCard() + `<div class="card"><h4>Ce qui est branché</h4>
+      const ns = await api("/api/notif_settings"); S._sound = ns.sound;
+      const hours = sel => Array.from({length: 24}, (_, h) => `<option value="${h}" ${sel === h ? "selected" : ""}>${h} h</option>`).join("");
+      pane.innerHTML = await profileCard() + `<div class="card" style="border-left:4px solid var(--accent)"><h4>🔔 Notifications</h4>
+          <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="nMac" ${ns.mac ? "checked" : ""}> Notifications du Mac (en haut à droite de l'écran, même Fusée fermé)</label>
+          ${ns.mac_available ? "" : `<div class="muted">(disponibles quand Fusée tourne sur ton Mac)</div>`}
+          <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="nSound" ${ns.sound ? "checked" : ""}> Avec un petit son</label>
+          <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="nQuiet" ${ns.quiet ? "checked" : ""}> Silence la nuit, de
+            <select id="nFrom">${hours(ns.quiet_from)}</select> à <select id="nTo">${hours(ns.quiet_to)}</select></label>
+          <div class="muted" style="margin-top:6px">Pendant le silence, tout reste dans l'appli (onglet 🔔 Notifs) : rien n'est perdu.${ns.quiet_now ? " <b>Silence en cours.</b>" : ""}
+            ${ns.phone ? "📱 Aussi envoyées sur ton téléphone (ntfy)." : "Pour les recevoir aussi sur ton téléphone : étape « Notifications sur ton téléphone » dans 🚀 Démarrage (optionnel)."}</div>
+          <button style="margin-top:8px" onclick="testNotif(this)">🔔 Envoyer une notification de test</button></div>
+        <div class="card"><h4>Ce qui est branché</h4>
           ${ok(c.push)} Notifications téléphone (ntfy)<br>${ok(c.netlify)} Mise en ligne des sites (Netlify)<br>${ok(c.stripe)} Paiements (Stripe)<br>
           ${ok(c.email)} E-mail clients<br>${ok(c.public_url)} Chat sur les sites ${c.public_url ? "(" + esc(c.public_url) + ")" : "(PUBLIC_URL)"}<br>
           ${ok(S.browser_enabled)} Navigateur web des agents
           <p class="muted">Tout se règle dans le fichier .env (voir le README), puis redémarre Fusée.</p>
-          <button onclick="post('/api/test_notification')">📱 Envoyer une notification de test</button></div>
+          </div>
         <div class="card"><h4>🛡️ Publication</h4><p class="muted">Rien n'est jamais publié sans ton accord : chaque mise en ligne, prix, lien de paiement, campagne de prospection, dépense ou recrue arrive dans 📥 Demandes.</p></div>
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
+      ["nMac", "nSound", "nQuiet", "nFrom", "nTo"].forEach(id => $("#" + id).onchange = () => post("/api/notif_settings", {
+        mac: $("#nMac").checked, sound: $("#nSound").checked, quiet: $("#nQuiet").checked, quiet_from: +$("#nFrom").value, quiet_to: +$("#nTo").value})
+        .then(() => { S._sound = $("#nSound").checked; }));
       $("#smode").value = S.support_mode;
       $("#smode").onchange = e => post("/api/support_mode?mode=" + e.target.value).then(poll);
     }
@@ -546,8 +587,8 @@ const SETUP_STEPS = [
   {title: "Clé API Anthropic (le cerveau des agents)", need: "obligatoire", test: "anthropic",
    help: `**Avec un parent** (il faut avoir 18 ans) : va sur https://platform.claude.com → crée le compte → **Billing** : ajoute un moyen de paiement et un petit crédit (ex. 20 €) → **Limits** : fixe une **limite de dépense mensuelle** (sécurité) → **API Keys** → *Create Key* → copie la clé ici.`,
    fields: [{k: "ANTHROPIC_API_KEY", label: "Clé API (commence par sk-ant-)", type: "password"}]},
-  {title: "Notifications sur ton téléphone", need: "conseillé", test: "ntfy",
-   help: `Installe l'app gratuite **ntfy** (App Store / Google Play) → bouton **+** → « S'abonner à un sujet » → tape exactement le nom ci-dessous (garde-le secret : n'importe qui le connaissant pourrait lire tes notifications).`,
+  {title: "Notifications sur ton téléphone", need: "optionnel", test: "ntfy",
+   help: `Sur ton Mac, Fusée t'envoie déjà ses **propres notifications** (réglages dans ⚙️ Réglages) : rien à installer. Cette étape sert seulement si tu veux **aussi** les recevoir sur ton téléphone. Installe l'app gratuite **ntfy** (App Store / Google Play) → bouton **+** → « S'abonner à un sujet » → tape exactement le nom ci-dessous (garde-le secret : n'importe qui le connaissant pourrait lire tes notifications).`,
    fields: [{k: "NTFY_TOPIC", label: "Nom secret du sujet", ph: "ex. " + randTopic()}]},
   {title: "Accès et mot de passe", need: "conseillé",
    help: `Par défaut, Fusée ne s'ouvre **que sur ce Mac** : personne d'autre ne peut y accéder. Pour l'ouvrir aussi depuis ton téléphone (même Wi-Fi), choisis l'autre option **et** mets un mot de passe (n'importe quel nom d'utilisateur + ce mot de passe).`,
@@ -621,6 +662,10 @@ async function saveOwnerProfile(btn) {
   const o = {}; document.querySelectorAll("[data-p]").forEach(el => o[el.dataset.p] = el.value.trim());
   if (!o.prenom) { alert("Mets au moins ton prénom 🙂"); return; }
   await post("/api/owner_profile", o); btn.textContent = "✅ Enregistré : l'équipe te connaît !"; poll();
+}
+async function testNotif(btn) {
+  const d = await (await post("/api/test_notification")).json();
+  btn.textContent = d.mac ? "✅ Envoyée : regarde en haut à droite de ton écran" : "✅ Envoyée : elle apparaît ici" + (d.phone ? " et sur ton téléphone" : "");
 }
 async function answerQ(id, value) {
   const answer = value ?? ($("#qa" + id) || {}).value ?? "";

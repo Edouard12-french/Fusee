@@ -20,6 +20,7 @@ from . import setup as setup_mod
 from .agents import (BY_NAME, OWNER, PROFILE_LABELS, TEAM, add_agent, agent_settings, make_custom, owner_profile,
                      save_team_config, team_config)
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
+from . import notify as notify_mod
 from .notify import notify
 from .scheduler import scheduler
 from .tools import _safe_path, deliver_reply, mentions, products_overview, skills, toolbox
@@ -117,12 +118,13 @@ def state(after: int = 0):
         "directive": db.get_setting("directive", ""),
         "pending_approvals": db.q("SELECT COUNT(*) n FROM approvals WHERE status='en attente'")[0]["n"],
         "unread_notifications": db.q("SELECT COUNT(*) n FROM notifications WHERE read=0")[0]["n"],
+        "latest_notification": (db.q("SELECT id, kind, title, body FROM notifications ORDER BY id DESC LIMIT 1") or [None])[0],
         "waiting_contacts": len(db.unanswered_contacts()),
         "support_mode": db.get_setting("support_mode", "auto"),
         "browser_enabled": db.get_setting("browser_enabled", "1") == "1",
         "capabilities": {"email": mailbox.ENABLED, "netlify": bool(integrations.NETLIFY_TOKEN),
                          "stripe": bool(integrations.STRIPE_KEY), "public_url": PUBLIC_URL,
-                         "push": bool(os.getenv("NTFY_TOPIC"))},
+                         "push": bool(os.getenv("NTFY_TOPIC")), "mac_notifications": notify_mod.mac_available()},
     }
 
 
@@ -325,7 +327,26 @@ def support_mode(mode: str):
 
 @app.post("/api/test_notification")
 def test_notification():
-    notify("alerte", "Test Fusée 🚀", "Si tu vois ce message sur ton téléphone, les notifications marchent !")
+    notify("alerte", "Test des notifications", "Si tu vois ce message, les notifications de Fusée marchent ! 🎉",
+           priority="urgent")  # « urgent » : passe même pendant les heures de silence
+    return {"ok": True, "mac": notify_mod.mac_available(), "phone": bool(notify_mod.NTFY_TOPIC)}
+
+
+@app.get("/api/notif_settings")
+def notif_settings():
+    return {**notify_mod.settings(), "mac_available": notify_mod.mac_available(), "phone": bool(notify_mod.NTFY_TOPIC),
+            "quiet_now": notify_mod.is_quiet()}
+
+
+@app.post("/api/notif_settings")
+async def save_notif_settings(request: Request):
+    d = await request.json()
+    for k in ("mac", "sound", "quiet"):
+        if k in d:
+            db.set_setting(f"notif_{k}", "1" if d[k] else "0")
+    for k in ("quiet_from", "quiet_to"):
+        if k in d and 0 <= int(d[k]) <= 23:
+            db.set_setting(f"notif_{k}", str(int(d[k])))
     return {"ok": True}
 
 

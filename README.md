@@ -173,7 +173,8 @@ L'onglet **⚙️ Réglages** de l'appli montre ce qui est branché.
 
 | Fonction | Ce qu'il faut | Coût |
 |---|---|---|
-| 📱 Notifications téléphone | App **ntfy** + un nom secret dans `NTFY_TOPIC` | gratuit |
+| 🔔 Notifications sur le Mac | Rien à faire : Fusée envoie ses propres notifications (réglages dans ⚙️ Réglages) | gratuit |
+| 📱 Notifications aussi sur le téléphone (optionnel) | App **ntfy** + un nom secret dans `NTFY_TOPIC` | gratuit |
 | 🌍 Mise en ligne des sites | Compte [Netlify](https://netlify.com) + `NETLIFY_TOKEN` | gratuit pour démarrer |
 | 💳 Paiements | Compte [Stripe](https://stripe.com) + `STRIPE_SECRET_KEY` (essaie d'abord avec une clé `sk_test_`) | commission Stripe par vente |
 | 💬 Chat en direct sur les sites | Une adresse publique pour Fusée dans `PUBLIC_URL` (ci-dessous) | gratuit |
