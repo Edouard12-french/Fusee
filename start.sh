@@ -30,7 +30,11 @@ fi
 # 2. Modules de Fusée (seulement s'ils manquent ou si requirements.txt a changé)
 VPY=.venv/bin/python
 echo "🐍 Python utilisé : $("$VPY" --version 2>&1)"
-pip_install() { if [ -n "$UV" ]; then "$UV" pip install --python "$VPY" -r requirements.txt; else "$VPY" -m pip install --upgrade pip && "$VPY" -m pip install -r requirements.txt; fi; }
+# --only-binary : toujours des versions toutes prêtes pour ce Mac (Intel ou Apple Silicon), jamais de compilation
+pip_install() {
+  if [ -n "$UV" ]; then "$UV" pip install --python "$VPY" --only-binary :all: -r requirements.txt
+  else "$VPY" -m pip install --upgrade pip && "$VPY" -m pip install --only-binary=:all: -r requirements.txt; fi
+}
 if [ ! -f .venv/.installed ] || [ requirements.txt -nt .venv/.installed ] \
    || ! "$VPY" -c "import uvicorn, fastapi, anthropic" 2>/dev/null; then
   echo "📦 Installation des modules de Fusée (quelques minutes)…"
