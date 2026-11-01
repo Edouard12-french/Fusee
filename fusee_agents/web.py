@@ -492,10 +492,11 @@ async def chat_send(request: Request):
     is_new = not db.q("SELECT id FROM contacts WHERE session=?", (session,))
     cid = db.upsert_contact(session=session, email=email, name=str(data.get("name", ""))[:80],
                             source=f"chat {site}".strip())
-    db.add_conv(cid, "chat", "in", text, subject=site)
+    voice = data.get("voice") is True  # dicté au micro : la réponse sera lue à voix haute chez le visiteur
+    db.add_conv(cid, "chat", "in", f"🎤 {text}" if voice else text, subject=site)
     if is_new:
-        notify("client", f"💬 Nouveau visiteur sur le chat {site}", text[:500], priority="low")
-    scheduler.wake("Iris", f"message chat du contact #{cid} sur le site {site}")
+        notify("client", f"{'🎤' if voice else '💬'} Nouveau visiteur sur le chat {site}", text[:500], priority="low")
+    scheduler.wake("Iris", f"message {'VOCAL ' if voice else ''}chat du contact #{cid} sur le site {site}")
     return {"ok": True}
 
 

@@ -42,7 +42,9 @@ besoin d'eux** : ils ne coûtent rien le reste du temps.
    **demande de validation** (avec les captures) → notification sur ton téléphone → **Accepter / Refuser**.
 3. **Ils lancent** : après ton accord, le site est **mis en ligne** (lien public) et un **lien de paiement**
    est créé ; l'argent arrive sur **ton** compte Stripe. Les pubs et vidéos sont prêtes, c'est toi qui les postes.
-4. **Ils vendent** : les visiteurs parlent à Iris sur le chat du site. Tu vois **chaque conversation**,
+4. **Ils vendent** : les visiteurs parlent à Iris sur le chat du site — **par écrit ou à la voix 🎤** (ils parlent,
+   Iris répond à voix haute ; la dictée et la voix sont faites par leur navigateur, gratuitement, et le chat
+   indique toujours que c'est un assistant IA, comme la loi l'exige). Tu vois **chaque conversation**,
    et pour chaque personne : **particulier ou entreprise, ce qui l'intéresse, son ressenti 😍🙂😐🤔😠,
    un score sur 100 et son potentiel pour le futur**. Les prospects chauds (≥ 70) te sont notifiés.
    Tu peux aussi répondre toi-même à un client depuis l'appli.

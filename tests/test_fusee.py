@@ -203,6 +203,28 @@ def test_qr_code_for_iphone(monkeypatch):
     assert TestClient(web.public_app).get("/api/qr").status_code == 404  # jamais sur le serveur public
 
 
+def test_site_chat_voice_message_is_marked_for_iris():
+    from fastapi.testclient import TestClient
+    from fusee_agents import web
+    from fusee_agents.agents import BY_NAME as A
+    c = TestClient(web.public_app)
+    woke = []
+    web.scheduler.wake, old = (lambda n, r: woke.append((n, r))), web.scheduler.wake
+    try:
+        sess = "voix-" + "x" * 20
+        assert c.post("/public/chat/send", content=json.dumps(
+            {"session": sess, "message": "Bonjour, c'est combien ?", "site": "demo", "voice": True})).status_code == 200
+        assert c.post("/public/chat/send", content=json.dumps(
+            {"session": sess, "message": "Et le délai ?", "site": "demo", "voice": "oui"})).status_code == 200
+    finally:
+        web.scheduler.wake = old
+    cid = db.q("SELECT id FROM contacts WHERE session=?", (sess,))[0]["id"]
+    msgs = [r["content"] for r in db.q("SELECT content FROM conv WHERE contact_id=? ORDER BY id", (cid,))]
+    assert msgs == ["🎤 Bonjour, c'est combien ?", "Et le délai ?"]  # seul voice=true compte
+    assert woke[0][0] == "Iris" and "VOCAL" in woke[0][1] and "VOCAL" not in woke[1][1]
+    assert "LUE À VOIX HAUTE" in A["Iris"].prompt and "assistant virtuel (IA)" in system_prompt(A["Iris"])
+
+
 def test_setup_never_returns_secrets(tmp_path, monkeypatch):
     from fusee_agents import setup
     monkeypatch.setattr(setup, "ENV", tmp_path / ".env")
