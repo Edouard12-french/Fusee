@@ -39,6 +39,27 @@ DEFAULT_DIRECTIVE = f"""Phase 1 — choisir le premier business (aucune consigne
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
+def explain_api_error(e: "anthropic.APIStatusError") -> str:
+    """Traduit une erreur de l'API en français, avec la solution."""
+    msg = (getattr(e, "message", "") or str(e)).lower()
+    code = getattr(e, "status_code", 0)
+    if "credit balance" in msg or "billing" in msg or "purchase credits" in msg:
+        return "erreur : crédit épuisé ou absent → achète du crédit (Billing) sur platform.claude.com"
+    if "spend limit" in msg or "usage limit" in msg or "monthly" in msg and "limit" in msg:
+        return "erreur : limite de dépense du mois atteinte (Limits sur platform.claude.com)"
+    if code == 401 or "x-api-key" in msg or "authentication" in msg:
+        return "erreur : clé API invalide → recrée une clé (API Keys) et colle-la dans 🚀 Démarrage"
+    if code == 403 or "permission" in msg:
+        return "erreur : ce compte n'a pas accès à ce modèle ou à cet outil"
+    if code == 404 or "model" in msg and ("not found" in msg or "does not exist" in msg):
+        return "erreur : modèle indisponible pour ce compte (essaie le plan « eco » dans 🚀 Démarrage)"
+    if code == 429 or "rate limit" in msg:
+        return "en pause : trop de demandes d'un coup, reprise automatique"
+    if code >= 500 or code == 529 or "overloaded" in msg:
+        return "en pause : le service est surchargé, reprise automatique"
+    return f"erreur API {code} : {(getattr(e, 'message', '') or '')[:120]}"
+
+
 def _cost(usage, model: str) -> float:
     pin, pout, pread, pwrite = PRICING.get(model, PRICING["claude-opus-5-5"])
     c = (usage.input_tokens * pin + usage.output_tokens * pout
@@ -242,8 +263,8 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
         db.set_state(agent.name, status="erreur : clé API invalide")
         db.log(agent.name, "erreur", "clé API invalide ou manquante (ANTHROPIC_API_KEY)")
     except anthropic.APIStatusError as e:
-        db.set_state(agent.name, status=f"erreur API {e.status_code}")
-        db.log(agent.name, "erreur", f"API {e.status_code}: {e.message[:300]}")
+        db.set_state(agent.name, status=explain_api_error(e))
+        db.log(agent.name, "erreur", f"{explain_api_error(e)} — détail : API {e.status_code}: {e.message[:400]}")
     except anthropic.APIConnectionError as e:
         db.set_state(agent.name, status="erreur réseau")
         db.log(agent.name, "erreur", f"connexion : {e}")
@@ -398,7 +419,8 @@ async def diagnose(agents: list[Agent]) -> list[dict]:
             return {"agent": agent.name, "ok": True, "model": model, "secondes": round(time.time() - t0, 1),
                     "cout_eur": round(cost * 0.92, 4), "message": "OK"}
         except anthropic.APIStatusError as e:
-            return {"agent": agent.name, "ok": False, "model": model, "message": f"API {e.status_code} : {e.message[:300]}"}
+            return {"agent": agent.name, "ok": False, "model": model,
+                    "message": f"{explain_api_error(e)} (détail : API {e.status_code} : {e.message[:250]})"}
         except Exception as e:  # noqa: BLE001
             return {"agent": agent.name, "ok": False, "model": model, "message": f"{type(e).__name__} : {str(e)[:300]}"}
 
