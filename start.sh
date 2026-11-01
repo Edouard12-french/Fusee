@@ -24,9 +24,24 @@ if [ ! -x .venv/bin/python ]; then
   "$PY" -m venv .venv || exit 1
 fi
 VPY=.venv/bin/python
-if [ ! -f .venv/.installed ] || [ requirements.txt -nt .venv/.installed ]; then
-  "$VPY" -m pip install -q --upgrade pip
-  "$VPY" -m pip install -q -r requirements.txt && "$VPY" -m playwright install chromium && touch .venv/.installed
+echo "🐍 Python utilisé : $("$VPY" --version 2>&1)"
+if [ ! -f .venv/.installed ] || [ requirements.txt -nt .venv/.installed ] \
+   || ! "$VPY" -c "import uvicorn, fastapi, anthropic" 2>/dev/null; then
+  echo "📦 Installation des modules de Fusée (quelques minutes)…"
+  "$VPY" -m pip install --upgrade pip
+  if ! "$VPY" -m pip install -r requirements.txt; then
+    rm -f .venv/.installed
+    echo ""
+    echo "❌ L'installation des modules a échoué (voir les messages juste au-dessus)."
+    echo "   Envoie une capture de ces messages à Claude. Fusée ne démarre pas tant que ce n'est pas réglé."
+    exit 1
+  fi
+  "$VPY" -m playwright install chromium || echo "⚠️  Navigateur des agents non installé (captures et vidéos indisponibles pour l'instant)."
+  touch .venv/.installed
+fi
+if ! "$VPY" -c "import uvicorn, fastapi, anthropic" 2>/dev/null; then
+  echo "❌ Modules toujours introuvables. Essaie : rm -rf .venv && ./start.sh"
+  exit 1
 fi
 
 # 3. Fichier de réglages : créé au premier lancement, l'appli s'ouvre sur l'assistant de démarrage
