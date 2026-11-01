@@ -59,6 +59,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS kb USING fts5(topic, content, agent UNINDEXED
     tokenize="unicode61 remove_diacritics 2");
 CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, day TEXT, channel TEXT, format TEXT,
     product_id INTEGER, hook TEXT, text TEXT, media TEXT, link TEXT, status TEXT DEFAULT 'prêt', posted_ts REAL);
+CREATE TABLE IF NOT EXISTS campaigns (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, name TEXT, product_id INTEGER,
+    target TEXT, offer TEXT, sender_name TEXT, example TEXT, followup TEXT, daily_limit INTEGER,
+    status TEXT DEFAULT 'en attente de validation', approval_id INTEGER);
+CREATE TABLE IF NOT EXISTS prospects (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, campaign_id INTEGER, company TEXT,
+    email TEXT, website TEXT, sector TEXT, city TEXT, source_url TEXT, notes TEXT, status TEXT DEFAULT 'à contacter',
+    contact_id INTEGER, sends INTEGER DEFAULT 0, last_sent_ts REAL, subject TEXT, message TEXT);
+CREATE TABLE IF NOT EXISTS suppression (email TEXT PRIMARY KEY, ts REAL, reason TEXT);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 )

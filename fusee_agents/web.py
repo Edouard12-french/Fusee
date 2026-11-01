@@ -11,11 +11,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, budget, db, integrations, knowledge, mailbox
+from . import analytics, budget, db, integrations, knowledge, mailbox, outreach
 from . import setup as setup_mod
 from .agents import BY_NAME, OWNER, TEAM, add_agent, agent_settings, make_custom, save_team_config, team_config
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
@@ -350,6 +350,9 @@ async def decide(aid: int, d: Decision):
             raise HTTPException(400, f"Cette dépense ({a['amount_eur']} €) dépasse ton argent disponible ({free:.2f} €).")
         db.x("INSERT INTO ledger (ts, kind, amount_eur, label, source, approval_id) VALUES (?,?,?,?,?,?)",
              (time.time(), "dépense", a["amount_eur"], a["title"], f"validation #{aid}", aid))
+    if a["kind"] == "prospection":
+        camp_id = json.loads(a["payload"])["campaign_id"]
+        db.x("UPDATE campaigns SET status=? WHERE id=?", ("active" if d.approve else "refusée", camp_id))
     if a["kind"] == "équipe" and d.approve:
         spec = json.loads(a["payload"])
         if spec["name"] not in BY_NAME:
@@ -631,3 +634,59 @@ def content_status(cid: int, status: str):
         scheduler.wake(rows[0]["agent"], f"{OWNER} a posté la publication #{cid} ({rows[0]['channel']}) : suis ses "
                                          "visites dans les jours qui viennent (list_content)")
     return {"ok": True}
+
+
+# --- prospection ------------------------------------------------------------------
+@app.get("/api/outreach")
+def outreach_api():
+    camps = db.q("SELECT * FROM campaigns ORDER BY (status='active') DESC, id DESC LIMIT 30")
+    for c in camps:
+        c["stats"] = outreach.stats(c["id"])
+        c["prospects"] = db.q("SELECT * FROM prospects WHERE campaign_id=? ORDER BY (status='à envoyer par Patron') DESC, "
+                              "id DESC LIMIT 200", (c["id"],))
+    return {"campaigns": camps, "sent_today": outreach.sent_today(), "daily_limit": outreach.DAILY_LIMIT,
+            "mail_enabled": mailbox.ENABLED, "suppressed": db.q("SELECT COUNT(*) n FROM suppression")[0]["n"]}
+
+
+@app.post("/api/campaigns/{cid}")
+def campaign_status(cid: int, status: str):
+    c = db.q("SELECT * FROM campaigns WHERE id=?", (cid,))
+    if not c or status not in ("active", "en pause", "terminée") or c[0]["status"] in ("refusée", "en attente de validation"):
+        raise HTTPException(400, "changement impossible")
+    db.x("UPDATE campaigns SET status=? WHERE id=?", (status, cid))
+    db.post_message(OWNER, f"🎯 Campagne « {c[0]['name']} » : {status}.")
+    return {"ok": True}
+
+
+@app.post("/api/prospects/{pid}/sent")
+def prospect_sent(pid: int):
+    """Patron a envoyé lui-même un brouillon (boîte mail non configurée)."""
+    p = db.q("SELECT * FROM prospects WHERE id=? AND status='à envoyer par Patron'", (pid,))
+    if not p:
+        raise HTTPException(400)
+    db.add_conv(p[0]["contact_id"], "email", "out", p[0]["message"], subject=p[0]["subject"], agent="prospection (Patron)")
+    db.x("UPDATE prospects SET status='contacté', sends=1, last_sent_ts=? WHERE id=?", (time.time(), pid))
+    return {"ok": True}
+
+
+@app.post("/api/prospects/{pid}/stop")
+def prospect_stop(pid: int):
+    p = db.q("SELECT email FROM prospects WHERE id=?", (pid,))
+    if not p:
+        raise HTTPException(404)
+    outreach.suppress(p[0]["email"], f"retiré par {OWNER}")
+    return {"ok": True}
+
+
+@app.get("/public/stop", response_class=HTMLResponse)
+def public_stop(e: str = "", t: str = ""):
+    """Lien de désinscription des e-mails de prospection (sans mot de passe)."""
+    ok = bool(e) and outreach.check_stop_token(e, t)
+    if ok:
+        outreach.suppress(e, "lien de désinscription")
+        db.post_message("Iris", f"🚫 {e} s'est désinscrit de la prospection (respecté pour toujours).")
+    msg = ("C'est noté : vous ne recevrez plus aucun message de notre part." if ok else
+           "Lien invalide. Répondez simplement STOP à notre e-mail et nous ne vous contacterons plus.")
+    return f"""<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Désinscription</title><body style="font-family:system-ui;max-width:560px;margin:80px auto;padding:20px;text-align:center">
+<h1>{"✅" if ok else "ℹ️"} Désinscription</h1><p>{msg}</p><p style="color:#666">Toutes nos excuses pour le dérangement.</p></body></html>"""

@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from . import analytics, browser, budget, db, integrations, mailbox, markets, sites, workflow, youtube
+from . import analytics, browser, budget, db, integrations, mailbox, markets, outreach, sites, workflow, youtube
 from .agents import BY_NAME, OWNER, save_team_config, team_config
 from .config import ALLOW_CODE_EXEC, PORT, WORKSPACE
 from .notify import notify
@@ -215,6 +215,43 @@ CLIENT_TOOLS: dict[str, dict] = {
     "list_content": {
         "description": "Calendrier de contenus : publications prêtes, postées (avec les visites qu'elles ont apportées).",
         "input_schema": _schema({}),
+    },
+    # --- prospection d'entreprises -----------------------------------------
+    "create_campaign": {
+        "description": (f"Prépare une campagne de prospection d'ENTREPRISES par e-mail (validation de {OWNER} demandée : "
+                        "cible, offre, exemple de message, relance, volume). Rien n'est envoyé avant son accord. "
+                        "La relance peut contenir {entreprise}."),
+        "input_schema": _schema({
+            "name": S, "product_id": {"type": "integer", "description": "0 si aucun"},
+            "target": {"type": "string", "description": "qui exactement (secteur, taille, ville) et pourquoi ils ont ce besoin"},
+            "offer": {"type": "string", "description": "ce qu'on propose et à quel prix"},
+            "sender_name": {"type": "string", "description": "nom affiché de l'expéditeur, ex. « L'équipe DevisÉclair »"},
+            "example_subject": S,
+            "example_message": {"type": "string", "description": "exemple de premier e-mail personnalisé (< 120 mots)"},
+            "followup_message": {"type": "string", "description": "texte de l'unique relance (court, poli)"},
+            "daily_limit": {"type": "integer", "description": "e-mails max par jour (≤ 20 conseillé)"},
+        }),
+    },
+    "find_contact_email": {
+        "description": ("Trouve l'adresse e-mail PUBLIQUE d'une entreprise sur son site (accueil, contact, mentions "
+                        "légales) et indique la page source. À utiliser avant add_prospect."),
+        "input_schema": _schema({"website": S}),
+    },
+    "add_prospect": {
+        "description": ("Ajoute une ENTREPRISE à une campagne. Obligatoire : nom de l'entreprise, adresse professionnelle "
+                        "publique et l'URL où elle a été trouvée. notes = détails réels pour personnaliser le message."),
+        "input_schema": _schema({"campaign_id": I, "company": S, "email": S, "website": S, "sector": S, "city": S,
+                                 "source_url": S, "notes": S}),
+    },
+    "send_prospect_email": {
+        "description": ("Envoie le premier e-mail PERSONNALISÉ à un prospect d'une campagne validée (< 120 mots, un vrai "
+                        "détail sur l'entreprise, une seule question). L'identité, la raison du contact et le lien de "
+                        "désinscription sont ajoutés automatiquement. La relance est automatique après 5 jours."),
+        "input_schema": _schema({"prospect_id": I, "subject": S, "message": S}),
+    },
+    "list_prospects": {
+        "description": "Campagnes et prospects (statuts, taux de réponse). campaign_id=0 : toutes les campagnes.",
+        "input_schema": _schema({"campaign_id": I}),
     },
     # --- YouTube --------------------------------------------------------------
     "youtube_search": {
@@ -777,6 +814,69 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
                                            "AND ts>=?", (src.group(1), r["posted_ts"] or 0))[0]["n"]
                                       if src and r["posted_ts"] else None)
         return json.dumps(rows, ensure_ascii=False) or "Calendrier vide."
+    # --- prospection d'entreprises -----------------------------------------
+    if name == "create_campaign":
+        limit = max(1, min(int(args["daily_limit"] or 10), outreach.DAILY_LIMIT))
+        cid = db.x("INSERT INTO campaigns (ts, agent, name, product_id, target, offer, sender_name, example, followup, "
+                   "daily_limit) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                   (time.time(), agent, args["name"], args["product_id"] or None, args["target"], args["offer"],
+                    args["sender_name"], f"Objet : {args['example_subject']}\n\n{args['example_message']}",
+                    args["followup_message"], limit))
+        sample = outreach.footer({"sender_name": args["sender_name"]}, "exemple@entreprise.fr")
+        aid = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, payload) VALUES (?,?,?,?,?,0,?)",
+                   (time.time(), agent, "prospection", f"Campagne de prospection « {args['name']} »",
+                    f"**Cible** : {args['target']}\n\n**Offre** : {args['offer']}\n\n**Volume** : {limit} e-mails/jour "
+                    f"max, 1 relance après {outreach.FOLLOWUP_DAYS} jours, envois en semaine 9 h-18 h\n\n"
+                    f"**Exemple de premier e-mail** :\nObjet : {args['example_subject']}\n{args['example_message']}{sample}"
+                    f"\n\n**Relance** :\n{args['followup_message']}",
+                    json.dumps({"campaign_id": cid})))
+        db.x("UPDATE campaigns SET approval_id=? WHERE id=?", (aid, cid))
+        db.post_message(agent, f"🎯 Campagne #{cid} « {args['name']} » préparée : validation #{aid} demandée à @{OWNER}.")
+        notify("validation", f"{agent} propose une campagne de prospection", f"{args['name']} — {args['target'][:300]}",
+               priority="high")
+        return (f"Campagne #{cid} créée, en attente de validation (#{aid}). Tu peux déjà chercher des prospects "
+                "(find_contact_email, add_prospect) ; les envois ne partiront qu'après l'accord.")
+    if name == "find_contact_email":
+        r = await asyncio.to_thread(outreach.find_emails, args["website"])
+        return json.dumps(r, ensure_ascii=False)
+    if name == "add_prospect":
+        camp = db.q("SELECT * FROM campaigns WHERE id=?", (args["campaign_id"],))
+        if not camp or camp[0]["status"] in ("refusée", "terminée"):
+            return "Erreur : campagne introuvable, refusée ou terminée."
+        err = outreach.validate_prospect(args["email"], args["company"], args["source_url"])
+        if err:
+            return f"Refusé : {err}."
+        if db.q("SELECT id FROM prospects WHERE lower(email)=?", (outreach.norm(args["email"]),)):
+            return "Déjà dans les prospects (on ne contacte jamais deux fois la même adresse)."
+        i = db.x("INSERT INTO prospects (ts, agent, campaign_id, company, email, website, sector, city, source_url, notes) "
+                 "VALUES (?,?,?,?,?,?,?,?,?,?)", (time.time(), agent, args["campaign_id"], args["company"],
+                                                  outreach.norm(args["email"]), args["website"], args["sector"],
+                                                  args["city"], args["source_url"], args["notes"]))
+        return f"Prospect #{i} ajouté ({args['company']})."
+    if name == "send_prospect_email":
+        rows = db.q("SELECT * FROM prospects WHERE id=?", (args["prospect_id"],))
+        if not rows:
+            return "Erreur : prospect introuvable."
+        words = len(args["message"].split())
+        if words > 180:
+            return f"Refusé : message trop long ({words} mots). Vise moins de 120 mots, un seul bénéfice, une question."
+        try:
+            res = await asyncio.to_thread(outreach.send, rows[0], args["subject"], args["message"], agent)
+        except ValueError as e:
+            return f"Pas envoyé : {e}."
+        db.log(agent, "prospection", f"e-mail {res} à {rows[0]['company']} ({rows[0]['email']})")
+        return f"E-mail {res} à {rows[0]['company']}. Les réponses arriveront chez @Iris ; relance automatique prévue."
+    if name == "list_prospects":
+        camps = db.q("SELECT * FROM campaigns" + (" WHERE id=?" if args["campaign_id"] else "") + " ORDER BY id DESC",
+                     (args["campaign_id"],) if args["campaign_id"] else ())
+        out = []
+        for c in camps[:10]:
+            ps = db.q("SELECT id, company, email, city, status, sends FROM prospects WHERE campaign_id=? ORDER BY id DESC "
+                      "LIMIT 40", (c["id"],))
+            out.append({"campagne": c["id"], "nom": c["name"], "statut": c["status"], "par_jour": c["daily_limit"],
+                        "stats": outreach.stats(c["id"]), "prospects": ps})
+        return json.dumps({"envoyes_aujourdhui": outreach.sent_today(), "plafond_jour": outreach.DAILY_LIMIT,
+                           "campagnes": out}, ensure_ascii=False) if out else "Aucune campagne."
     # --- YouTube --------------------------------------------------------------
     if name == "youtube_search":
         res = await asyncio.to_thread(youtube.search, args["query"], int(args["limit"] or 10), args["sort"])

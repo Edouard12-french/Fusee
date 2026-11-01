@@ -1,7 +1,7 @@
 """Fait tourner chaque agent en continu : un cycle à intervalle régulier, ou dès qu'il est mentionné."""
 import asyncio
 
-from . import db, mailbox, markets, sales
+from . import db, mailbox, markets, outreach, sales
 from .agents import BY_NAME, TEAM, Agent, agent_settings
 from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
@@ -67,6 +67,18 @@ class Scheduler:
                     pass
             await asyncio.sleep(3600)
 
+    async def _followups(self) -> None:
+        """Toutes les heures (en semaine, heures de bureau) : relances automatiques de prospection."""
+        while True:
+            if mailbox.ENABLED and outreach.business_hours() and not self.paused:
+                try:
+                    n = await asyncio.to_thread(outreach.run_followups)
+                    if n:
+                        db.log("Victor", "prospection", f"{n} relance(s) automatique(s) envoyée(s)")
+                except Exception as e:  # noqa: BLE001
+                    db.log("système", "erreur", f"relances de prospection : {str(e)[:200]}")
+            await asyncio.sleep(3600)
+
     def add(self, agent: Agent) -> None:
         """Ajoute un agent recruté en cours de route (sans redémarrer)."""
         self.events[agent.name] = asyncio.Event()
@@ -81,6 +93,7 @@ class Scheduler:
             self.tasks.append(asyncio.create_task(self._loop(a.name, first_delay=i * 30)))
         self.tasks.append(asyncio.create_task(sales.poll_forever(self.wake)))
         self.tasks.append(asyncio.create_task(self._mark_prices()))
+        self.tasks.append(asyncio.create_task(self._followups()))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(
             lambda ids: self.wake("Iris", f"nouvel(s) e-mail(s) de contact(s) {ids}"))))
 

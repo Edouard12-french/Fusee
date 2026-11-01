@@ -67,6 +67,28 @@ besoin d'eux** : ils ne coûtent rien le reste du temps.
 - **Ce qui passe toujours par toi** : dépenser de l'argent, prix et liens de paiement, investissements, recrues,
   tout ce qui engage ton nom — et les vraies questions ou blocages (via Clara).
 
+## 🎯 Contacter des entreprises pour les intéresser
+
+Victor (aidé de Scout) mène des **campagnes de prospection par e-mail**, dans le cadre de la loi (RGPD/CNIL),
+avec des règles appliquées par le code que les agents ne peuvent pas contourner :
+
+1. **Tu valides chaque campagne une fois** (cible, offre, exemple d'e-mail, relance, volume) ; ensuite l'équipe
+   travaille seule.
+2. Ils trouvent des entreprises et leur **adresse professionnelle publique** sur leur site (la page source est
+   gardée), souvent avec une **maquette gratuite** déjà prête — l'argument le plus fort.
+3. Chaque e-mail est **personnalisé** et contient automatiquement l'identité de l'expéditeur, la raison du contact
+   et un **lien de désinscription**.
+4. **Une seule relance**, automatique après 5 jours ; arrêt dès qu'il y a une réponse ; les réponses arrivent chez
+   **Iris** qui enchaîne (et te notifie si le prospect est chaud).
+5. Toute personne qui répond « stop », « pas intéressé » ou clique sur le lien n'est **plus jamais contactée**.
+6. **Plafond par jour** (`OUTREACH_DAILY_LIMIT`, 20 par défaut) et envois en semaine de 9 h à 18 h.
+
+Sans boîte mail connectée, les e-mails sont préparés dans l'onglet **🎯 Prospection** : tu copies (ou « Ouvrir dans
+ma messagerie »), tu envoies, tu cliques « Envoyé ».
+
+**Les particuliers ne sont jamais contactés « à froid »** : c'est interdit sans leur accord. On les attire avec les
+sites, les vidéos et les communautés, et on leur répond quand ils nous écrivent (chat, e-mail).
+
 ## Ce qui rend l'équipe efficace
 
 - **📦 Catalogue produits** : chaque produit (site, appli, jeu, template, service) avec son prix, son site, ses
@@ -169,6 +191,7 @@ Sans adresse publique, les sites affichent un contact par e-mail à la place.
   - 📦 **Produits** : le catalogue avec ventes, chiffre d'affaires, visiteurs et conversion ; clique un produit pour
     voir d'où viennent ses visiteurs, jour par jour
   - ✅ **Validations** : leurs demandes (avec captures) → Accepter / Refuser
+  - 🎯 **Prospection** : les campagnes, les entreprises contactées, les réponses ; pause/reprise ; e-mails à envoyer
   - 👥 **Prospects** : chaque personne, son intérêt, son ressenti, son score, la conversation complète, et tu peux lui répondre
   - 🖼️ **Vitrine** : aperçu de tous les sites, applis et jeux (local et en ligne), galerie des pubs et vidéos
   - 💰 **Argent** : budget, dépenses, revenus, ventes Stripe, profil investisseur et stratégie
@@ -242,6 +265,7 @@ fusee_agents/
   sites.py, templates/         sites pro à partir de modèles
   setup.py                     assistant de démarrage (.env, tests des connexions)
   youtube.py                   recherche, statistiques et transcriptions YouTube
+  outreach.py                  prospection d'entreprises (règles légales, relances, désinscriptions)
   knowledge.py, knowledge/     les fiches d'expert installées au démarrage
   browser.py                   navigateur : captures, navigation, vidéos
   integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)

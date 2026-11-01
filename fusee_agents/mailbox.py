@@ -53,6 +53,9 @@ def fetch_new() -> list[int]:
                                     source="e-mail")
             db.add_conv(cid, "email", "in", _text(msg)[:20000],
                         subject=str(make_header(decode_header(msg.get("Subject", "")))), message_id=mid)
+            from . import outreach  # import local : évite une boucle d'imports
+            if outreach.on_reply(addr, _text(msg)) == "ne plus contacter":
+                db.x("UPDATE contacts SET status='perdu' WHERE id=?", (cid,))
             contacts.append(cid)
     return sorted(set(contacts))
 

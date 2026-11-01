@@ -137,7 +137,7 @@ const api = (u, opt) => fetch(u, opt).then(r => r.json());
 const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : undefined});
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
 let openProduct = null, S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
-const TABS = {setup:"🚀 Démarrage", agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", products:"📦 Produits", content:"📅 Contenus", contacts:"👥 Prospects", money:"💰 Argent",
+const TABS = {setup:"🚀 Démarrage", agent:"🤖 Agent", owner:"🙋 Pour toi", approvals:"✅ Validations", products:"📦 Produits", content:"📅 Contenus", outreach:"🎯 Prospection", contacts:"👥 Prospects", money:"💰 Argent",
   vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse",
   notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
@@ -307,6 +307,32 @@ async function renderPane(soft) {
             ${stp.test ? `<button onclick="setupTest(${i})">🧪 Tester</button>` : ""}<span id="sres${i}" class="muted"></span></div></details>`).join("") +
         `<div class="card"><h4>♻️ Appliquer les réglages</h4><p class="muted">Après avoir enregistré, redémarre Fusée pour que les agents utilisent les nouveaux réglages (10 secondes).</p>
           <button class="primary" onclick="setupRestart()">Redémarrer Fusée</button> <span id="srestart" class="muted"></span></div>`;
+    } else if (tab === "outreach") {
+      if (soft) return;
+      const o = await api("/api/outreach");
+      const ST = {"à contacter": "", "à envoyer par Patron": "pending", "contacté": "", "relancé": "", "a répondu": "ok", "intéressé": "ok", "client": "ok", "sans réponse": "", "ne plus contacter": ""};
+      const draft = p => `<div class="card pending"><b>✉️ À envoyer toi-même à ${esc(p.company)}</b> <span class="muted">${esc(p.email)}</span>
+          <div class="muted" style="margin-top:4px">Objet : ${esc(p.subject)}</div><textarea id="pm${p.id}" rows="6" readonly style="width:100%">${esc(p.message)}</textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="copyText('pm${p.id}', this)">📋 Copier le texte</button>
+          <a class="lnk" href="mailto:${encodeURIComponent(p.email)}?subject=${encodeURIComponent(p.subject || "")}&body=${encodeURIComponent(p.message || "")}">📧 Ouvrir dans ma messagerie</a>
+          <button class="primary" onclick="prospectSent(${p.id})">✔️ Envoyé</button></div></div>`;
+      pane.innerHTML = `<div class="card"><h4>🎯 Prospection d'entreprises</h4>
+          <div class="muted">Aujourd'hui : ${o.sent_today} / ${o.daily_limit} e-mails · ${o.suppressed} adresse(s) qui ne veulent plus être contactées (respecté pour toujours)
+          ${o.mail_enabled ? "" : "<br>⚠️ Boîte mail non configurée : les e-mails sont préparés ici et c'est toi qui les envoies (onglet 🚀 Démarrage pour la connecter)."}</div>
+          <p class="muted">Uniquement des entreprises, à leur adresse professionnelle publique, avec identité, raison du contact et désinscription dans chaque e-mail, 1 relance maximum, en semaine 9 h-18 h. Les particuliers ne sont jamais contactés à froid (interdit).</p></div>` +
+        (o.campaigns.map(c => `<details class="card ${c.status === "en attente de validation" ? "pending" : ""}" ${c.status === "active" ? "open" : ""}>
+          <summary><b>#${c.id} ${esc(c.name)}</b> <span class="tag">${esc(c.status)}</span> <span class="muted">${c.stats.contactes} contactées · ${c.stats.reponses} réponses (${c.stats.taux_reponse_pct} %)</span></summary>
+          <div class="muted" style="margin:6px 0"><b>Cible :</b> ${esc(c.target)}<br><b>Offre :</b> ${esc(c.offer)}<br>${c.daily_limit} e-mails/jour max · par ${c.agent}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${c.status === "active" ? `<button onclick="campaignStatus(${c.id}, 'en pause')">⏸️ Pause</button>` : ""}
+            ${c.status === "en pause" ? `<button class="primary" onclick="campaignStatus(${c.id}, 'active')">▶️ Reprendre</button>` : ""}
+            ${["active", "en pause"].includes(c.status) ? `<button onclick="campaignStatus(${c.id}, 'terminée')">🏁 Terminer</button>` : ""}
+            ${c.status === "en attente de validation" ? `<span class="muted">→ à valider dans l'onglet ✅ Validations</span>` : ""}</div>
+          ${c.prospects.filter(p => p.status === "à envoyer par Patron").map(draft).join("")}
+          <table>${c.prospects.map(p => `<tr><td><b>${esc(p.company)}</b>${p.city ? ` <span class="muted">${esc(p.city)}</span>` : ""}<br><span class="muted">${esc(p.email)}</span>
+            ${p.website ? ` <a href="${esc(p.website)}" target="_blank" rel="noopener">site</a>` : ""}</td>
+            <td><span class="tag">${esc(p.status)}</span></td>
+            <td>${p.status !== "ne plus contacter" ? `<a href="#" title="Ne plus jamais contacter" onclick="prospectStop(${p.id});return false">🚫</a>` : ""}</td></tr>`).join("") || "<tr><td class=muted>Aucun prospect pour l'instant.</td></tr>"}</table></details>`).join("")
+          || "<p class=muted>Aucune campagne pour l'instant : Victor en proposera une (tu la valideras).</p>");
     } else if (tab === "content") {
       if (soft) return;
       const list = await api("/api/content"), ready = list.filter(c => c.status === "prêt"), posted = list.filter(c => c.status === "posté");
@@ -497,6 +523,9 @@ function copyText(id, btn) {
   if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(el.value).then(done);
   else { document.execCommand("copy"); done(); }
 }
+async function campaignStatus(id, status) { const r = await post(`/api/campaigns/${id}?status=${encodeURIComponent(status)}`); if (!r.ok) alert(await r.text()); renderPane(); }
+async function prospectSent(id) { await post(`/api/prospects/${id}/sent`); renderPane(); }
+async function prospectStop(id) { if (confirm("Ne plus jamais contacter cette adresse ?")) { await post(`/api/prospects/${id}/stop`); renderPane(); } }
 async function contentStatus(id, status) { await post(`/api/content/${id}?status=${encodeURIComponent(status)}`); renderPane(); }
 async function answerQ(id, value) {
   const answer = value ?? ($("#qa" + id) || {}).value ?? "";
