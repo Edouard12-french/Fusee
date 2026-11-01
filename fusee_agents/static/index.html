@@ -688,7 +688,12 @@ async function renderDeviceBox() {
   const box = $("#devBox"); if (!box) return;
   const {url} = await api("/api/device_url");
   if (!url) {
-    box.innerHTML = `1. Installe l'app gratuite <b>Tailscale</b> sur ce Mac, ton iPhone et ton iPad, et connecte-toi <b>avec le même compte</b> sur les trois.<br>
+    box.innerHTML = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <img src="/api/qr?for=tailscale" alt="QR code Tailscale" style="width:130px;height:130px;background:#fff;border-radius:12px;padding:6px">
+      <div style="flex:1;min-width:200px;color:var(--text)"><b>D'abord, installe Tailscale sur ton iPhone et ton iPad :</b><br>
+      ouvre l'<b>Appareil photo</b>, vise ce QR code → touche le lien → <b>App Store</b> → Obtenir.<br>
+      <span class="muted">(Ce n'est pas encore le QR code de Fusée : celui-là apparaîtra ici après l'étape 2.)</span></div></div>
+      1. Installe l'app gratuite <b>Tailscale</b> sur ce Mac, ton iPhone et ton iPad, et connecte-toi <b>avec le même compte</b> sur les trois.<br>
       2. Sur le Mac, dans le dossier Fusee, double-clique sur <b>« Activer iPhone et iPad »</b>.<br>3. Reviens ici : <b>le QR code apparaîtra à cette place</b>.
       <div style="margin-top:6px">📷 Pas encore de QR code : c'est normal tant que les étapes 1 et 2 ne sont pas faites.</div>`;
     return;

@@ -196,6 +196,7 @@ def test_qr_code_for_iphone(monkeypatch):
     c = TestClient(web.app)
     monkeypatch.setattr(web.setup_mod, "_read", lambda: {"DASHBOARD_URL": ""})
     assert c.get("/api/qr").status_code == 404  # pas encore d'adresse privée
+    assert c.get("/api/qr?for=tailscale").status_code == 200  # mais le QR pour installer Tailscale, oui
     monkeypatch.setattr(web.setup_mod, "_read", lambda: {"DASHBOARD_URL": "https://mac.tail1.ts.net"})
     r = c.get("/api/qr")
     assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml") and b"<svg" in r.content
