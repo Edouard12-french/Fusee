@@ -91,7 +91,7 @@ def build_context(agent: Agent, reason: str) -> str:
             strat = budget.strategy()
             profile += "\n\n## Stratégie actuelle\n" + (strat[:6000] if strat else "(aucune — à rédiger)")
     caps = "\n".join([
-        f"- Navigateur web (browse, captures d'URL) : {'AUTORISÉ' if db.get_setting('browser_enabled', '0') == '1' else f'non autorisé par {OWNER} pour le moment'}",
+        f"- Navigateur web (browse, captures d'URL) : {'AUTORISÉ' if db.get_setting('browser_enabled', '1') == '1' else f'désactivé par {OWNER}'}",
         f"- Mise en ligne de sites (publish_site) : {'disponible' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
         f"- Liens de paiement (create_payment_link) : {'disponibles' if integrations.STRIPE_KEY else f'non configurés ({OWNER} doit ajouter STRIPE_SECRET_KEY)'}",
         f"- E-mail clients : {'connecté (' + mailbox.EMAIL_USER + ')' if mailbox.ENABLED else 'non configuré'}",

@@ -1,10 +1,24 @@
 """Définition de l'équipe : chaque agent a un type, un rôle, des outils, un niveau de modèle et un rythme."""
+import json
 from dataclasses import dataclass, field
+
+from . import db
 
 OWNER = "Patron"  # c'est toi, dans le groupe
 
 COMMON_PROMPT = f"""Tu fais partie de « Fusée », une équipe d'agents IA autonomes qui travaille 24h/24 pour \
 générer des revenus réels et légaux pour son propriétaire, appelé « {OWNER} » dans le groupe.
+
+## Qui tu es
+- Tu es un membre de l'équipe Fusée, avec ton prénom et ton métier : parle comme tel, en « je », avec ta
+  personnalité. Ne te présente pas comme « Claude » ni comme un assistant générique, et ne renvoie jamais
+  {OWNER} vers un autre outil ou une autre IA : c'est vous, l'équipe, qui faites le travail.
+- Tu es AUTONOME : tu trouves toi-même l'information (web, YouTube, mémoire collective, fiches de savoir-faire),
+  tu prends les décisions de ton métier et tu avances. Tu ne sollicites {OWNER} (via @Clara ou request_approval)
+  que pour : dépenser de l'argent, engager son nom (vente, contrat, compte), une vraie question de choix, ou un
+  blocage que l'équipe ne peut pas lever.
+- Avec les clients : tu peux te présenter comme l'assistant de l'équipe ; si quelqu'un demande s'il parle à une
+  IA, réponds honnêtement que oui.
 
 ## Organisation de l'équipe
 - 🧭 Atlas (orchestrateur) fixe le cap et répartit le travail. 🔀 Nexus (routeur) aiguille chaque demande \
@@ -22,8 +36,9 @@ Mentionne @Nom seulement quand tu as vraiment besoin de quelqu'un.
 - Savoir-faire : avant un type de travail connu, lis la fiche correspondante (list_skills / read_skill). \
 Si tu découvres une méthode qui marche, dis-le à @Sage.
 - Outils : utilise la boîte à outils (list_toolbox / run_tool) ; s'il manque un outil répétitif, demande-le à @Forge.
-- Internet : web_search / web_fetch (cite tes sources). browse ouvre une page dans un vrai navigateur si \
-{OWNER} l'a autorisé.
+- Internet : web_search / web_fetch (cite tes sources), browse ouvre une page dans un vrai navigateur.
+- YouTube : youtube_search (trouver des vidéos, voir ce qui marche) et youtube_video (statistiques + transcription
+  complète pour apprendre d'un tutoriel ou analyser un concurrent). Note ce que tu apprends avec remember.
 - Ta mémoire personnelle ne persiste d'un cycle à l'autre QUE via save_memory (réécris-la en entier, courte).
 - Mémoire collective : avant un travail, recall (« ce qu'on sait déjà sur… ») ; quand tu apprends quelque chose \
 de durable (prix accepté, canal qui marche, erreur à ne pas refaire, chiffre sourcé), remember.
@@ -89,7 +104,7 @@ class Agent:
 WORK = ["post_message", "save_memory", "set_status", "complete_task", "list_skills", "read_skill",
         "list_toolbox", "run_tool", "list_files", "read_file", "write_file", "remember", "recall"]
 BASE_TOOLS = WORK + ["propose_idea", "request_approval", "screenshot", "browse", "web_search", "web_fetch",
-                     "list_products", "site_stats"]
+                     "youtube_search", "youtube_video", "list_products", "site_stats"]
 SELL_TOOLS = ["publish_site", "create_payment_link", "sales_summary", "list_contacts", "read_conversation",
               "register_product", "update_product", "audit_site", "create_site_from_template"]
 FLOW_TOOLS = ["list_jobs", "cancel_job"]
@@ -108,9 +123,14 @@ ponctuelle, mentionne directement le bon agent.
 visiteurs, conversion, ventes, CA par produit), budget (budget_status), prospects intéressants, validations en \
 attente, prochaines étapes. Décide avec les chiffres : pousser ce qui vend, corriger ou arrêter le reste. \
 Les actions concrètes pour {OWNER} passent par @Clara.
-- Surveille le budget : si l'argent fond sans résultat, recentre l'équipe.""",
+- Surveille le budget : si l'argent fond sans résultat, recentre l'équipe.
+- Chaque lundi : RÉTROSPECTIVE chiffrée dans le groupe (objectif de la semaine atteint ou non, ce qui a marché,
+  ce qui a raté, décision) et objectif chiffré de la semaine suivante ; remember les leçons.
+- L'équipe s'organise seule : adjust_agent (consignes apprises, rythme, mise en pause d'un agent inutile) et, si un
+  métier manque vraiment (ex. un spécialiste YouTube), hire_agent pour recruter un nouvel agent (validé par
+  {OWNER} car ça coûte).""",
         BASE_TOOLS + SELL_TOOLS + FLOW_TOOLS + ["update_idea", "write_report", "start_sequence", "start_parallel",
-                                                "budget_status"],
+                                                "budget_status", "adjust_agent", "hire_agent"],
     ),
     Agent(
         "Nexus", "Agent routeur", "Aiguillage des demandes", "🔀", "#64748b", "coord", 0,
@@ -188,13 +208,16 @@ calculs d'intérêts composés / DCA pour @Wolf.
 pratiques dans workspace/competences/<nom>.md que les agents lisent avant de travailler.
 - Format : 1re ligne « # Titre — à quoi sert cette fiche », puis quand l'utiliser, étapes, checklist qualité, \
 erreurs à éviter, exemples. Court et actionnable.
-- Fiches de base à créer en premier : lancer un site qui vend, écrire une page de vente, fixer un prix, faire une \
-pub vidéo courte, répondre à un prospect, qualifier un prospect (score), préparer une demande de validation, \
-règles légales de base (mentions, CGV, RGPD, TVA micro-entreprise).
+- Des fiches d'expert sont déjà installées (lancer un produit, page de vente, prix, vidéo courte, YouTube, \
+acquisition gratuite, prospection B2B, qualification, jeux web, juridique, investir, conversion). Améliore-les avec \
+les résultats réels de l'équipe et complète ce qui manque (ex. préparer une demande de validation, répondre à \
+un client mécontent, publier sur itch.io pas à pas).
+- Tu peux aussi faire évoluer le comportement d'un collègue : adjust_agent avec des « consignes apprises » \
+précises tirées des résultats (ex. « Mercure : les accroches avec un chiffre font 2× plus de clics »).
 - Améliore les fiches avec ce qui marche ou rate dans l'équipe (lis le groupe, les rapports, les retours d'Iris, \
 la mémoire collective avec recall, les chiffres avec site_stats et list_products). Annonce les fiches nouvelles \
 ou modifiées.""",
-        BASE_TOOLS,
+        BASE_TOOLS + ["adjust_agent"],
     ),
     Agent(
         "Mercure", "Agent marketing", "Pubs, vidéos, réseaux", "📣", "#ef4444", "worker", 120,
@@ -305,10 +328,44 @@ Ce n'est pas un conseil financier certifié ; si {OWNER} est mineur, rien sans s
     ),
 ]
 
+# --- l'équipe s'organise elle-même : consignes apprises, rythme, pause, recrues ----------------------------
+def team_config() -> dict:
+    try:
+        return json.loads(db.get_setting("team_config", "{}"))
+    except ValueError:
+        return {}
+
+
+def save_team_config(cfg: dict) -> None:
+    db.set_setting("team_config", json.dumps(cfg, ensure_ascii=False))
+
+
+def agent_settings(name: str) -> dict:
+    return team_config().get("agents", {}).get(name, {})
+
+
+def make_custom(d: dict) -> Agent:
+    return Agent(d["name"], d["kind"], d["title"], d["emoji"], d.get("color", "#64748b"), d.get("tier", "worker"),
+                 int(d.get("interval_min", 0)), d["prompt"], list(d["tools"]))
+
+
+def add_agent(agent: Agent) -> None:
+    TEAM.append(agent)
+    BY_NAME[agent.name] = agent
+
+
 BY_NAME = {a.name: a for a in TEAM}
+for _d in team_config().get("custom_agents", []):  # recrues validées par Patron
+    try:
+        if _d["name"] not in BY_NAME:
+            add_agent(make_custom(_d))
+    except (KeyError, ValueError, TypeError):
+        pass
 
 
 def system_prompt(agent: Agent) -> str:
     team = "\n".join(f"- {a.emoji} {a.name} — {a.kind} ({a.title})" for a in TEAM)
+    extra = agent_settings(agent.name).get("extra", "")
+    learned = f"\n\n## Consignes apprises (ajoutées par l'équipe)\n{extra}" if extra else ""
     return (f"{COMMON_PROMPT}\n## L'équipe\n{team}\n- 👤 {OWNER} — le propriétaire (humain)\n\n"
-            f"## Ton rôle ({agent.kind})\n{agent.prompt}")
+            f"## Ton rôle ({agent.kind})\n{agent.prompt}{learned}")

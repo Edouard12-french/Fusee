@@ -2,7 +2,7 @@
 import asyncio
 
 from . import db, mailbox, markets, sales
-from .agents import BY_NAME, TEAM
+from .agents import BY_NAME, TEAM, Agent, agent_settings
 from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
 
@@ -25,16 +25,21 @@ class Scheduler:
 
     async def _loop(self, name: str, first_delay: float) -> None:
         agent = BY_NAME[name]
-        interval = agent.interval_min * 60 * INTERVAL_MULTIPLIER  # 0 = seulement à la demande
+
+        def interval() -> float:  # l'équipe peut changer le rythme d'un agent (adjust_agent)
+            return agent_settings(name).get("interval_min", agent.interval_min) * 60 * INTERVAL_MULTIPLIER
+
         await asyncio.sleep(first_delay)
         reason = "démarrage"
-        if not interval:  # agent « à la demande » : attend d'être appelé
+        if not interval():  # agent « à la demande » : attend d'être appelé
             await self.events[name].wait()
             self.events[name].clear()
             pending, self.reasons[name] = self.reasons[name], []
             reason = " | ".join(pending[-5:]) or "appel"
         while True:
-            if not self.paused:
+            if agent_settings(name).get("enabled", True) is False:
+                db.set_state(name, status="en pause (décision de l'équipe)")
+            elif not self.paused:
                 async with self.sem:
                     await run_cycle(agent, reason, self.wake)
             # attendre le prochain cycle (ou une mention), avec un délai minimum anti ping-pong
@@ -42,8 +47,8 @@ class Scheduler:
             if not self.reasons[name]:
                 self.events[name].clear()
             try:
-                await asyncio.wait_for(self.events[name].wait(),
-                                       timeout=max(0, interval - agent.min_gap_s) if interval else None)
+                iv = interval()
+                await asyncio.wait_for(self.events[name].wait(), timeout=max(0, iv - agent.min_gap_s) if iv else None)
             except asyncio.TimeoutError:
                 pass
             self.events[name].clear()
@@ -61,6 +66,14 @@ class Scheduler:
                 except Exception:  # noqa: BLE001 — symbole sans données : Wolf le met à jour à la main
                     pass
             await asyncio.sleep(3600)
+
+    def add(self, agent: Agent) -> None:
+        """Ajoute un agent recruté en cours de route (sans redémarrer)."""
+        self.events[agent.name] = asyncio.Event()
+        self.reasons[agent.name] = ["tu viens d'être recruté dans l'équipe : présente-toi et commence ton travail"]
+        self.events[agent.name].set()
+        db.set_state(agent.name, status="en attente")
+        self.tasks.append(asyncio.create_task(self._loop(agent.name, first_delay=1)))
 
     def start(self) -> None:
         for i, a in enumerate(TEAM):

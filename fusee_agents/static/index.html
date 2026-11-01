@@ -223,6 +223,7 @@ async function renderPane(soft) {
         <div class="muted">Statut : ${esc(a.status)} · cycle toutes les ${a.interval_min} min · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
         <p><b>En ce moment :</b> ${esc(a.task || "—")}</p>
         <button onclick="post('/api/wake/${a.name}')">⚡ Lancer un cycle maintenant</button></div>
+        ${a.learned ? `<div class="card"><b>📘 Consignes apprises</b><div class="md">${md(a.learned)}</div></div>` : ""}
         <details class="card" id="memd" ${open?"open":""}><summary><b>🧠 Mémoire / plan</b></summary><div class="md">${md(mem.content || "(vide)")}</div></details>
         <h4>Ce qu'il a fait</h4>${acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>"}`;
     } else if (tab === "feed") {
@@ -425,10 +426,15 @@ async function renderPane(soft) {
           ${ok(S.browser_enabled)} Navigateur web des agents
           <p class="muted">Tout se règle dans le fichier .env (voir le README), puis redémarre Fusée.</p>
           <button onclick="post('/api/test_notification')">📱 Envoyer une notification de test</button></div>
+        <div class="card"><h4>🦅 Autonomie de l'équipe</h4>
+          <select id="amode"><option value="autonome">Autonome — les sites gratuits qui passent l'audit (≥ 90) se publient seuls</option><option value="prudent">Prudent — je valide chaque mise en ligne</option></select>
+          <p class="muted">Dans tous les cas, l'argent (dépenses, prix et liens de paiement, investissements), les recrues et ce qui engage ton nom passent toujours par toi.</p></div>
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
       $("#smode").value = S.support_mode;
+      $("#amode").value = S.autonomy;
+      $("#amode").onchange = e => post("/api/autonomy?mode=" + e.target.value).then(poll);
       $("#smode").onchange = e => post("/api/support_mode?mode=" + e.target.value).then(poll);
     }
     if (soft) pane.scrollTop = keep;

@@ -15,9 +15,9 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, budget, db, integrations, mailbox
+from . import analytics, budget, db, integrations, knowledge, mailbox
 from . import setup as setup_mod
-from .agents import OWNER, TEAM
+from .agents import BY_NAME, OWNER, TEAM, add_agent, agent_settings, make_custom, save_team_config, team_config
 from .config import PLAN, PUBLIC_URL, USD_EUR, WORKSPACE, model_for
 from .notify import notify
 from .scheduler import scheduler
@@ -29,6 +29,7 @@ PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    knowledge.install()
     scheduler.start()
     yield
 
@@ -94,7 +95,9 @@ def _msg(m: dict) -> dict:
 def state(after: int = 0):
     states = db.get_states()
     agents = [{"name": a.name, "kind": a.kind, "title": a.title, "emoji": a.emoji, "color": a.color,
-               "tier": a.tier, "model": model_for(a.tier)[0], "interval_min": a.interval_min,
+               "tier": a.tier, "model": model_for(a.tier)[0],
+               "interval_min": agent_settings(a.name).get("interval_min", a.interval_min),
+               "learned": agent_settings(a.name).get("extra", ""),
                **{k: v for k, v in states.get(a.name, {}).items() if k != "agent"}}
               for a in TEAM]
     b = budget.summary()
@@ -112,7 +115,8 @@ def state(after: int = 0):
         "unread_notifications": db.q("SELECT COUNT(*) n FROM notifications WHERE read=0")[0]["n"],
         "waiting_contacts": len(db.unanswered_contacts()),
         "support_mode": db.get_setting("support_mode", "auto"),
-        "browser_enabled": db.get_setting("browser_enabled", "0") == "1",
+        "browser_enabled": db.get_setting("browser_enabled", "1") == "1",
+        "autonomy": db.get_setting("autonomy", "autonome"),
         "capabilities": {"email": mailbox.ENABLED, "netlify": bool(integrations.NETLIFY_TOKEN),
                          "stripe": bool(integrations.STRIPE_KEY), "public_url": PUBLIC_URL,
                          "push": bool(os.getenv("NTFY_TOPIC"))},
@@ -277,6 +281,16 @@ def pause(on: bool):
     return {"paused": on}
 
 
+@app.post("/api/autonomy")
+def autonomy(mode: str):
+    if mode not in ("autonome", "prudent"):
+        raise HTTPException(400)
+    db.set_setting("autonomy", mode)
+    db.post_message(OWNER, "🦅 Mode autonome : les sites gratuits et impeccables se publient sans m'attendre."
+                    if mode == "autonome" else "🛡️ Mode prudent : je valide chaque mise en ligne.")
+    return {"autonomy": mode}
+
+
 @app.post("/api/browser")
 def browser_permission(on: bool):
     db.set_setting("browser_enabled", "1" if on else "0")
@@ -336,6 +350,15 @@ async def decide(aid: int, d: Decision):
             raise HTTPException(400, f"Cette dépense ({a['amount_eur']} €) dépasse ton argent disponible ({free:.2f} €).")
         db.x("INSERT INTO ledger (ts, kind, amount_eur, label, source, approval_id) VALUES (?,?,?,?,?,?)",
              (time.time(), "dépense", a["amount_eur"], a["title"], f"validation #{aid}", aid))
+    if a["kind"] == "équipe" and d.approve:
+        spec = json.loads(a["payload"])
+        if spec["name"] not in BY_NAME:
+            cfg = team_config()
+            cfg.setdefault("custom_agents", []).append(spec)
+            save_team_config(cfg)
+            new = make_custom(spec)
+            add_agent(new)
+            scheduler.add(new)
     if a["kind"] == "réponse client" and d.approve:
         try:
             await deliver_reply(json.loads(a["payload"])["contact_id"], a["details"], a["agent"])

@@ -47,6 +47,26 @@ besoin d'eux** : ils ne coûtent rien le reste du temps.
    un score sur 100 et son potentiel pour le futur**. Les prospects chauds (≥ 70) te sont notifiés.
    Tu peux aussi répondre toi-même à un client depuis l'appli.
 
+## Une équipe indépendante
+
+- **Le savoir dès le premier jour** : 12 fiches d'expert sont installées au démarrage dans les compétences de
+  l'équipe (lancer un produit, page de vente, fixer un prix, vidéos courtes, YouTube, trouver des clients gratuitement,
+  prospection légale, qualifier un prospect, jeux web, règles juridiques en France, bases de l'investissement,
+  améliorer la conversion). Sage les améliore ensuite avec les résultats réels.
+- **Internet et YouTube** : recherche web, vrai navigateur (ouvert par défaut, désactivable), et YouTube — chercher
+  des vidéos, lire leurs statistiques et leur **transcription complète** pour apprendre d'un tutoriel ou analyser
+  un concurrent.
+- **Ils décident seuls** de tout ce qui ne coûte rien et n'engage pas ton nom. En **mode autonome** (par défaut,
+  réglable dans ⚙️ Réglages), un site gratuit qui obtient ≥ 90/100 à l'audit et dont les mentions légales sont
+  complètes est mis en ligne sans t'attendre (tu es notifié).
+- **Ils s'organisent eux-mêmes** : Atlas et Sage ajoutent des « consignes apprises » à un collègue à partir des
+  résultats, changent son rythme ou le mettent en pause ; Atlas peut **recruter un nouveau spécialiste** (tu valides,
+  car un agent de plus coûte) qui rejoint l'équipe immédiatement.
+- **Une vraie équipe** : chacun parle avec son prénom et son métier, pas comme un assistant générique. Avec les
+  clients, ils restent honnêtes s'ils demandent s'ils parlent à une IA.
+- **Ce qui passe toujours par toi** : dépenser de l'argent, prix et liens de paiement, investissements, recrues,
+  tout ce qui engage ton nom — et les vraies questions ou blocages (via Clara).
+
 ## Ce qui rend l'équipe efficace
 
 - **📦 Catalogue produits** : chaque produit (site, appli, jeu, template, service) avec son prix, son site, ses
@@ -221,6 +241,8 @@ fusee_agents/
   markets.py                   données de bourse réelles, indicateurs, backtests
   sites.py, templates/         sites pro à partir de modèles
   setup.py                     assistant de démarrage (.env, tests des connexions)
+  youtube.py                   recherche, statistiques et transcriptions YouTube
+  knowledge.py, knowledge/     les fiches d'expert installées au démarrage
   browser.py                   navigateur : captures, navigation, vidéos
   integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)
   mailbox.py                   e-mails clients (IMAP/SMTP)

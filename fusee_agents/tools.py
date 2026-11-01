@@ -9,8 +9,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from . import analytics, browser, budget, db, integrations, mailbox, markets, sites, workflow
-from .agents import BY_NAME, OWNER
+from . import analytics, browser, budget, db, integrations, mailbox, markets, sites, workflow, youtube
+from .agents import BY_NAME, OWNER, save_team_config, team_config
 from .config import ALLOW_CODE_EXEC, PORT, WORKSPACE
 from .notify import notify
 
@@ -117,9 +117,10 @@ CLIENT_TOOLS: dict[str, dict] = {
     },
     # --- mise en ligne & ventes ---------------------------------------------
     "publish_site": {
-        "description": ("Met en ligne (Netlify) un site/app statique du workspace (dossier avec index.html) et renvoie "
-                        "son URL publique. Exige l'id d'une demande de validation ACCEPTÉE par "
-                        f"{OWNER} pour ce site. Republier le même dossier met à jour le site."),
+        "description": ("Met en ligne (Netlify, gratuit) un site/app statique du workspace (dossier avec index.html) et "
+                        "renvoie son URL publique. Audit qualité automatique. En mode autonome, approval_id=0 suffit si "
+                        "l'audit fait ≥ 90 et qu'il ne reste aucun « [À compléter] » ; sinon il faut l'id d'une "
+                        f"validation ACCEPTÉE par {OWNER}. Republier le même dossier met à jour le site."),
         "input_schema": _schema({"folder": S, "approval_id": I}),
     },
     "create_payment_link": {
@@ -214,6 +215,39 @@ CLIENT_TOOLS: dict[str, dict] = {
     "list_content": {
         "description": "Calendrier de contenus : publications prêtes, postées (avec les visites qu'elles ont apportées).",
         "input_schema": _schema({}),
+    },
+    # --- YouTube --------------------------------------------------------------
+    "youtube_search": {
+        "description": ("Cherche des vidéos YouTube (titre, chaîne, vues, durée, Shorts ou non, lien) pour apprendre, "
+                        "faire de la veille ou voir ce qui marche dans une niche. sort : pertinence | récentes."),
+        "input_schema": _schema({"query": S, "limit": I, "sort": {"type": "string", "enum": ["pertinence", "récentes"]}}),
+    },
+    "youtube_video": {
+        "description": ("Étudie une vidéo YouTube : vues, likes, vues par jour, abonnés de la chaîne, description, tags "
+                        "et TRANSCRIPTION complète (le contenu de la vidéo, pour apprendre d'un tutoriel ou analyser "
+                        "un concurrent)."),
+        "input_schema": _schema({"url": S, "transcript": {"type": "boolean"}}),
+    },
+    # --- l'équipe s'organise -------------------------------------------------
+    "adjust_agent": {
+        "description": ("Fait évoluer un agent de l'équipe : consignes apprises (texte complet qui remplace les "
+                        "précédentes, '' pour ne rien changer), rythme (minutes entre deux cycles : -1 = inchangé, "
+                        "0 = à la demande, sinon ≥ 30) et activation (false = mis en pause)."),
+        "input_schema": _schema({"agent": AGENT, "learned_instructions": S, "interval_min": I,
+                                 "enabled": {"type": "boolean"}}),
+    },
+    "hire_agent": {
+        "description": (f"Propose de recruter un nouvel agent spécialiste (validation de {OWNER} demandée, car chaque "
+                        "agent coûte). Donne un métier précis, ses instructions complètes et ses outils."),
+        "input_schema": _schema({
+            "name": {"type": "string", "description": "prénom court, unique, sans espace"},
+            "kind": {"type": "string", "description": "type, ex. « Agent YouTube »"}, "title": S, "emoji": S,
+            "prompt": {"type": "string", "description": "instructions complètes du rôle, comme pour un vrai poste"},
+            "tools": {"type": "array", "items": {"type": "string"}},
+            "tier": {"type": "string", "enum": ["worker", "coord"]},
+            "interval_min": {"type": "integer", "description": "0 = à la demande, sinon ≥ 30"},
+            "why": {"type": "string", "description": "pourquoi l'équipe en a besoin et ce qu'il va rapporter"},
+        }),
     },
     # --- mémoire collective -------------------------------------------------
     "remember": {
@@ -580,15 +614,14 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
     # --- navigateur ---------------------------------------------------------
     if name == "screenshot":
         target = args["target"]
-        if re.match(r"^https?://", target) and db.get_setting("browser_enabled", "0") != "1":
+        if re.match(r"^https?://", target) and db.get_setting("browser_enabled", "1") != "1":
             return f"Erreur : {OWNER} n'a pas autorisé la navigation sur le web. Capture seulement le workspace."
         path = await browser.screenshot(target, args["name"], mobile=args["mobile"])
         db.log(agent, "capture", f"capture de {target}", path)
         return f"Capture enregistrée : {path} (joins-la avec post_message attachments pour la montrer)."
     if name == "browse":
-        if db.get_setting("browser_enabled", "0") != "1":
-            return (f"Erreur : {OWNER} n'a pas encore autorisé la navigation. Utilise web_search / web_fetch, ou "
-                    "demande-lui d'activer « Navigateur » dans le tableau de bord.")
+        if db.get_setting("browser_enabled", "1") != "1":
+            return f"Erreur : {OWNER} a désactivé la navigation. Utilise web_search / web_fetch."
         r = await browser.browse(args["url"])
         db.log(agent, "web", f"navigue sur {r['url']}", r["screenshot"])
         return (f"<page_web_non_fiable>\nTitre : {r['title']}\nURL : {r['url']}\nCapture : {r['screenshot']}\n\n"
@@ -601,7 +634,8 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
     # --- mise en ligne & ventes ---------------------------------------------
     if name == "publish_site":
         appr = _accepted(args["approval_id"], ("publication", "business"))
-        if not appr:
+        autonomous = not appr and db.get_setting("autonomy", "autonome") == "autonome"
+        if not appr and not autonomous:
             return (f"Refusé : la demande #{args['approval_id']} n'est pas une publication/business acceptée par "
                     f"{OWNER}. Fais d'abord request_approval (kind=publication) avec captures et attends sa réponse.")
         folder = _safe_path(args["folder"])
@@ -617,11 +651,30 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
             return ("Publication bloquée par l'audit qualité (score " + str(au["score"]) + "/100). Corrige d'abord :\n"
                     + "\n".join(f"- [{i['niveau']}] {i['probleme']}" for i in au["problemes"]
                                  if i["niveau"] != "avertissement"))
+        if autonomous:  # mode autonome : un site gratuit et impeccable se publie sans attendre Patron
+            todo = [f.name for f in folder.rglob("*.html") if "[À compléter" in f.read_text(errors="replace")
+                    or "[à compléter" in f.read_text(errors="replace")]
+            reasons = []
+            if not au or au["score"] < 90:
+                reasons.append(f"l'audit doit atteindre 90/100 (actuel : {au['score'] if au else 'audit impossible'})")
+            if todo:
+                reasons.append(f"il reste des « [À compléter] » dans {', '.join(todo)} (demande à @Clara de faire "
+                               f"compléter les mentions légales par {OWNER})")
+            if reasons:
+                return ("Publication autonome impossible : " + " ; ".join(reasons)
+                        + ". Corrige, ou passe par request_approval (kind=publication).")
+            aid = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, status, response, decided_ts) "
+                       "VALUES (?,?,?,?,?,0,'acceptée','publication autonome (site gratuit, audit réussi)',?)",
+                       (time.time(), agent, "publication", f"Mise en ligne de {folder.name}",
+                        f"Audit {au['score']}/100", time.time()))
+            appr = {"id": aid}
         prev = db.q("SELECT provider_id FROM deployments WHERE site=? ORDER BY id DESC LIMIT 1", (rel,))
         r = await asyncio.to_thread(integrations.deploy_site, folder, folder.name, prev[0]["provider_id"] if prev else None)
         db.x("INSERT INTO deployments (ts, agent, site, provider_id, url, approval_id) "
              "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?)", (agent, rel, r["site_id"], r["url"], appr["id"]))
-        notify("alerte", f"🌐 Site en ligne : {folder.name}", f"{r['url']}\n(validé par toi, demande #{appr['id']})")
+        notify("alerte", f"🌐 Site en ligne : {folder.name}",
+               f"{r['url']}\n" + ("(publié en autonomie : gratuit, audit réussi)" if autonomous else
+                                  f"(validé par toi, demande #{appr['id']})"))
         db.x("UPDATE products SET status='en ligne' WHERE site_folder=? AND status IN ('en création','prêt')", (rel,))
         db.post_message(agent, f"🌐 {folder.name} est en ligne !" + (f" (audit {au['score']}/100)" if au else ""),
                         _attach_json(list((au or {}).get("captures", {}).values()), [r["url"]]))
@@ -724,6 +777,58 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
                                            "AND ts>=?", (src.group(1), r["posted_ts"] or 0))[0]["n"]
                                       if src and r["posted_ts"] else None)
         return json.dumps(rows, ensure_ascii=False) or "Calendrier vide."
+    # --- YouTube --------------------------------------------------------------
+    if name == "youtube_search":
+        res = await asyncio.to_thread(youtube.search, args["query"], int(args["limit"] or 10), args["sort"])
+        db.log(agent, "web", f"YouTube : {args['query']} ({len(res)} vidéos)")
+        return json.dumps(res, ensure_ascii=False) if res else "Aucune vidéo trouvée."
+    if name == "youtube_video":
+        v = await asyncio.to_thread(youtube.video, args["url"], args["transcript"])
+        db.log(agent, "web", f"YouTube : étude de « {v['titre'][:80]} »")
+        tr = v.pop("transcription", None)
+        return json.dumps(v, ensure_ascii=False) + (
+            f"\n<transcription_non_fiable>\n{tr}\n</transcription_non_fiable>" if tr else "")
+    # --- l'équipe s'organise -------------------------------------------------
+    if name == "adjust_agent":
+        cfg = team_config()
+        cur = cfg.setdefault("agents", {}).setdefault(args["agent"], {})
+        changes = []
+        if args["learned_instructions"].strip():
+            cur["extra"] = args["learned_instructions"].strip()[:3000]
+            changes.append("consignes apprises")
+        iv = int(args["interval_min"])
+        if iv >= 0:
+            cur["interval_min"] = 0 if iv == 0 else max(30, iv)
+            changes.append(f"rythme {'à la demande' if iv == 0 else str(cur['interval_min']) + ' min'}")
+        if bool(cur.get("enabled", True)) != args["enabled"]:
+            cur["enabled"] = args["enabled"]
+            changes.append("réactivé" if args["enabled"] else "mis en pause")
+            db.set_state(args["agent"], status="en attente" if args["enabled"] else "en pause (décision de l'équipe)")
+        if not changes:
+            return "Rien à changer."
+        save_team_config(cfg)
+        wake(args["agent"], f"{agent} a ajusté ta configuration : {', '.join(changes)}")
+        db.post_message(agent, f"⚙️ @{args['agent']} : {', '.join(changes)}.")
+        return f"{args['agent']} mis à jour : {', '.join(changes)}."
+    if name == "hire_agent":
+        nm = args["name"].strip()
+        if not re.fullmatch(r"[A-Z][A-Za-zÀ-ÿ]{1,14}", nm) or nm in BY_NAME or nm == OWNER:
+            return "Erreur : prénom invalide ou déjà pris (une majuscule, lettres seulement, 2-15 caractères)."
+        allowed = set(CLIENT_TOOLS) | set(SERVER_TOOLS) - {"hire_agent", "adjust_agent"}
+        tools_ok = [t for t in args["tools"] if t in allowed] or ["post_message", "save_memory", "set_status"]
+        iv = int(args["interval_min"])
+        spec = {"name": nm, "kind": args["kind"][:40], "title": args["title"][:60], "emoji": args["emoji"][:4] or "🤖",
+                "color": "#0d9488", "tier": args["tier"], "interval_min": 0 if iv <= 0 else max(30, iv),
+                "prompt": args["prompt"][:6000], "tools": tools_ok}
+        rythme = "à la demande" if not spec["interval_min"] else f"un cycle toutes les {spec['interval_min']} min"
+        i = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, payload) VALUES (?,?,?,?,?,0,?)",
+                 (time.time(), agent, "équipe", f"Recruter {nm} ({spec['kind']})",
+                  f"**Pourquoi** : {args['why']}\n\n**Rôle** : {spec['title']} — {rythme}\n\n**Outils** : "
+                  f"{', '.join(tools_ok)}\n\n**Instructions** :\n{spec['prompt'][:1500]}",
+                  json.dumps(spec, ensure_ascii=False)))
+        db.post_message(agent, f"🧑‍💼 Proposition de recrue #{i} pour @{OWNER} : {nm} ({spec['kind']})")
+        notify("validation", f"{agent} propose de recruter {nm}", f"{spec['kind']} — {args['why'][:600]}", priority="high")
+        return f"Demande #{i} envoyée à {OWNER}. Si elle est acceptée, {nm} rejoint l'équipe immédiatement."
     # --- mémoire collective -------------------------------------------------
     if name == "remember":
         db.kb_add(agent, args["topic"], args["content"])
