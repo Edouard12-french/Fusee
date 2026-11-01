@@ -300,3 +300,34 @@ def test_grammar_too_large_retries_without_strict():
         assert db.get_states()["Victor"]["status"] == "en attente"
     finally:
         runner.client = old
+
+
+# --- sauvegarde sur clé USB ---------------------------------------------------------------------------------
+
+def test_usb_backup_copies_work_but_never_secrets(tmp_path):
+    import sauvegarde_usb as sv
+    db.kb_add("test", "Sauvegarde", "contenu à retrouver dans la copie")  # la base est ouverte (Fusée « allumé »)
+    (sv.WORKSPACE / "sites" / "demo").mkdir(parents=True, exist_ok=True)
+    (sv.WORKSPACE / "sites" / "demo" / "index.html").write_text("<h1>Démo</h1>")
+    (sv.WORKSPACE / "node_modules").mkdir(exist_ok=True)
+    (sv.WORKSPACE / "node_modules" / "gros.js").write_text("x")
+    (sv.DATA / "vapid_private.pem").write_text("CLE PRIVEE")
+    env = tmp_path / "test.env"
+    env.write_text("ANTHROPIC_API_KEY=sk-ant-SECRET\nEMAIL_PASSWORD=motdepasse\nNTFY_TOPIC=sujet-secret\n"
+                   "FUSEE_PLAN=eco\nAPI_BUDGET_EUR=18\n")
+    clean = sv._env_without_secrets(env)
+    assert "SECRET" not in clean and "motdepasse" not in clean and "sujet-secret" not in clean
+    assert "FUSEE_PLAN=eco" in clean and "API_BUDGET_EUR=18" in clean and "ANTHROPIC_API_KEY=\n" in clean
+
+    usb = tmp_path / "CLE USB"
+    usb.mkdir()
+    assert sv.main(str(usb)) == 0
+    [dest] = list((usb / "Fusee-sauvegardes").iterdir())
+    import sqlite3
+    rows = sqlite3.connect(dest / "donnees" / "fusee.db").execute("SELECT content FROM kb WHERE topic='Sauvegarde'").fetchall()
+    assert rows and "retrouver" in rows[0][0]
+    assert (dest / "workspace" / "sites" / "demo" / "index.html").read_text() == "<h1>Démo</h1>"
+    assert not (dest / "workspace" / "node_modules").exists()
+    assert not list(dest.rglob("*.pem")) and not list(dest.rglob(".env"))
+    assert (dest / "code" / "fusee_agents" / "web.py").exists() and (dest / "LISEZ-MOI.txt").exists()
+    assert not (dest / "code" / ".git").exists() and not (dest / "code" / "data").exists()

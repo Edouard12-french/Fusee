@@ -182,6 +182,11 @@ redémarre Fusée. Ton `.env`, tes données et le travail des agents ne sont jam
 
 Chaque jour, Fusée sauvegarde sa base (conversations, clients, ventes, mémoire…) dans `data/sauvegardes/` et garde
 les 7 derniers jours.
+
+**💾 Sur une clé USB** : branche la clé, puis double-clique **« Sauvegarder sur cle USB »** dans le dossier Fusee.
+Tout est copié dans `Fusee-sauvegardes/<date>/` sur la clé (base, travail des agents, code, réglages) **sauf ta clé
+API et tes mots de passe** : si la clé USB est perdue, personne ne peut s'en servir. La clé est éjectée à la fin.
+Le fichier `LISEZ-MOI.txt` sur la clé explique comment remettre la sauvegarde.
 ### 📲 Installer l'application
 
 - **Ordinateur** (Chrome/Edge) : bouton « 📲 Installer l'app » en haut, ou l'icône dans la barre d'adresse.
@@ -326,6 +331,7 @@ Aucun appel réel à l'IA, à Stripe, à Netlify ou à Apple.
   Activer iPhone et iPad.command        accès privé depuis l'iPhone / l'iPad + QR code
   Activer le chat des sites.command     le chat (et le 🎤) des sites en ligne peut joindre Fusée
   Couper l'acces iPhone et chat.command coupe l'accès depuis l'iPhone / l'iPad et le chat public
+  Sauvegarder sur cle USB.command       copie Fusée et tout le travail des agents sur ta clé USB (sans mots de passe)
 
 main.py                        lancement (serveur + agents), ouvre l'appli
 start.sh / start.bat           lancement 24h/24 avec installation et redémarrage auto
