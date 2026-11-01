@@ -656,7 +656,17 @@ async def setup_save(request: Request):
     _setup_allowed(request)
     data = await request.json()
     changed = setup_mod.save(data if isinstance(data, dict) else {})
-    return {"ok": True, "changed": changed}
+    applied = False
+    if "ANTHROPIC_API_KEY" in changed:  # clé appliquée tout de suite + l'équipe se réveille
+        runner.reload_client()
+        for a in TEAM:
+            st = (db.get_states().get(a.name) or {}).get("status", "")
+            if "clé API" in st or st.startswith("erreur"):
+                db.set_state(a.name, status="en attente")
+            if (agent_settings(a.name).get("interval_min", a.interval_min) or 0) > 0:
+                scheduler.wake(a.name, "la clé API vient d'être ajoutée : l'équipe démarre, présente-toi et commence")
+        applied = True
+    return {"ok": True, "changed": changed, "applied": applied}
 
 
 @app.post("/api/setup/test")

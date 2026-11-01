@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
+# Une clé d'exemple (« sk-ant-... ») n'est pas une vraie clé : on l'ignore.
+if os.getenv("ANTHROPIC_API_KEY", "").strip() in ("sk-ant-...", "sk-ant-") or "..." in os.getenv("ANTHROPIC_API_KEY", ""):
+    os.environ.pop("ANTHROPIC_API_KEY", None)
 
 
 def _bool(name: str, default: bool) -> bool:

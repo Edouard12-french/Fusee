@@ -635,7 +635,9 @@ function setupValues(i) {
 }
 async function setupSave(i) {
   const r = await post("/api/setup/save", setupValues(i));
-  $("#sres" + i).textContent = r.ok ? "Enregistré ✅ (redémarre Fusée pour appliquer)" : "Erreur : " + (await r.text());
+  const d = r.ok ? await r.json() : null;
+  $("#sres" + i).textContent = !r.ok ? "Erreur : " + (await r.text())
+    : d.applied ? "Clé enregistrée et appliquée ✅ — l'équipe se réveille !" : "Enregistré ✅ (redémarre Fusée pour appliquer)";
   if (r.ok) { const sm = document.querySelectorAll("#pane details")[i].querySelector("summary b"); sm.textContent = sm.textContent.replace("⚪", "✅"); }
 }
 async function setupTest(i) {

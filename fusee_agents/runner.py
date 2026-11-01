@@ -13,6 +13,12 @@ from .config import MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, WEB_S
 from .tools import execute, products_overview, skills, tool_defs, toolbox
 
 client = anthropic.AsyncAnthropic(max_retries=4)
+
+
+def reload_client() -> None:
+    """Applique une nouvelle clé API tout de suite, sans redémarrer Fusée."""
+    global client
+    client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY") or None, max_retries=4)
 MINOR_TXT = f"""
 
 ## ⚠️ {OWNER} a moins de 18 ans
