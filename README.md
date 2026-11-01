@@ -187,6 +187,20 @@ une adresse fixe du type `https://ton-ordi.tailXXXX.ts.net` → mets-la dans `PU
 (`/public/...`) est accessible sans mot de passe ; le reste de l'appli est protégé par `DASHBOARD_PASSWORD`.
 Sans adresse publique, les sites affichent un contact par e-mail à la place.
 
+## Notifications 🔔
+
+Fusée te prévient **tout seul**, sans rien installer :
+- **notifications du Mac** (en haut à droite de l'écran, avec un petit son), même quand la fenêtre Fusée est fermée ;
+- **alerte dans la fenêtre** quand Fusée est ouvert : un clic t'emmène au bon endroit (📥 Demandes, Prospects…) ;
+- **silence la nuit** (22 h → 8 h par défaut, réglable) : pendant ce temps, tout reste dans l'onglet 🔔 Notifs.
+
+Tu es prévenu pour : chaque validation demandée, chaque besoin présenté par Clara, les messages privés, les
+ventes 💶, les prospects chauds 🔥, les rapports et les sites mis en ligne. Réglages et bouton de test dans
+⚙️ Réglages. La première fois, le Mac peut demander l'autorisation d'afficher les notifications : accepte.
+
+**Aussi sur ton téléphone (optionnel)** : installe l'app gratuite **ntfy** et abonne-toi au nom secret proposé
+dans 🚀 Démarrage → « Notifications sur ton téléphone ».
+
 ## L'application
 
 Une interface colorée (chaque agent a sa couleur), en thème sombre ou clair (bouton 🌗).
@@ -289,7 +303,7 @@ fusee_agents/
   browser.py                   navigateur : captures, navigation, vidéos
   integrations.py              Netlify (mise en ligne) et Stripe (paiements, ventes)
   mailbox.py                   e-mails clients (IMAP/SMTP)
-  notify.py                    notifications téléphone (ntfy)
+  notify.py                    notifications (Mac, fenêtre Fusée, téléphone en option)
   db.py                        base SQLite (data/fusee.db)
   web.py                       serveur de l'appli + chat public des sites
   static/                      l'application (PWA), le widget de chat, les icônes
