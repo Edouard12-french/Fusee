@@ -280,10 +280,15 @@ dépenses que tu as validées, revenus (Stripe + ce que tu ajoutes), et ce qu'il
 - **Les dépenses réelles** proposées par les agents (pub, nom de domaine…) sont refusées d'office si elles
   dépassent l'argent disponible ; une fois validées, elles sont déduites automatiquement.
 - **Le plan de modèles** (`FUSEE_PLAN` dans `.env`) fixe la qualité et le coût :
-  - `eco` : orchestrateur Sonnet, tous les autres Haiku (le moins cher, idéal pour démarrer avec 100 €) ;
+  - `eco` : Haiku pour tout le monde, orchestrateur compris (le moins cher, idéal pour un petit budget) ;
   - `equilibre` : orchestrateur Opus, agents de travail Sonnet, coordination Haiku ;
   - `max` : Opus partout (le plus intelligent, beaucoup plus cher).
 - Le chat public des sites est limité (20 messages/h par visiteur, 400/h au total) pour protéger le budget.
+- **Économies automatiques** (⚙️ Réglages → 💸 Dépenses de l'IA, qui montre aussi ce que coûte chaque agent) :
+  - les **recherches internet** (~1 centime chacune, la plus grosse dépense) sont plafonnées à 40 % du budget du
+    jour ; au-delà, les agents travaillent avec ce qu'ils savent déjà ;
+  - les agents **dorment la nuit** (23 h → 7 h par défaut) ; Iris répond quand même aux clients et un message de
+    toi réveille l'agent concerné.
 
 ## Ta stratégie d'investissement 📈
 

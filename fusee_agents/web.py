@@ -357,6 +357,33 @@ def notif_settings():
             "quiet_now": notify_mod.is_quiet()}
 
 
+@app.get("/api/costs")
+def costs():
+    """Où part l'argent de l'IA aujourd'hui : par agent, recherches web, nuit des agents."""
+    from .config import WEB_SEARCH_COST
+    rows = []
+    for r in db.usage_today():
+        a = BY_NAME.get(r["agent"])
+        rows.append({"agent": r["agent"], "emoji": a.emoji if a else "🤖", "model": model_for(a.tier)[0] if a else "",
+                     "cost_eur": r["cost_usd"] * USD_EUR, "searches": r["searches"], "cycles": r["cycles"]})
+    n = db.searches_today()
+    return {"plan": PLAN, "agents": rows, "spent_today_eur": db.cost_today() * USD_EUR,
+            "daily_cap_eur": budget.daily_cap_usd() * USD_EUR, "searches": n, "search_limit": budget.web_search_limit(),
+            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "night": budget.night_settings(),
+            "night_now": budget.is_night()}
+
+
+@app.post("/api/night")
+async def save_night(request: Request):
+    d = await request.json()
+    if "enabled" in d:
+        db.set_setting("night_enabled", "1" if d["enabled"] else "0")
+    for k in ("from", "to"):
+        if k in d and 0 <= int(d[k]) <= 23:
+            db.set_setting(f"night_{k}", str(int(d[k])))
+    return {"ok": True}
+
+
 @app.post("/api/notif_settings")
 async def save_notif_settings(request: Request):
     d = await request.json()

@@ -214,10 +214,17 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
     tools = tool_defs(agent.tools, model)
     if agent.name in NO_STRICT:
         tools = _strip_strict(tools)
+    search_note = ""
+    if any(t.get("name") == "web_search" for t in tools) and budget.searches_exhausted():
+        tools = [t for t in tools if t.get("name") != "web_search"]  # ~1 centime la recherche : plafond du jour atteint
+        search_note = ("\n\n## Recherches web\nLe quota de recherches web du jour est atteint (économie). Utilise "
+                       "recall (savoir de l'équipe), tes notes, le travail de l'équipe, ou web_fetch sur une adresse précise que tu "
+                       "connais déjà. Les recherches reviennent demain.")
+    db.add_cycle(agent.name)
     extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
              if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
     system = [{"type": "text", "text": system_prompt(agent), "cache_control": {"type": "ephemeral"}}]
-    messages: list = [{"role": "user", "content": build_context(agent, reason)}]
+    messages: list = [{"role": "user", "content": build_context(agent, reason) + search_note}]
     cycle_cost = 0.0
 
     try:
@@ -237,6 +244,8 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
             c = _cost(resp.usage, getattr(resp, "model", None) or model)
             cycle_cost += c
             db.add_cost(agent.name, c)
+            stu = getattr(resp.usage, "server_tool_use", None)
+            db.add_searches(agent.name, int(getattr(stu, "web_search_requests", 0) or 0) if stu else 0)
             messages.append({"role": "assistant", "content": resp.content})
 
             tool_results = []

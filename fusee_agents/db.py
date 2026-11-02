@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS dms (id INTEGER PRIMARY KEY, ts REAL, agent TEXT, sen
     attachments TEXT, read INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, data TEXT, device TEXT, ts REAL);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS usage_agent (day TEXT, agent TEXT, cost_usd REAL DEFAULT 0, searches INTEGER DEFAULT 0,
+    cycles INTEGER DEFAULT 0, PRIMARY KEY (day, agent));
 """
 )
 for _sql in ("ALTER TABLE payment_links ADD COLUMN product_id INTEGER",
@@ -142,6 +144,31 @@ def add_cost(agent: str, usd: float) -> None:
     x("INSERT OR IGNORE INTO usage (day, cost_usd) VALUES (?, 0)", (today,))
     x("UPDATE usage SET cost_usd = cost_usd + ? WHERE day=?", (usd, today))
     x("UPDATE agent_state SET cost_usd = cost_usd + ? WHERE agent=?", (usd, agent))
+    _usage_agent(agent, "cost_usd", usd)
+
+
+def _usage_agent(agent: str, col: str, n: float) -> None:
+    today = date.today().isoformat()
+    x("INSERT OR IGNORE INTO usage_agent (day, agent) VALUES (?, ?)", (today, agent))
+    x(f"UPDATE usage_agent SET {col} = {col} + ? WHERE day=? AND agent=?", (n, today, agent))
+
+
+def add_searches(agent: str, n: int) -> None:
+    if n:
+        _usage_agent(agent, "searches", n)
+
+
+def add_cycle(agent: str) -> None:
+    _usage_agent(agent, "cycles", 1)
+
+
+def searches_today() -> int:
+    return q("SELECT COALESCE(SUM(searches), 0) s FROM usage_agent WHERE day=?", (date.today().isoformat(),))[0]["s"]
+
+
+def usage_today() -> list[dict]:
+    return q("SELECT agent, cost_usd, searches, cycles FROM usage_agent WHERE day=? ORDER BY cost_usd DESC",
+             (date.today().isoformat(),))
 
 
 def cost_total() -> float:

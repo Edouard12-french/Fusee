@@ -565,6 +565,7 @@ async function renderPane(soft) {
           <div class="muted" style="margin-top:6px">Pendant le silence, tout reste dans l'appli (onglet 🔔 Notifs) : rien n'est perdu.${ns.quiet_now ? " <b>Silence en cours.</b>" : ""}
             ${ns.phone ? "📱 Aussi envoyées sur ton téléphone (ntfy)." : "Pour les recevoir aussi sur ton téléphone : étape « Notifications sur ton téléphone » dans 🚀 Démarrage (optionnel)."}</div>
           <button style="margin-top:8px" onclick="testNotif(this)">🔔 Envoyer une notification de test</button></div>
+        <div class="card" style="border-left:4px solid #f59e0b"><h4>💸 Dépenses de l'IA</h4><div id="costBox" class="muted">…</div></div>
         <div class="card" style="border-left:4px solid #0ea5e9"><h4>📱 Fusée sur ton iPhone et ton iPad</h4><div id="devBox" class="muted">…</div></div>
         <div class="card" style="border-left:4px solid #22c55e"><h4>📱 Notifications sur cet appareil (iPhone…)</h4>
           <div id="pushBox" class="muted">…</div></div>
@@ -578,7 +579,7 @@ async function renderPane(soft) {
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
-      renderPushBox(); renderDeviceBox();
+      renderPushBox(); renderDeviceBox(); renderCostBox();
       ["nMac", "nSound", "nQuiet", "nFrom", "nTo"].forEach(id => $("#" + id).onchange = () => post("/api/notif_settings", {
         mac: $("#nMac").checked, sound: $("#nSound").checked, quiet: $("#nQuiet").checked, quiet_from: +$("#nFrom").value, quiet_to: +$("#nTo").value})
         .then(() => { S._sound = $("#nSound").checked; }));
@@ -684,6 +685,26 @@ async function saveOwnerProfile(btn) {
 }
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+async function renderCostBox() {
+  const box = $("#costBox"); if (!box) return;
+  const c = await api("/api/costs"), eur = v => (+v).toFixed(2).replace(".", ",") + " €";
+  const pct = Math.min(100, c.daily_cap_eur ? 100 * c.spent_today_eur / c.daily_cap_eur : 0);
+  const hours = sel => Array.from({length: 24}, (_, h) => `<option value="${h}" ${sel === h ? "selected" : ""}>${h} h</option>`).join("");
+  const list = c.agents.filter(a => a.cost_eur > 0.0005 || a.cycles).slice(0, 14).map(a =>
+    `<div style="display:flex;justify-content:space-between;gap:8px"><span>${a.emoji} ${esc(a.agent)} <span class="muted">· ${a.cycles} cycle${a.cycles > 1 ? "s" : ""}${a.searches ? " · " + a.searches + " 🔎" : ""}</span></span><b>${eur(a.cost_eur)}</b></div>`).join("")
+    || `<div class="muted">Rien dépensé aujourd'hui pour l'instant.</div>`;
+  box.innerHTML = `<div style="color:var(--text)">Aujourd'hui : <b>${eur(c.spent_today_eur)}</b> sur ${eur(c.daily_cap_eur)} par jour
+      <div style="height:8px;border-radius:6px;background:var(--line,#8883);margin:6px 0"><div style="height:100%;width:${pct}%;border-radius:6px;background:${pct > 90 ? "#ef4444" : "#f59e0b"}"></div></div>
+      🔎 Recherches internet : <b>${c.searches} / ${c.search_limit}</b> aujourd'hui (≈ ${eur(c.search_cost_eur)} — environ 1 centime chacune ; au-delà, les agents utilisent ce qu'ils savent déjà)</div>
+    <div style="margin:10px 0;display:grid;gap:3px;color:var(--text)">${list}</div>
+    <label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--text)"><input type="checkbox" id="ngOn" ${c.night.enabled ? "checked" : ""}>
+      😴 Les agents dorment la nuit, de <select id="ngFrom">${hours(c.night.from)}</select> à <select id="ngTo">${hours(c.night.to)}</select></label>
+    <div class="muted" style="margin-top:4px">${c.night_now && c.night.enabled ? "<b>Ils dorment en ce moment.</b> " : ""}Iris répond quand même aux clients, et si tu écris à un agent, il se réveille pour toi.</div>
+    <div class="muted" style="margin-top:8px">💡 Pour dépenser <b>moins au total</b> : 💰 Argent → baisse « Dont IA ». Le plan « Éco » (🚀 Démarrage) est le moins cher. Une 🗣️ réunion fait parler les 14 agents d'un coup : garde-la pour les grandes décisions.</div>`;
+  ["ngOn", "ngFrom", "ngTo"].forEach(id => $("#" + id).onchange = () =>
+    post("/api/night", {enabled: $("#ngOn").checked, from: +$("#ngFrom").value, to: +$("#ngTo").value}).then(renderCostBox));
+}
+
 async function renderDeviceBox() {
   const box = $("#devBox"); if (!box) return;
   const {url} = await api("/api/device_url");

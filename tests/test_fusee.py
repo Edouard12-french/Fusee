@@ -331,3 +331,66 @@ def test_usb_backup_copies_work_but_never_secrets(tmp_path):
     assert not list(dest.rglob("*.pem")) and not list(dest.rglob(".env"))
     assert (dest / "code" / "fusee_agents" / "web.py").exists() and (dest / "LISEZ-MOI.txt").exists()
     assert not (dest / "code" / ".git").exists() and not (dest / "code" / "data").exists()
+
+
+# --- économies : petit modèle, recherches web plafonnées, nuit des agents ---------------------------------------
+
+def test_eco_plan_uses_the_small_model_for_everyone():
+    from fusee_agents import config
+    assert {m for m, _ in config.PLANS["eco"].values()} == {"claude-haiku-5-5"}
+
+
+def test_web_searches_are_capped_and_counted(monkeypatch):
+    from fusee_agents import runner
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setattr(budget, "today_exhausted", lambda: False)
+    monkeypatch.setattr(budget, "api_exhausted", lambda: False)
+    seen = []
+
+    async def fake(**kw):
+        seen.append(([t["name"] for t in kw["tools"]], kw["messages"][0]["content"]))
+        return NS(usage=NS(input_tokens=10, output_tokens=5, cache_read_input_tokens=0, cache_creation_input_tokens=0,
+                           server_tool_use=NS(web_search_requests=2)), stop_reason="end_turn", model=kw["model"],
+                  content=[NS(type="text", text="ok")])
+
+    monkeypatch.setattr(runner, "client", NS(beta=NS(messages=NS(create=fake))))
+    scout = BY_NAME["Scout"]
+    assert "web_search" in scout.tools
+    before = db.searches_today()
+    monkeypatch.setattr(budget, "web_search_limit", lambda: before + 100)
+    asyncio.run(runner.run_cycle(scout, "test", lambda *a: None))
+    assert "web_search" in seen[-1][0] and db.searches_today() == before + 2  # comptées
+    assert any(r["agent"] == "Scout" and r["searches"] >= 2 and r["cycles"] >= 1 for r in db.usage_today())
+    monkeypatch.setattr(budget, "web_search_limit", lambda: before + 2)  # quota atteint
+    asyncio.run(runner.run_cycle(scout, "test", lambda *a: None))
+    assert "web_search" not in seen[-1][0] and "quota de recherches web du jour est atteint" in seen[-1][1]
+    monkeypatch.undo()
+    assert 5 <= budget.web_search_limit() <= int(budget.daily_cap_usd() * 0.4 / 0.01) + 5
+
+
+def test_agents_sleep_at_night_but_wake_for_the_owner():
+    from datetime import datetime
+    from fusee_agents.scheduler import allowed_at_night
+    db.set_setting("night_enabled", "1"); db.set_setting("night_from", "23"); db.set_setting("night_to", "7")
+    assert budget.is_night(datetime(2026, 11, 2, 2, 0)) and budget.is_night(datetime(2026, 11, 2, 23, 30))
+    assert not budget.is_night(datetime(2026, 11, 2, 7, 0)) and not budget.is_night(datetime(2026, 11, 2, 15, 0))
+    assert budget.seconds_until_morning(datetime(2026, 11, 2, 23, 0)) == 8 * 3600
+    assert budget.seconds_until_morning(datetime(2026, 11, 2, 3, 30)) == 3.5 * 3600
+    assert not allowed_at_night("Neo", "cycle régulier")
+    assert not allowed_at_night("Neo", "mentionné par Atlas : Patron veut un site")  # un agent ne réveille pas les autres
+    assert allowed_at_night("Neo", "cycle régulier | message de Patron : tu es là ?")
+    assert allowed_at_night("Wolf", "Patron a répondu à ta question #3")
+    assert allowed_at_night("Iris", "message chat du contact #4 sur le site demo")  # les clients, toujours
+    db.set_setting("night_enabled", "0")
+    assert not budget.is_night(datetime(2026, 11, 2, 2, 0))
+
+
+def test_costs_page_data():
+    from fastapi.testclient import TestClient
+    from fusee_agents import web
+    db.add_cost("Neo", 0.01)
+    r = TestClient(web.app).get("/api/costs").json()
+    assert r["plan"] and r["search_limit"] >= 5 and any(a["agent"] == "Neo" and a["cost_eur"] > 0 for a in r["agents"])
+    assert TestClient(web.app).post("/api/night", json={"enabled": True, "from": 22, "to": 6}).json() == {"ok": True}
+    assert budget.night_settings() == {"enabled": True, "from": 22, "to": 6}
+    db.set_setting("night_enabled", "0")

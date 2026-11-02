@@ -1,16 +1,27 @@
 """Fait tourner chaque agent en continu : un cycle à intervalle régulier, ou dès qu'il est mentionné."""
 import asyncio
 
-from . import db, mailbox, markets, outreach, sales
-from .agents import BY_NAME, TEAM, Agent, agent_settings
+from . import budget, db, mailbox, markets, outreach, sales
+from .agents import BY_NAME, OWNER, TEAM, Agent, agent_settings
 from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
+
+
+# La nuit, seuls ces réveils font travailler un agent : ceux qui viennent de Patron (et Iris pour les clients)
+OWNER_WAKES = (f"message de {OWNER}", f"{OWNER} a ", f"en privé, {OWNER}", "pendant la réunion", "la clé API vient")
+
+
+def allowed_at_night(name: str, reason: str) -> bool:
+    if name == "Iris":  # les clients écrivent à toute heure
+        return True
+    return any(part.strip().startswith(OWNER_WAKES) for part in reason.split(" | "))
 
 
 class Scheduler:
     def __init__(self) -> None:
         self.events = {a.name: asyncio.Event() for a in TEAM}
         self.reasons: dict[str, list[str]] = {a.name: [] for a in TEAM}
+        self.deferred: dict[str, list[str]] = {a.name: [] for a in TEAM}  # réveils de la nuit, gardés pour le matin
         self.sem = asyncio.Semaphore(MAX_PARALLEL_AGENTS)
         self.tasks: list[asyncio.Task] = []
 
@@ -40,15 +51,26 @@ class Scheduler:
             if agent_settings(name).get("enabled", True) is False:
                 db.set_state(name, status="en pause (décision de l'équipe)")
             elif not self.paused:
-                async with self.sem:
-                    await run_cycle(agent, reason, self.wake)
+                if budget.is_night() and not allowed_at_night(name, reason):
+                    if reason not in ("cycle régulier", "démarrage"):
+                        self.deferred[name] = (self.deferred[name] + [reason])[-5:]
+                    db.set_state(name, status=f"😴 dort jusqu'à {budget.night_settings()['to']} h (économie)")
+                else:
+                    if self.deferred[name]:
+                        reason = " | ".join(self.deferred[name] + [reason])
+                        self.deferred[name] = []
+                    async with self.sem:
+                        await run_cycle(agent, reason, self.wake)
             # attendre le prochain cycle (ou une mention), avec un délai minimum anti ping-pong
             await asyncio.sleep(agent.min_gap_s)
             if not self.reasons[name]:
                 self.events[name].clear()
             try:
                 iv = interval()
-                await asyncio.wait_for(self.events[name].wait(), timeout=max(0, iv - agent.min_gap_s) if iv else None)
+                timeout = max(0, iv - agent.min_gap_s) if iv else None
+                if self.deferred[name]:  # un réveil attend le matin : on se réveille au plus tard à l'heure prévue
+                    timeout = min(timeout or 1e12, budget.seconds_until_morning() + 60)
+                await asyncio.wait_for(self.events[name].wait(), timeout=timeout)
             except asyncio.TimeoutError:
                 pass
             self.events[name].clear()

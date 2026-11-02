@@ -452,12 +452,12 @@ CLIENT_TOOLS: dict[str, dict] = {
 }
 
 SERVER_TOOLS = {
-    "web_search": {"type": "web_search_20260209", "name": "web_search", "max_uses": 8},
+    "web_search": {"type": "web_search_20260209", "name": "web_search", "max_uses": 5},
     "web_fetch": {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": 8, "max_content_tokens": 30000},
 }
 # Les versions « 20260209 » (filtrage dynamique) existent sur Opus/Sonnet récents ; les autres modèles ont les basiques.
 BASIC_SERVER_TOOLS = {
-    "web_search": {"type": "web_search_20250305", "name": "web_search", "max_uses": 5},
+    "web_search": {"type": "web_search_20250305", "name": "web_search", "max_uses": 3},
     "web_fetch": {"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 5, "max_content_tokens": 20000},
 }
 

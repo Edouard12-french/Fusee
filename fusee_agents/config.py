@@ -22,7 +22,7 @@ PLANS = {
                   "coord": ("claude-opus-5-5", "low")},
     "equilibre": {"lead": ("claude-opus-5-5", "medium"), "worker": ("claude-sonnet-5-5", "medium"),
                   "coord": ("claude-haiku-5-5", "low")},
-    "eco":       {"lead": ("claude-sonnet-5-5", "medium"), "worker": ("claude-haiku-5-5", "medium"),
+    "eco":       {"lead": ("claude-haiku-5-5", "medium"), "worker": ("claude-haiku-5-5", "medium"),
                   "coord": ("claude-haiku-5-5", "low")},
 }
 PLAN = os.getenv("FUSEE_PLAN", "eco").strip().lower()

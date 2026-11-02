@@ -1,8 +1,13 @@
 """Budget réel de Patron : argent de départ, dépenses IA, autres dépenses validées, revenus."""
 import json
+import os
+from datetime import datetime, timedelta
 
 from . import db
-from .config import API_BUDGET_DAYS, API_BUDGET_EUR, BUDGET_INITIAL_EUR, DAILY_BUDGET_USD, ROOT, USD_EUR
+from .config import (API_BUDGET_DAYS, API_BUDGET_EUR, BUDGET_INITIAL_EUR, DAILY_BUDGET_USD, ROOT, USD_EUR,
+                     WEB_SEARCH_COST)
+
+SEARCH_SHARE = 0.4  # au plus 40 % du budget du jour en recherches web (~1 centime chacune)
 
 
 def settings() -> dict:
@@ -18,6 +23,40 @@ def daily_cap_usd() -> float:
     s = settings()
     cap = s["api_budget_eur"] / s["api_days"] / USD_EUR
     return min(cap, DAILY_BUDGET_USD) if DAILY_BUDGET_USD > 0 else cap
+
+
+def web_search_limit() -> int:
+    """Recherches web autorisées par jour : la plus grosse dépense des petits modèles, donc plafonnée."""
+    forced = os.getenv("WEB_SEARCH_DAILY_LIMIT", "").strip()
+    if forced.isdigit():
+        return int(forced)
+    return max(5, int(daily_cap_usd() * SEARCH_SHARE / WEB_SEARCH_COST))
+
+
+def searches_exhausted() -> bool:
+    return db.searches_today() >= web_search_limit()
+
+
+def night_settings() -> dict:
+    return {"enabled": db.get_setting("night_enabled", "1") == "1",
+            "from": int(db.get_setting("night_from", "23")), "to": int(db.get_setting("night_to", "7"))}
+
+
+def is_night(now: datetime | None = None) -> bool:
+    """Les agents dorment la nuit (économie) : personne ne valide rien, les entreprises ne lisent pas leurs e-mails."""
+    s = night_settings()
+    if not s["enabled"] or s["from"] == s["to"]:
+        return False
+    h, a, b = (now or datetime.now()).hour, s["from"], s["to"]
+    return (a <= h or h < b) if a > b else (a <= h < b)
+
+
+def seconds_until_morning(now: datetime | None = None) -> float:
+    now = now or datetime.now()
+    wake = now.replace(hour=night_settings()["to"], minute=0, second=0, microsecond=0)
+    if wake <= now:
+        wake += timedelta(days=1)
+    return (wake - now).total_seconds()
 
 
 def api_spent_eur() -> float:
