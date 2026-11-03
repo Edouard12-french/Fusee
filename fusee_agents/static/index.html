@@ -108,7 +108,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px;borde
 @keyframes tin{from{opacity:0;transform:translateX(30px)}}
 button.meet{background:linear-gradient(135deg,#0ea5e9,#22c55e);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(14,165,233,.35);white-space:nowrap}
 #meetBar{margin:0 12px 8px;padding:8px 12px;border-radius:12px;color:#fff;font-size:13px;background:linear-gradient(135deg,#0ea5e9,#22c55e);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-#meetBar[hidden]{display:none}#meetBar .who{opacity:.45}#meetBar .who.done{opacity:1}
+#meetBar[hidden],#workMenu[hidden]{display:none!important}#meetBar .who{opacity:.45}#meetBar .who.done{opacity:1}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;place-items:center;z-index:50;cursor:zoom-out;padding:20px}
 #lightbox.open{display:grid}#lightbox img{max-width:100%;max-height:100%;border-radius:8px}
 nav#bottom{display:none}
@@ -135,9 +135,20 @@ nav#bottom{display:none}
   <button id="themeBtn" title="Thème clair / sombre">🌗</button>
   <button id="installBtn" hidden>📲<span class="lbl"> Installer l'app</span></button>
   <button id="browserBtn" title="Autoriser les agents à naviguer sur internet avec un vrai navigateur"></button>
+  <button id="workBtn" title="Quand l'équipe travaille : seulement quand tu parles, ou seule pendant un moment"></button>
   <button id="directiveBtn" title="Consigne permanente lue par tous les agents">🎯<span class="lbl"> Consigne</span></button>
   <button id="pauseBtn"></button>
 </header>
+<div id="workMenu" class="card" hidden style="position:fixed;top:60px;right:12px;z-index:60;width:min(340px,calc(100vw - 24px));display:grid;gap:6px;background:var(--bg2);box-shadow:0 12px 40px rgba(0,0,0,.45)">
+  <b>▶️ Laisser l'équipe travailler seule…</b>
+  <div class="muted">Sinon, ils travaillent seulement quand tu leur parles (Iris répond toujours aux clients).</div>
+  <button data-w="nuit">🌙 Cette nuit (jusqu'à 7 h)</button>
+  <button data-w="2h">⏱️ Pendant 2 heures</button>
+  <button data-w="24h">☀️ Pendant 24 heures</button>
+  <button data-w="2j">📅 Pendant 2 jours</button>
+  <button data-w="stop">⏹️ Stop : seulement quand je leur parle</button>
+  <div class="muted">Ils gardent toujours 40 % du budget du jour pour quand tu leur parles.</div>
+</div>
 <main>
   <aside id="agents"></aside>
   <section id="chat">
@@ -200,7 +211,7 @@ function renderAgents() {
     return `<div class="agent ${selected===a.name?"sel":""}" data-n="${a.name}" style="--ag:${a.color}">
       <div class="av">${a.emoji}</div>
       <div style="min-width:0"><b>${a.name}${(S.unread_dms || {})[a.name] ? ` <span class="badge" title="Message privé">💬 ${S.unread_dms[a.name]}</span>` : ""}</b><small>${esc(a.kind)} · ${esc(a.title)}</small>
-      <small><span class="tag">${a.model.replace("claude-","").replace(/-(\d)-(\d)$/," $1.$2")}</span> <span class="tag">${a.interval_min ? "toutes les " + a.interval_min + " min" : "à la demande"}</span></small>
+      <small><span class="tag">${a.model.replace("claude-","").replace(/-(\d)-(\d)$/," $1.$2")}</span> <span class="tag">${a.interval_min && S.work && S.work.authorized ? "seul : toutes les " + a.interval_min + " min" : "quand tu parles"}</span></small>
       <small><span class="dot ${cls}"></span>${esc(st)}</small>
       <small title="${esc(a.task)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.task || "—")}</small>
       <small>${a.cycles||0} cycles · ${(a.cost_usd||0).toFixed(2)} $</small></div></div>`;
@@ -255,6 +266,8 @@ async function poll() {
     $("#cost").innerHTML = `${r.budget.remaining_eur.toFixed(0)} €<span class="hide-mi"> · IA ${r.budget.api_today_eur.toFixed(2)}/${r.budget.api_daily_cap_eur.toFixed(2)} €</span>`;
     $("#costbar").style.width = Math.min(100, 100 * r.budget.api_today_eur / Math.max(r.budget.api_daily_cap_eur, 0.01)) + "%";
     $("#pauseBtn").innerHTML = r.paused ? "▶️<span class=lbl> Reprendre</span>" : "⏸️<span class=lbl> Pause</span>";
+    $("#workBtn").innerHTML = r.work.authorized ? `▶️<span class=lbl> Seuls jusqu'à ${esc(r.work.label)}</span>` : "💤<span class=lbl> Attendent que tu parles</span>";
+    $("#workBtn").classList.toggle("on", r.work.authorized);
     $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
     $("#browserBtn").classList.toggle("on", r.browser_enabled);
     renderAgents(); addMessages(r.messages);
@@ -300,7 +313,7 @@ async function renderPane(soft) {
       const [acts, mem] = await Promise.all([api("/api/activity?agent=" + a.name), api("/api/memory/" + a.name)]);
       const open = soft && pane.querySelector("#memd")?.open;
       pane.innerHTML = `<div class="card" style="border-left:4px solid ${a.color}"><h4>${a.emoji} ${a.name} — ${esc(a.kind)}</h4>
-        <div class="muted">${esc(a.title)} · statut : ${esc(a.status)} · ${a.interval_min ? "cycle toutes les " + a.interval_min + " min" : "à la demande"} · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
+        <div class="muted">${esc(a.title)} · statut : ${esc(a.status)} · ${a.interval_min ? (S.work && S.work.authorized ? "travaille seul : cycle toutes les " + a.interval_min + " min" : "travaille quand tu lui parles (ou quand tu l'autorises à travailler seul : cycle toutes les " + a.interval_min + " min)") : "à la demande"} · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
         <p><b>En ce moment :</b> ${esc(a.task || "—")}</p>
         <button onclick="post('/api/wake/${a.name}')">⚡ Lancer un cycle maintenant</button></div>
         <div class="card" style="--ag:${a.color};border-color:color-mix(in srgb,${a.color} 45%,transparent)"><h4>💬 Discussion privée avec ${a.name}</h4>
@@ -689,7 +702,6 @@ async function renderCostBox() {
   const box = $("#costBox"); if (!box) return;
   const c = await api("/api/costs"), eur = v => (+v).toFixed(2).replace(".", ",") + " €";
   const pct = Math.min(100, c.daily_cap_eur ? 100 * c.spent_today_eur / c.daily_cap_eur : 0);
-  const hours = sel => Array.from({length: 24}, (_, h) => `<option value="${h}" ${sel === h ? "selected" : ""}>${h} h</option>`).join("");
   const list = c.agents.filter(a => a.cost_eur > 0.0005 || a.cycles).slice(0, 14).map(a =>
     `<div style="display:flex;justify-content:space-between;gap:8px"><span>${a.emoji} ${esc(a.agent)} <span class="muted">· ${a.cycles} cycle${a.cycles > 1 ? "s" : ""}${a.searches ? " · " + a.searches + " 🔎" : ""}</span></span><b>${eur(a.cost_eur)}</b></div>`).join("")
     || `<div class="muted">Rien dépensé aujourd'hui pour l'instant.</div>`;
@@ -697,12 +709,10 @@ async function renderCostBox() {
       <div style="height:8px;border-radius:6px;background:var(--line,#8883);margin:6px 0"><div style="height:100%;width:${pct}%;border-radius:6px;background:${pct > 90 ? "#ef4444" : "#f59e0b"}"></div></div>
       🔎 Recherches internet : <b>${c.searches} / ${c.search_limit}</b> aujourd'hui (≈ ${eur(c.search_cost_eur)} — environ 1 centime chacune ; au-delà, les agents utilisent ce qu'ils savent déjà)</div>
     <div style="margin:10px 0;display:grid;gap:3px;color:var(--text)">${list}</div>
-    <label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--text)"><input type="checkbox" id="ngOn" ${c.night.enabled ? "checked" : ""}>
-      😴 Les agents dorment la nuit, de <select id="ngFrom">${hours(c.night.from)}</select> à <select id="ngTo">${hours(c.night.to)}</select></label>
-    <div class="muted" style="margin-top:4px">${c.night_now && c.night.enabled ? "<b>Ils dorment en ce moment.</b> " : ""}Iris répond quand même aux clients, et si tu écris à un agent, il se réveille pour toi.</div>
+    <div style="color:var(--text)">💤 <b>Par défaut, ils travaillent seulement quand tu leur parles</b> (Iris répond quand même aux clients).
+      Pour les laisser avancer seuls (la nuit, 2 jours…) : bouton <b>💤 / ▶️</b> en haut. Même là, ils gardent toujours
+      <b>${c.reserve_pct} %</b> du budget du jour pour quand tu leur parles.</div>
     <div class="muted" style="margin-top:8px">💡 Pour dépenser <b>moins au total</b> : 💰 Argent → baisse « Dont IA ». Le plan « Éco » (🚀 Démarrage) est le moins cher. Une 🗣️ réunion fait parler les 14 agents d'un coup : garde-la pour les grandes décisions.</div>`;
-  ["ngOn", "ngFrom", "ngTo"].forEach(id => $("#" + id).onchange = () =>
-    post("/api/night", {enabled: $("#ngOn").checked, from: +$("#ngFrom").value, to: +$("#ngTo").value}).then(renderCostBox));
 }
 
 async function renderDeviceBox() {
@@ -818,6 +828,12 @@ $("#meetBtn").onclick = async () => {
 };
 $("#txt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#f").requestSubmit(); } };
 $("#pauseBtn").onclick = async () => { await post("/api/pause?on=" + !S.paused); poll(); };
+$("#workBtn").onclick = e => { e.stopPropagation(); $("#workMenu").hidden = !$("#workMenu").hidden; };
+document.addEventListener("click", e => { if (!$("#workMenu").hidden && !$("#workMenu").contains(e.target)) $("#workMenu").hidden = true; });
+$("#workMenu").querySelectorAll("button[data-w]").forEach(b => b.onclick = async () => {
+  $("#workMenu").hidden = true;
+  await post("/api/work", {choice: b.dataset.w}); poll();
+});
 $("#browserBtn").onclick = async () => {
   if (!S.browser_enabled && !confirm("Autoriser les agents à ouvrir des pages web dans un vrai navigateur (lecture et captures d'écran) ?")) return;
   await post("/api/browser?on=" + !S.browser_enabled); poll();

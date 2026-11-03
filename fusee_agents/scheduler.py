@@ -7,21 +7,32 @@ from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
 
 
-# La nuit, seuls ces réveils font travailler un agent : ceux qui viennent de Patron (et Iris pour les clients)
+# Réveils qui viennent de Patron : ils font toujours travailler l'agent concerné
 OWNER_WAKES = (f"message de {OWNER}", f"{OWNER} a ", f"en privé, {OWNER}", "pendant la réunion", "la clé API vient")
+IDLE = ("cycle régulier", "démarrage")
 
 
-def allowed_at_night(name: str, reason: str) -> bool:
-    if name == "Iris":  # les clients écrivent à toute heure
-        return True
-    return any(part.strip().startswith(OWNER_WAKES) for part in reason.split(" | "))
+def why_may_work(name: str, reason: str) -> str | None:
+    """Pourquoi cet agent peut travailler maintenant : « patron », « client », « autonome »… ou None (il attend).
+    Par défaut l'équipe ne travaille que quand Patron lui parle (+ 30 min pour s'organiser entre agents),
+    pour les clients (Iris, ventes), ou pendant une période où Patron l'a autorisée à travailler seule."""
+    parts = [p.strip() for p in reason.split(" | ")]
+    if any(p.startswith(OWNER_WAKES) for p in parts):
+        return "patron"
+    if name == "Iris" or any("nouvelle(s) vente(s)" in p for p in parts):
+        return "client"
+    if budget.owner_active() and any(p not in IDLE for p in parts):
+        return "patron"  # un collègue l'appelle pour répondre à ce que Patron vient de demander
+    if budget.work_authorized():
+        return "autonome"
+    return None
 
 
 class Scheduler:
     def __init__(self) -> None:
         self.events = {a.name: asyncio.Event() for a in TEAM}
         self.reasons: dict[str, list[str]] = {a.name: [] for a in TEAM}
-        self.deferred: dict[str, list[str]] = {a.name: [] for a in TEAM}  # réveils de la nuit, gardés pour le matin
+        self.deferred: dict[str, list[str]] = {a.name: [] for a in TEAM}  # appels reçus pendant qu'il attendait
         self.sem = asyncio.Semaphore(MAX_PARALLEL_AGENTS)
         self.tasks: list[asyncio.Task] = []
 
@@ -30,6 +41,8 @@ class Scheduler:
         return db.get_setting("paused", "0") == "1"
 
     def wake(self, name: str, reason: str) -> None:
+        if reason.startswith(OWNER_WAKES):
+            budget.note_owner_active()
         if name in self.events:
             self.reasons[name].append(reason)
             self.events[name].set()
@@ -51,10 +64,12 @@ class Scheduler:
             if agent_settings(name).get("enabled", True) is False:
                 db.set_state(name, status="en pause (décision de l'équipe)")
             elif not self.paused:
-                if budget.is_night() and not allowed_at_night(name, reason):
-                    if reason not in ("cycle régulier", "démarrage"):
+                why = why_may_work(name, reason)
+                if why is None or (why == "autonome" and budget.autonomous_budget_used()):
+                    if reason not in IDLE:
                         self.deferred[name] = (self.deferred[name] + [reason])[-5:]
-                    db.set_state(name, status=f"😴 dort jusqu'à {budget.night_settings()['to']} h (économie)")
+                    db.set_state(name, status=f"💤 attend que {OWNER} parle" if why is None
+                                 else f"⏸️ garde le reste du budget du jour pour {OWNER}")
                 else:
                     if self.deferred[name]:
                         reason = " | ".join(self.deferred[name] + [reason])
@@ -68,14 +83,22 @@ class Scheduler:
             try:
                 iv = interval()
                 timeout = max(0, iv - agent.min_gap_s) if iv else None
-                if self.deferred[name]:  # un réveil attend le matin : on se réveille au plus tard à l'heure prévue
-                    timeout = min(timeout or 1e12, budget.seconds_until_morning() + 60)
                 await asyncio.wait_for(self.events[name].wait(), timeout=timeout)
             except asyncio.TimeoutError:
                 pass
             self.events[name].clear()
             pending, self.reasons[name] = self.reasons[name], []
             reason = " | ".join(pending[-5:]) if pending else "cycle régulier"
+
+    def authorize(self, until_ts: float) -> str:
+        """Patron autorise l'équipe à travailler seule jusqu'à until_ts : les agents réguliers démarrent tout de suite."""
+        budget.authorize_work(until_ts)
+        label = budget.when_label(until_ts)
+        for a in TEAM:
+            if agent_settings(a.name).get("interval_min", a.interval_min):
+                self.wake(a.name, f"autorisation : {OWNER} vous laisse travailler seuls jusqu'à {label} — avancez sur "
+                                  "vos projets en équipe (toujours request_approval avant de publier)")
+        return label
 
     async def _mark_prices(self) -> None:
         """Toutes les heures : prix réels des positions du portefeuille simulé."""

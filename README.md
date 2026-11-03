@@ -1,4 +1,4 @@
-# 🚀 Fusée — ton équipe d'agents IA qui travaille 24h/24
+# 🚀 Fusée — ton équipe d'agents IA, quand tu veux
 
 Quatorze agents IA (Claude), chacun avec un **type** et un métier. Ils discutent entre eux dans un **groupe
 façon WhatsApp**, cherchent sur internet, créent des **sites, des applis, des jeux, des pubs et des vidéos**, te
@@ -287,8 +287,12 @@ dépenses que tu as validées, revenus (Stripe + ce que tu ajoutes), et ce qu'il
 - **Économies automatiques** (⚙️ Réglages → 💸 Dépenses de l'IA, qui montre aussi ce que coûte chaque agent) :
   - les **recherches internet** (~1 centime chacune, la plus grosse dépense) sont plafonnées à 40 % du budget du
     jour ; au-delà, les agents travaillent avec ce qu'ils savent déjà ;
-  - les agents **dorment la nuit** (23 h → 7 h par défaut) ; Iris répond quand même aux clients et un message de
-    toi réveille l'agent concerné.
+- **Ils travaillent quand tu leur parles** (par défaut) : un message dans le groupe, une réunion ou un message
+  privé réveille les agents concernés, qui ont 30 min pour s'organiser entre eux et te répondre, puis ils attendent.
+  Iris répond toujours aux clients. Rien ne part pendant que tu es à l'école.
+- **Pour les laisser avancer seuls**, bouton **💤 / ▶️** en haut : *cette nuit* (jusqu'à 7 h), *2 heures*,
+  *24 heures* ou *2 jours*, et **⏹️ Stop** à tout moment. Même là, ils s'arrêtent à **60 % du budget du jour** :
+  les 40 % restants sont toujours gardés pour quand tu leur parles.
 
 ## Ta stratégie d'investissement 📈
 

@@ -1,6 +1,7 @@
 """Budget réel de Patron : argent de départ, dépenses IA, autres dépenses validées, revenus."""
 import json
 import os
+import time
 from datetime import datetime, timedelta
 
 from . import db
@@ -37,26 +38,60 @@ def searches_exhausted() -> bool:
     return db.searches_today() >= web_search_limit()
 
 
-def night_settings() -> dict:
-    return {"enabled": db.get_setting("night_enabled", "1") == "1",
-            "from": int(db.get_setting("night_from", "23")), "to": int(db.get_setting("night_to", "7"))}
+OWNER_WINDOW_S = 30 * 60   # après un message de Patron, l'équipe peut s'organiser 30 min pour lui répondre
+AUTONOMOUS_SHARE = 0.6     # le travail en solo s'arrête à 60 % du budget du jour : le reste est gardé pour Patron
+JOURS_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
-def is_night(now: datetime | None = None) -> bool:
-    """Les agents dorment la nuit (économie) : personne ne valide rien, les entreprises ne lisent pas leurs e-mails."""
-    s = night_settings()
-    if not s["enabled"] or s["from"] == s["to"]:
-        return False
-    h, a, b = (now or datetime.now()).hour, s["from"], s["to"]
-    return (a <= h or h < b) if a > b else (a <= h < b)
+def work_until() -> float:
+    try:
+        return float(db.get_setting("work_until", "0") or 0)
+    except ValueError:
+        return 0.0
 
 
-def seconds_until_morning(now: datetime | None = None) -> float:
+def work_authorized(now: float | None = None) -> bool:
+    """Patron a autorisé l'équipe à travailler seule (sans attendre ses messages) jusqu'à work_until()."""
+    return (now or time.time()) < work_until()
+
+
+def authorize_work(until_ts: float) -> None:
+    db.set_setting("work_until", str(float(until_ts)))
+
+
+def stop_work() -> None:
+    db.set_setting("work_until", "0")
+
+
+def next_morning(hour: int = 7, now: datetime | None = None) -> datetime:
     now = now or datetime.now()
-    wake = now.replace(hour=night_settings()["to"], minute=0, second=0, microsecond=0)
-    if wake <= now:
-        wake += timedelta(days=1)
-    return (wake - now).total_seconds()
+    wake = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    return wake if wake > now else wake + timedelta(days=1)
+
+
+def when_label(ts: float, now: datetime | None = None) -> str:
+    d, now = datetime.fromtimestamp(ts), now or datetime.now()
+    hm = f"{d.hour} h" + (f"{d.minute:02d}" if d.minute else "")
+    if d.date() == now.date():
+        return hm
+    if d.date() == (now + timedelta(days=1)).date():
+        return f"demain {hm}"
+    return f"{JOURS_FR[d.weekday()]} {d.day} à {hm}"
+
+
+def note_owner_active() -> None:
+    db.set_setting("owner_active_until", str(time.time() + OWNER_WINDOW_S))
+
+
+def owner_active() -> bool:
+    try:
+        return time.time() < float(db.get_setting("owner_active_until", "0") or 0)
+    except ValueError:
+        return False
+
+
+def autonomous_budget_used() -> bool:
+    return db.cost_today() >= AUTONOMOUS_SHARE * daily_cap_usd()
 
 
 def api_spent_eur() -> float:

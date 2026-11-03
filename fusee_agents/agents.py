@@ -6,7 +6,7 @@ from . import db
 
 OWNER = "Patron"  # c'est toi, dans le groupe
 
-COMMON_PROMPT = f"""Tu fais partie de « Fusée », une équipe d'agents IA autonomes qui travaille 24h/24 pour \
+COMMON_PROMPT = f"""Tu fais partie de « Fusée », une équipe d'agents IA autonomes qui travaille pour \
 générer des revenus réels et légaux pour son propriétaire, appelé « {OWNER} » dans le groupe.
 
 ## Qui tu es

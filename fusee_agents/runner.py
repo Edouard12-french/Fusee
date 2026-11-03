@@ -147,11 +147,23 @@ def build_context(agent: Agent, reason: str) -> str:
     hot_txt = ("\n".join(f"#{c['id']} {c['name'] or c['email'] or 'visiteur'} — {c['segment']}, {c['status']}, "
                          f"score {c['score']}, {c['sentiment']} : {c['interest'][:120]}" for c in hot) or "(aucun)")
     hot_txt += f"\n{waiting} contact(s) attendent une réponse." if waiting else ""
+    if budget.work_authorized():
+        mode_txt = (f"{OWNER} vous a autorisés à travailler SEULS jusqu'à {budget.when_label(budget.work_until())} : "
+                    "avancez sur vos projets en équipe sans attendre ses messages (request_approval avant de publier). "
+                    f"Ce travail en solo s'arrête à {int(budget.AUTONOMOUS_SHARE * 100)} % du budget du jour : le reste "
+                    f"est gardé pour quand {OWNER} vous parle.")
+    else:
+        mode_txt = (f"Vous travaillez QUAND {OWNER} VOUS PARLE : faites ce qu'il demande (à plusieurs si besoin, en "
+                    "vous mentionnant), puis arrêtez-vous et attendez son prochain message. Ne lancez pas de nouveau "
+                    f"chantier sans lui. {OWNER} peut vous autoriser à travailler seuls (par exemple la nuit).")
     return f"""# Nouveau cycle — {JOURS[datetime.now().weekday()]} {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Raison du réveil : {reason}
 
 ## Budget
 {budget_txt}{MINOR_TXT if OWNER_MINOR else ""}
+
+## Mode de travail
+{mode_txt}
 
 ## Consigne permanente de {OWNER}
 {owner_directive or DEFAULT_DIRECTIVE}

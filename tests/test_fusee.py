@@ -368,21 +368,47 @@ def test_web_searches_are_capped_and_counted(monkeypatch):
     assert 5 <= budget.web_search_limit() <= int(budget.daily_cap_usd() * 0.4 / 0.01) + 5
 
 
-def test_agents_sleep_at_night_but_wake_for_the_owner():
+def test_agents_wait_for_the_owner_unless_allowed_to_work_alone(monkeypatch):
     from datetime import datetime
-    from fusee_agents.scheduler import allowed_at_night
-    db.set_setting("night_enabled", "1"); db.set_setting("night_from", "23"); db.set_setting("night_to", "7")
-    assert budget.is_night(datetime(2026, 11, 2, 2, 0)) and budget.is_night(datetime(2026, 11, 2, 23, 30))
-    assert not budget.is_night(datetime(2026, 11, 2, 7, 0)) and not budget.is_night(datetime(2026, 11, 2, 15, 0))
-    assert budget.seconds_until_morning(datetime(2026, 11, 2, 23, 0)) == 8 * 3600
-    assert budget.seconds_until_morning(datetime(2026, 11, 2, 3, 30)) == 3.5 * 3600
-    assert not allowed_at_night("Neo", "cycle régulier")
-    assert not allowed_at_night("Neo", "mentionné par Atlas : Patron veut un site")  # un agent ne réveille pas les autres
-    assert allowed_at_night("Neo", "cycle régulier | message de Patron : tu es là ?")
-    assert allowed_at_night("Wolf", "Patron a répondu à ta question #3")
-    assert allowed_at_night("Iris", "message chat du contact #4 sur le site demo")  # les clients, toujours
-    db.set_setting("night_enabled", "0")
-    assert not budget.is_night(datetime(2026, 11, 2, 2, 0))
+    from fusee_agents.scheduler import Scheduler, why_may_work
+    budget.stop_work(); db.set_setting("owner_active_until", "0")
+    # par défaut : ils attendent que Patron parle
+    assert why_may_work("Neo", "cycle régulier") is None and why_may_work("Atlas", "démarrage") is None
+    assert why_may_work("Neo", "mentionné par Atlas : on lance un site") is None  # pas de bavardage entre agents
+    assert why_may_work("Neo", "cycle régulier | message de Patron : tu es là ?") == "patron"
+    assert why_may_work("Wolf", "Patron a répondu à ta question #3") == "patron"
+    assert why_may_work("Iris", "message chat du contact #4 sur le site demo") == "client"  # les clients, toujours
+    assert why_may_work("Victor", "2 nouvelle(s) vente(s) : remercie") == "client"
+    # quand Patron vient de parler, l'équipe peut s'organiser 30 min pour lui répondre
+    s = Scheduler()
+    s.wake("Atlas", "message de Patron : faites-moi un jeu")
+    assert budget.owner_active() and why_may_work("Pixel", "mentionné par Atlas : fais le jeu") == "patron"
+    assert why_may_work("Pixel", "cycle régulier") is None  # mais pas de cycles réguliers pour autant
+    db.set_setting("owner_active_until", "0")
+    # Patron les autorise à travailler seuls (la nuit, 2 jours…)
+    label = s.authorize(time.time() + 2 * 86400)
+    assert budget.work_authorized() and label and why_may_work("Neo", "cycle régulier") == "autonome"
+    assert any(r.startswith("autorisation") for r in s.reasons["Neo"]) and not s.reasons["Nexus"]  # à la demande
+    # ... mais ils gardent 40 % du budget du jour pour Patron
+    monkeypatch.setattr(db, "cost_today", lambda: 0.7 * budget.daily_cap_usd())
+    assert budget.autonomous_budget_used()
+    budget.stop_work()
+    assert not budget.work_authorized() and why_may_work("Neo", "cycle régulier") is None
+    # « cette nuit » = jusqu'à 7 h
+    assert budget.next_morning(7, datetime(2026, 11, 3, 22, 0)) == datetime(2026, 11, 4, 7, 0)
+    assert budget.next_morning(7, datetime(2026, 11, 3, 2, 0)) == datetime(2026, 11, 3, 7, 0)
+    now = datetime(2026, 11, 3, 22, 0)
+    assert budget.when_label(datetime(2026, 11, 4, 7, 0).timestamp(), now) == "demain 7 h"
+    assert budget.when_label(datetime(2026, 11, 5, 22, 30).timestamp(), now) == "jeudi 5 à 22 h30"
+
+
+def test_agents_are_told_how_they_work():
+    from fusee_agents import runner
+    budget.stop_work()
+    assert "QUAND Patron VOUS PARLE" in runner.build_context(BY_NAME["Neo"], "message de Patron : salut")
+    budget.authorize_work(time.time() + 3600)
+    assert "travailler SEULS jusqu'à" in runner.build_context(BY_NAME["Neo"], "cycle régulier")
+    budget.stop_work()
 
 
 def test_costs_page_data():
@@ -391,6 +417,8 @@ def test_costs_page_data():
     db.add_cost("Neo", 0.01)
     r = TestClient(web.app).get("/api/costs").json()
     assert r["plan"] and r["search_limit"] >= 5 and any(a["agent"] == "Neo" and a["cost_eur"] > 0 for a in r["agents"])
-    assert TestClient(web.app).post("/api/night", json={"enabled": True, "from": 22, "to": 6}).json() == {"ok": True}
-    assert budget.night_settings() == {"enabled": True, "from": 22, "to": 6}
-    db.set_setting("night_enabled", "0")
+    c = TestClient(web.app)
+    assert c.post("/api/work", json={"choice": "nuit"}).json()["authorized"] is True
+    assert c.get("/api/state").json()["work"]["authorized"] is True
+    assert c.post("/api/work", json={"choice": "stop"}).json()["authorized"] is False
+    assert c.post("/api/work", json={"choice": "toujours"}).status_code == 400

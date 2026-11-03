@@ -123,6 +123,7 @@ def state(after: int = 0):
             "SELECT agent, COUNT(*) n FROM dms WHERE sender!=? AND read=0 GROUP BY agent", (OWNER,))},
         "profile_done": bool(owner_profile().get("prenom")),
         "paused": scheduler.paused,
+        "work": _work_state(),
         "directive": db.get_setting("directive", ""),
         "pending_approvals": db.q("SELECT COUNT(*) n FROM approvals WHERE status='en attente'")[0]["n"],
         "unread_notifications": db.q("SELECT COUNT(*) n FROM notifications WHERE read=0")[0]["n"],
@@ -296,6 +297,7 @@ async def meeting(msg: Msg):
     pool = [BY_NAME[n] for n in named] if named and len(named) < len(BY_NAME) else list(TEAM)
     agents = [a for a in pool if agent_settings(a.name).get("enabled", True) is not False]
     mid = db.post_message(OWNER, f"🎙️ {text}")
+    budget.note_owner_active()
     asyncio.create_task(runner.run_meeting(agents, text, scheduler.wake))
     return {"ok": True, "message_id": mid, "agents": [a.name for a in agents]}
 
@@ -369,19 +371,37 @@ def costs():
     n = db.searches_today()
     return {"plan": PLAN, "agents": rows, "spent_today_eur": db.cost_today() * USD_EUR,
             "daily_cap_eur": budget.daily_cap_usd() * USD_EUR, "searches": n, "search_limit": budget.web_search_limit(),
-            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "night": budget.night_settings(),
-            "night_now": budget.is_night()}
+            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "reserve_pct": round(100 * (1 - budget.AUTONOMOUS_SHARE))}
 
 
-@app.post("/api/night")
-async def save_night(request: Request):
-    d = await request.json()
-    if "enabled" in d:
-        db.set_setting("night_enabled", "1" if d["enabled"] else "0")
-    for k in ("from", "to"):
-        if k in d and 0 <= int(d[k]) <= 23:
-            db.set_setting(f"night_{k}", str(int(d[k])))
-    return {"ok": True}
+def _work_state() -> dict:
+    on = budget.work_authorized()
+    return {"authorized": on, "until": budget.work_until() if on else 0,
+            "label": budget.when_label(budget.work_until()) if on else ""}
+
+
+class WorkReq(BaseModel):
+    choice: str  # "nuit", "2h", "24h", "2j", "stop"
+
+
+@app.post("/api/work")
+def set_work(w: WorkReq):
+    """Patron autorise l'équipe à travailler seule pendant un moment (sinon elle attend qu'il parle)."""
+    if w.choice == "stop":
+        budget.stop_work()
+        db.post_message(OWNER, "⏹️ Stop : maintenant vous travaillez seulement quand je vous parle.")
+        return _work_state()
+    hours = {"2h": 2, "24h": 24, "2j": 48}.get(w.choice)
+    if w.choice == "nuit":
+        until = budget.next_morning(7).timestamp()
+    elif hours:
+        until = time.time() + hours * 3600
+    else:
+        raise HTTPException(400, "choix inconnu")
+    label = scheduler.authorize(until)
+    db.post_message(OWNER, f"▶️ Je vous autorise à travailler seuls jusqu'à {label}. Avancez sur vos projets "
+                           "(et demandez-moi toujours avant de publier).")
+    return _work_state()
 
 
 @app.post("/api/notif_settings")
@@ -818,6 +838,7 @@ async def dm_send(agent: str, msg: Msg):
     if budget.api_exhausted() or budget.today_exhausted():
         raise HTTPException(400, "Le budget IA du jour est atteint : il te répondra demain (ou augmente le budget).")
     db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)", (time.time(), agent, OWNER, text))
+    budget.note_owner_active()
     asyncio.create_task(runner.dm_reply(BY_NAME[agent], scheduler.wake))
     return {"ok": True}
 
