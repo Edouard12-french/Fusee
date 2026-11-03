@@ -422,3 +422,16 @@ def test_costs_page_data():
     assert c.get("/api/state").json()["work"]["authorized"] is True
     assert c.post("/api/work", json={"choice": "stop"}).json()["authorized"] is False
     assert c.post("/api/work", json={"choice": "toujours"}).status_code == 400
+
+
+def test_netlify_token_applies_without_restart(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from fusee_agents import integrations, setup, web
+    monkeypatch.setattr(setup, "ENV", tmp_path / ".env")
+    monkeypatch.setattr(setup, "EXAMPLE", tmp_path / "absent")
+    monkeypatch.setattr(integrations, "NETLIFY_TOKEN", "")
+    monkeypatch.delenv("NETLIFY_TOKEN", raising=False)
+    r = TestClient(web.app, client=("127.0.0.1", 50000)).post("/api/setup/save", json={"NETLIFY_TOKEN": "nfp_test_1234567890"}).json()
+    assert r["applied"] and integrations.NETLIFY_TOKEN == "nfp_test_1234567890"
+    assert TestClient(web.app).get("/api/state").json()["capabilities"]["netlify"] is True
+    monkeypatch.delenv("NETLIFY_TOKEN", raising=False)

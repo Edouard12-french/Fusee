@@ -717,6 +717,10 @@ async def setup_save(request: Request):
             if (agent_settings(a.name).get("interval_min", a.interval_min) or 0) > 0:
                 scheduler.wake(a.name, "la clé API vient d'être ajoutée : l'équipe démarre, présente-toi et commence")
         applied = True
+    if "NETLIFY_TOKEN" in changed or "STRIPE_SECRET_KEY" in changed:  # sites et paiements : tout de suite, sans redémarrer
+        integrations.NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN", "").strip()
+        integrations.STRIPE_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+        applied = True
     return {"ok": True, "changed": changed, "applied": applied}
 
 
