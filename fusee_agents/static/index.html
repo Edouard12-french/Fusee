@@ -266,8 +266,13 @@ async function poll() {
     $("#cost").innerHTML = `${r.budget.remaining_eur.toFixed(0)} €<span class="hide-mi"> · IA ${r.budget.api_today_eur.toFixed(2)}/${r.budget.api_daily_cap_eur.toFixed(2)} €</span>`;
     $("#costbar").style.width = Math.min(100, 100 * r.budget.api_today_eur / Math.max(r.budget.api_daily_cap_eur, 0.01)) + "%";
     $("#pauseBtn").innerHTML = r.paused ? "▶️<span class=lbl> Reprendre</span>" : "⏸️<span class=lbl> Pause</span>";
-    $("#workBtn").innerHTML = r.work.authorized ? `▶️<span class=lbl> Seuls jusqu'à ${esc(r.work.label)}</span>` : "💤<span class=lbl> Attendent que tu parles</span>";
-    $("#workBtn").classList.toggle("on", r.work.authorized);
+    if (!r.work) {  // page à jour mais Fusée pas encore redémarré : on le dit au lieu de bloquer l'affichage
+      $("#workBtn").innerHTML = "♻️<span class=lbl> Redémarrer pour finir la mise à jour</span>";
+      $("#workBtn").onclick = () => post("/api/setup/restart").then(() => setTimeout(() => location.reload(), 6000));
+    } else {
+      $("#workBtn").innerHTML = r.work.authorized ? `▶️<span class=lbl> Seuls jusqu'à ${esc(r.work.label)}</span>` : "💤<span class=lbl> Attendent que tu parles</span>";
+      $("#workBtn").classList.toggle("on", r.work.authorized);
+    }
     $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
     $("#browserBtn").classList.toggle("on", r.browser_enabled);
     renderAgents(); addMessages(r.messages);
@@ -828,7 +833,7 @@ $("#meetBtn").onclick = async () => {
 };
 $("#txt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#f").requestSubmit(); } };
 $("#pauseBtn").onclick = async () => { await post("/api/pause?on=" + !S.paused); poll(); };
-$("#workBtn").onclick = e => { e.stopPropagation(); $("#workMenu").hidden = !$("#workMenu").hidden; };
+$("#workBtn").onclick = e => { e.stopPropagation(); if (S.work) $("#workMenu").hidden = !$("#workMenu").hidden; };
 document.addEventListener("click", e => { if (!$("#workMenu").hidden && !$("#workMenu").contains(e.target)) $("#workMenu").hidden = true; });
 $("#workMenu").querySelectorAll("button[data-w]").forEach(b => b.onclick = async () => {
   $("#workMenu").hidden = true;

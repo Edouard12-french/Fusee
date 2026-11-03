@@ -1,12 +1,13 @@
 // Service worker minimal : rend l'application installable et affiche une page hors-ligne.
-const CACHE = "fusee-v2";
+const CACHE = "fusee-v3";
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(["/", "/icon-192.png"])).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || new URL(e.request.url).pathname.startsWith("/api/")) return;
-  e.respondWith(fetch(e.request).then(r => {
+  const page = e.request.mode === "navigate";  // la page : toujours la version du Mac, jamais une vieille copie
+  e.respondWith((page ? fetch(e.request.url, {cache: "no-store", credentials: "include"}) : fetch(e.request)).then(r => {
     if (r.ok && new URL(e.request.url).pathname === "/") { const copy = r.clone(); caches.open(CACHE).then(c => c.put("/", copy)); }
     return r;
   }).catch(() => caches.match(e.request)));
