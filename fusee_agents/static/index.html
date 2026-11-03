@@ -146,8 +146,19 @@ nav#bottom{display:none}
   <button data-w="2h">⏱️ Pendant 2 heures</button>
   <button data-w="24h">☀️ Pendant 24 heures</button>
   <button data-w="2j">📅 Pendant 2 jours</button>
+  <div style="border-top:1px solid var(--line);padding-top:8px;display:grid;gap:6px">
+    <b>📅 Programmer à l'avance</b>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="wDay"><option value="demain">demain</option><option value="aujourdhui">aujourd'hui</option></select>
+      de <select id="wFrom"><option value="0">0 h</option><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="11">11 h</option><option value="12">12 h</option><option value="13">13 h</option><option value="14">14 h</option><option value="15">15 h</option><option value="16">16 h</option><option value="17">17 h</option><option value="18">18 h</option><option value="19">19 h</option><option value="20">20 h</option><option value="21">21 h</option><option value="22">22 h</option><option value="23">23 h</option></select> à <select id="wTo"><option value="0">0 h</option><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="11">11 h</option><option value="12">12 h</option><option value="13">13 h</option><option value="14">14 h</option><option value="15">15 h</option><option value="16">16 h</option><option value="17">17 h</option><option value="18">18 h</option><option value="19">19 h</option><option value="20">20 h</option><option value="21">21 h</option><option value="22">22 h</option><option value="23">23 h</option></select></div>
+    <button data-w="plan">✅ Programmer</button>
+    <div class="muted">Par exemple « demain de 8 h à 17 h » pendant l'école : ils démarrent tout seuls à l'heure prévue.</div>
+  </div>
   <button data-w="stop">⏹️ Stop : seulement quand je leur parle</button>
-  <div class="muted">Ils gardent toujours 40 % du budget du jour pour quand tu leur parles.</div>
+  <div style="border-top:1px solid var(--line);padding-top:8px">🛡️ Garder pour moi
+    <select id="wRes"><option value="10">10 %</option><option value="20">20 %</option><option value="30">30 %</option><option value="40">40 %</option><option value="50">50 %</option><option value="60">60 %</option><option value="70">70 %</option><option value="80">80 %</option><option value="90">90 %</option></select>
+    du budget du jour
+    <div class="muted">Quand ils travaillent seuls, ils s'arrêtent avant : ce qui est gardé sert quand tu leur parles.</div></div>
 </div>
 <main>
   <aside id="agents"></aside>
@@ -270,8 +281,10 @@ async function poll() {
       $("#workBtn").innerHTML = "♻️<span class=lbl> Redémarrer pour finir la mise à jour</span>";
       $("#workBtn").onclick = () => post("/api/setup/restart").then(() => setTimeout(() => location.reload(), 6000));
     } else {
-      $("#workBtn").innerHTML = r.work.authorized ? `▶️<span class=lbl> Seuls jusqu'à ${esc(r.work.label)}</span>` : "💤<span class=lbl> Attendent que tu parles</span>";
-      $("#workBtn").classList.toggle("on", r.work.authorized);
+      $("#workBtn").innerHTML = r.work.authorized ? `▶️<span class=lbl> Seuls jusqu'à ${esc(r.work.label)}</span>`
+        : r.work.scheduled ? `⏰<span class=lbl> Programmé : ${esc(r.work.range_label)}</span>`
+        : "💤<span class=lbl> Attendent que tu parles</span>";
+      $("#workBtn").classList.toggle("on", r.work.authorized || !!r.work.scheduled);
     }
     $("#browserBtn").innerHTML = r.browser_enabled ? "🌐<span class=lbl> Navigateur : autorisé</span>" : "🌐<span class=lbl> Navigateur : bloqué</span>";
     $("#browserBtn").classList.toggle("on", r.browser_enabled);
@@ -716,7 +729,7 @@ async function renderCostBox() {
     <div style="margin:10px 0;display:grid;gap:3px;color:var(--text)">${list}</div>
     <div style="color:var(--text)">💤 <b>Par défaut, ils travaillent seulement quand tu leur parles</b> (Iris répond quand même aux clients).
       Pour les laisser avancer seuls (la nuit, 2 jours…) : bouton <b>💤 / ▶️</b> en haut. Même là, ils gardent toujours
-      <b>${c.reserve_pct} %</b> du budget du jour pour quand tu leur parles.</div>
+      <b>${c.reserve_pct} %</b> du budget du jour pour quand tu leur parles (réglable dans ce même bouton).</div>
     <div style="color:var(--text);margin-top:6px">🆘 <b>Budget du jour fini ? Tu peux quand même leur parler</b> : ils prennent une
       rallonge, jusqu'à ${eur(c.owner_cap_eur)} ce jour-là (pris sur ton budget total), et te répondent plus court.</div>
     <div class="muted" style="margin-top:8px">💡 Pour dépenser <b>moins au total</b> : 💰 Argent → baisse « Dont IA ». Le plan « Éco » (🚀 Démarrage) est le moins cher. Une 🗣️ réunion fait parler les 14 agents d'un coup : garde-la pour les grandes décisions.</div>`;
@@ -835,11 +848,21 @@ $("#meetBtn").onclick = async () => {
 };
 $("#txt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#f").requestSubmit(); } };
 $("#pauseBtn").onclick = async () => { await post("/api/pause?on=" + !S.paused); poll(); };
-$("#workBtn").onclick = e => { e.stopPropagation(); if (S.work) $("#workMenu").hidden = !$("#workMenu").hidden; };
+$("#workBtn").onclick = e => {
+  e.stopPropagation(); if (!S.work) return;
+  if ($("#workMenu").hidden && S.work.reserve_pct) $("#wRes").value = String(S.work.reserve_pct);
+  $("#workMenu").hidden = !$("#workMenu").hidden;
+};
+$("#wFrom").value = "8"; $("#wTo").value = "17";
+$("#wRes").onchange = () => post("/api/work", {reserve: +$("#wRes").value}).then(poll);
 document.addEventListener("click", e => { if (!$("#workMenu").hidden && !$("#workMenu").contains(e.target)) $("#workMenu").hidden = true; });
 $("#workMenu").querySelectorAll("button[data-w]").forEach(b => b.onclick = async () => {
   $("#workMenu").hidden = true;
-  await post("/api/work", {choice: b.dataset.w}); poll();
+  const body = {choice: b.dataset.w};
+  if (b.dataset.w === "plan") Object.assign(body, {day: $("#wDay").value, h_from: +$("#wFrom").value, h_to: +$("#wTo").value});
+  const r = await post("/api/work", body);
+  if (!r.ok) alert((await r.json().catch(() => ({}))).detail || "Impossible");
+  poll();
 });
 $("#browserBtn").onclick = async () => {
   if (!S.browser_enabled && !confirm("Autoriser les agents à ouvrir des pages web dans un vrai navigateur (lecture et captures d'écran) ?")) return;

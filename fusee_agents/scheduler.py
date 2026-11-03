@@ -90,15 +90,28 @@ class Scheduler:
             pending, self.reasons[name] = self.reasons[name], []
             reason = " | ".join(pending[-5:]) if pending else "cycle régulier"
 
-    def authorize(self, until_ts: float) -> str:
-        """Patron autorise l'équipe à travailler seule jusqu'à until_ts : les agents réguliers démarrent tout de suite."""
-        budget.authorize_work(until_ts)
-        label = budget.when_label(until_ts)
+    def authorize(self, until_ts: float, from_ts: float | None = None) -> str:
+        """Patron autorise l'équipe à travailler seule jusqu'à until_ts (à partir de from_ts, ou tout de suite) :
+        les agents réguliers démarrent dès que la période commence."""
+        budget.authorize_work(until_ts, from_ts)
+        if budget.work_authorized():
+            self._kick()
+        return budget.when_label(until_ts)
+
+    def _kick(self) -> None:
+        db.set_setting("work_kicked", str(budget.work_from()))
+        label = budget.when_label(budget.work_until())
         for a in TEAM:
             if agent_settings(a.name).get("interval_min", a.interval_min):
                 self.wake(a.name, f"autorisation : {OWNER} vous laisse travailler seuls jusqu'à {label} — avancez sur "
                                   "vos projets en équipe (toujours request_approval avant de publier)")
-        return label
+
+    async def _work_watch(self) -> None:
+        """Chaque minute : une période programmée (« demain 8 h → 17 h ») qui commence réveille l'équipe."""
+        while True:
+            await asyncio.sleep(60)
+            if budget.work_authorized() and db.get_setting("work_kicked", "") != str(budget.work_from()):
+                self._kick()
 
     async def _mark_prices(self) -> None:
         """Toutes les heures : prix réels des positions du portefeuille simulé."""
@@ -149,6 +162,7 @@ class Scheduler:
             self.tasks.append(asyncio.create_task(self._loop(a.name, first_delay=i * 30)))
         self.tasks.append(asyncio.create_task(sales.poll_forever(self.wake)))
         self.tasks.append(asyncio.create_task(self._mark_prices()))
+        self.tasks.append(asyncio.create_task(self._work_watch()))
         self.tasks.append(asyncio.create_task(self._followups()))
         self.tasks.append(asyncio.create_task(self._backups()))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(

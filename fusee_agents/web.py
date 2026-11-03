@@ -372,23 +372,48 @@ def costs():
     n = db.searches_today()
     return {"plan": PLAN, "agents": rows, "spent_today_eur": db.cost_today() * USD_EUR,
             "daily_cap_eur": budget.daily_cap_usd() * USD_EUR, "searches": n, "search_limit": budget.web_search_limit(),
-            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "reserve_pct": round(100 * (1 - budget.AUTONOMOUS_SHARE)),
+            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "reserve_pct": budget.owner_reserve_pct(),
             "owner_cap_eur": budget.owner_cap_usd() * USD_EUR}
 
 
 def _work_state() -> dict:
-    on = budget.work_authorized()
-    return {"authorized": on, "until": budget.work_until() if on else 0,
-            "label": budget.when_label(budget.work_until()) if on else ""}
+    on, planned = budget.work_authorized(), budget.work_scheduled()
+    return {"authorized": on, "until": budget.work_until() if on or planned else 0,
+            "label": budget.when_label(budget.work_until()) if on or planned else "",
+            "scheduled": planned, "from_label": budget.when_label(budget.work_from()) if planned else "",
+            "range_label": budget.range_label(budget.work_from(), budget.work_until()) if planned else "",
+            "reserve_pct": budget.owner_reserve_pct()}
 
 
 class WorkReq(BaseModel):
-    choice: str  # "nuit", "2h", "24h", "2j", "stop"
+    choice: str = ""  # "nuit", "2h", "24h", "2j", "plan", "stop" (vide = seulement régler la réserve)
+    day: str = "demain"  # pour « plan » : "aujourdhui" ou "demain"
+    h_from: int = 8
+    h_to: int = 17
+    reserve: int | None = None  # % du budget du jour gardé pour Patron
 
 
 @app.post("/api/work")
 def set_work(w: WorkReq):
     """Patron autorise l'équipe à travailler seule pendant un moment (sinon elle attend qu'il parle)."""
+    if w.reserve is not None:
+        if not 10 <= w.reserve <= 90:
+            raise HTTPException(400, "réserve entre 10 et 90 %")
+        db.set_setting("owner_reserve_pct", str(int(w.reserve)))
+        if not w.choice:
+            return _work_state()
+    if w.choice == "plan":
+        if not (0 <= w.h_from <= 23 and 0 <= w.h_to <= 23) or w.h_from == w.h_to:
+            raise HTTPException(400, "heures invalides")
+        start, end = budget.planned_window(w.day, w.h_from, w.h_to)
+        if end <= time.time():
+            raise HTTPException(400, "cette période est déjà passée")
+        label = scheduler.authorize(end, max(start, time.time()))
+        when_txt = budget.range_label(start, end) if start > time.time() else f"maintenant → {label}"
+        db.post_message(OWNER, f"📅 Je vous autorise à travailler seuls : {when_txt}. Gardez "
+                               f"{budget.owner_reserve_pct()} % du budget du jour pour quand je vous parle, et "
+                               "demandez-moi toujours avant de publier.")
+        return _work_state()
     if w.choice == "stop":
         budget.stop_work()
         db.post_message(OWNER, "⏹️ Stop : maintenant vous travaillez seulement quand je vous parle.")

@@ -39,7 +39,7 @@ def searches_exhausted() -> bool:
 
 
 OWNER_WINDOW_S = 30 * 60   # après un message de Patron, l'équipe peut s'organiser 30 min pour lui répondre
-AUTONOMOUS_SHARE = 0.6     # le travail en solo s'arrête à 60 % du budget du jour : le reste est gardé pour Patron
+DEFAULT_RESERVE_PCT = 40   # part du budget du jour gardée pour Patron quand l'équipe travaille seule (réglable)
 JOURS_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
@@ -50,17 +50,56 @@ def work_until() -> float:
         return 0.0
 
 
+def work_from() -> float:
+    try:
+        return float(db.get_setting("work_from", "0") or 0)
+    except ValueError:
+        return 0.0
+
+
 def work_authorized(now: float | None = None) -> bool:
-    """Patron a autorisé l'équipe à travailler seule (sans attendre ses messages) jusqu'à work_until()."""
-    return (now or time.time()) < work_until()
+    """Patron a autorisé l'équipe à travailler seule (sans attendre ses messages), de work_from() à work_until()."""
+    t = now or time.time()
+    return work_from() <= t < work_until()
 
 
-def authorize_work(until_ts: float) -> None:
+def work_scheduled(now: float | None = None) -> bool:
+    """Une période de travail en solo est programmée mais pas encore commencée (ex. « demain de 8 h à 17 h »)."""
+    t = now or time.time()
+    return t < work_from() < work_until()
+
+
+def authorize_work(until_ts: float, from_ts: float | None = None) -> None:
+    db.set_setting("work_from", str(float(from_ts or 0)))
     db.set_setting("work_until", str(float(until_ts)))
 
 
 def stop_work() -> None:
+    db.set_setting("work_from", "0")
     db.set_setting("work_until", "0")
+
+
+def planned_window(day: str, h_from: int, h_to: int, now: datetime | None = None) -> tuple[float, float]:
+    """« demain de 8 h à 17 h » → (début, fin). Une fin plus tôt que le début = le lendemain (ex. 22 h → 7 h)."""
+    now = now or datetime.now()
+    base = (now + timedelta(days=1 if day == "demain" else 0)).replace(minute=0, second=0, microsecond=0)
+    start = base.replace(hour=h_from)
+    end = base.replace(hour=h_to)
+    if end <= start:
+        end += timedelta(days=1)
+    return start.timestamp(), end.timestamp()
+
+
+def owner_reserve_pct() -> int:
+    try:
+        return min(90, max(10, int(db.get_setting("owner_reserve_pct", str(DEFAULT_RESERVE_PCT)))))
+    except ValueError:
+        return DEFAULT_RESERVE_PCT
+
+
+def autonomous_share() -> float:
+    """Le travail en solo s'arrête à cette part du budget du jour : le reste est gardé pour Patron."""
+    return 1 - owner_reserve_pct() / 100
 
 
 def next_morning(hour: int = 7, now: datetime | None = None) -> datetime:
@@ -79,6 +118,15 @@ def when_label(ts: float, now: datetime | None = None) -> str:
     return f"{JOURS_FR[d.weekday()]} {d.day} à {hm}"
 
 
+def range_label(from_ts: float, until_ts: float, now: datetime | None = None) -> str:
+    """« demain 8 h → 17 h » (le jour n'est pas répété quand c'est le même)."""
+    a, b = datetime.fromtimestamp(from_ts), datetime.fromtimestamp(until_ts)
+    end = when_label(until_ts, now)
+    if a.date() == b.date():
+        end = f"{b.hour} h" + (f"{b.minute:02d}" if b.minute else "")
+    return f"{when_label(from_ts, now)} → {end}"
+
+
 def note_owner_active() -> None:
     db.set_setting("owner_active_until", str(time.time() + OWNER_WINDOW_S))
 
@@ -91,7 +139,7 @@ def owner_active() -> bool:
 
 
 def autonomous_budget_used() -> bool:
-    return db.cost_today() >= AUTONOMOUS_SHARE * daily_cap_usd()
+    return db.cost_today() >= autonomous_share() * daily_cap_usd()
 
 
 def api_spent_eur() -> float:

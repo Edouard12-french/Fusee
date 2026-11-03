@@ -461,3 +461,33 @@ def test_owner_can_still_talk_after_the_daily_budget(monkeypatch):
     monkeypatch.setattr(db, "cost_today", lambda: 2.1 * cap)  # même la rallonge est utilisée
     r = TestClient(web.app).post("/api/dm/Neo", json={"content": "Salut"})
     assert r.status_code == 400 and "rallonge" in r.json()["detail"]
+
+
+def test_schedule_work_for_tomorrow_and_keep_half_for_the_owner():
+    from datetime import datetime
+    from fastapi.testclient import TestClient
+    from fusee_agents import web
+    from fusee_agents.scheduler import Scheduler, why_may_work
+    now = datetime(2026, 11, 3, 20, 0)
+    s, e = budget.planned_window("demain", 8, 17, now)
+    assert (datetime.fromtimestamp(s), datetime.fromtimestamp(e)) == (datetime(2026, 11, 4, 8), datetime(2026, 11, 4, 17))
+    s, e = budget.planned_window("aujourdhui", 22, 7, now)  # la nuit : fin le lendemain
+    assert datetime.fromtimestamp(e) == datetime(2026, 11, 4, 7)
+    c = TestClient(web.app)
+    # « garder 50 % pour moi »
+    assert c.post("/api/work", json={"reserve": 50}).json()["reserve_pct"] == 50
+    assert budget.autonomous_share() == 0.5 and c.post("/api/work", json={"reserve": 95}).status_code == 400
+    # programmé pour demain : pas encore autorisé, mais affiché
+    w = c.post("/api/work", json={"choice": "plan", "day": "demain", "h_from": 8, "h_to": 17}).json()
+    assert w["scheduled"] and not w["authorized"] and w["range_label"] == "demain 8 h → 17 h"
+    assert why_may_work("Neo", "cycle régulier") is None
+    # quand l'heure arrive, ils peuvent travailler, et la surveillance réveille l'équipe une seule fois
+    start = budget.work_from()
+    assert budget.work_authorized(start + 60) and not budget.work_authorized(budget.work_until() + 1)
+    sch = Scheduler()
+    budget.authorize_work(time.time() + 3600, time.time() - 1)  # la période vient de commencer
+    assert budget.work_authorized() and db.get_setting("work_kicked", "") != str(budget.work_from())
+    sch._kick()
+    assert any(r.startswith("autorisation") for r in sch.reasons["Neo"])
+    assert db.get_setting("work_kicked") == str(budget.work_from())
+    budget.stop_work(); db.set_setting("owner_reserve_pct", "40")

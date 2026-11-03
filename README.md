@@ -291,8 +291,9 @@ dépenses que tu as validées, revenus (Stripe + ce que tu ajoutes), et ce qu'il
   privé réveille les agents concernés, qui ont 30 min pour s'organiser entre eux et te répondre, puis ils attendent.
   Iris répond toujours aux clients. Rien ne part pendant que tu es à l'école.
 - **Pour les laisser avancer seuls**, bouton **💤 / ▶️** en haut : *cette nuit* (jusqu'à 7 h), *2 heures*,
-  *24 heures* ou *2 jours*, et **⏹️ Stop** à tout moment. Même là, ils s'arrêtent à **60 % du budget du jour** :
-  les 40 % restants sont toujours gardés pour quand tu leur parles.
+  *24 heures*, *2 jours*, ou **📅 programmé à l'avance** (ex. *demain de 8 h à 17 h*, pendant l'école : ils démarrent
+  tout seuls à l'heure prévue), et **⏹️ Stop** à tout moment. Dans le même bouton, **🛡️ Garder pour moi** : la part du
+  budget du jour gardée pour quand tu leur parles (40 % par défaut, de 10 à 90 %) ; le travail en solo s'arrête avant.
 - **Budget du jour fini ? Tu peux quand même leur parler** : quand c'est toi qui parles (ou un client qui écrit),
   ils prennent une **rallonge** jusqu'à 2 fois le budget du jour (prise sur ton budget total) et répondent plus court.
   Le travail en solo, lui, s'arrête au budget du jour.

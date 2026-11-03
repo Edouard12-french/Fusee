@@ -155,7 +155,7 @@ def build_context(agent: Agent, reason: str) -> str:
     if budget.work_authorized():
         mode_txt = (f"{OWNER} vous a autorisés à travailler SEULS jusqu'à {budget.when_label(budget.work_until())} : "
                     "avancez sur vos projets en équipe sans attendre ses messages (request_approval avant de publier). "
-                    f"Ce travail en solo s'arrête à {int(budget.AUTONOMOUS_SHARE * 100)} % du budget du jour : le reste "
+                    f"Ce travail en solo s'arrête à {round(budget.autonomous_share() * 100)} % du budget du jour : le reste "
                     f"est gardé pour quand {OWNER} vous parle.")
     else:
         mode_txt = (f"Vous travaillez QUAND {OWNER} VOUS PARLE : faites ce qu'il demande (à plusieurs si besoin, en "
