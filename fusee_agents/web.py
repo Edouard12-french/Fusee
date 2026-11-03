@@ -291,8 +291,9 @@ async def meeting(msg: Msg):
         raise HTTPException(400, "message vide")
     if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
         raise HTTPException(400, "Il faut d'abord la clé API (onglet 🚀 Démarrage).")
-    if budget.api_exhausted() or budget.today_exhausted():
-        raise HTTPException(400, "Le budget IA du jour est atteint : la réunion reprendra demain (ou augmente le budget).")
+    if budget.api_exhausted() or budget.owner_exhausted():
+        raise HTTPException(400, "Même la rallonge du jour est utilisée : la réunion reprendra demain (ou augmente le "
+                                 "budget dans 💰 Argent).")
     named = [n for n in mentions(text) if n in BY_NAME]
     pool = [BY_NAME[n] for n in named] if named and len(named) < len(BY_NAME) else list(TEAM)
     agents = [a for a in pool if agent_settings(a.name).get("enabled", True) is not False]
@@ -371,7 +372,8 @@ def costs():
     n = db.searches_today()
     return {"plan": PLAN, "agents": rows, "spent_today_eur": db.cost_today() * USD_EUR,
             "daily_cap_eur": budget.daily_cap_usd() * USD_EUR, "searches": n, "search_limit": budget.web_search_limit(),
-            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "reserve_pct": round(100 * (1 - budget.AUTONOMOUS_SHARE))}
+            "search_cost_eur": n * WEB_SEARCH_COST * USD_EUR, "reserve_pct": round(100 * (1 - budget.AUTONOMOUS_SHARE)),
+            "owner_cap_eur": budget.owner_cap_usd() * USD_EUR}
 
 
 def _work_state() -> dict:
@@ -839,8 +841,9 @@ async def dm_send(agent: str, msg: Msg):
         raise HTTPException(400, "message vide")
     if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
         raise HTTPException(400, "Il faut d'abord la clé API (onglet 🚀 Démarrage).")
-    if budget.api_exhausted() or budget.today_exhausted():
-        raise HTTPException(400, "Le budget IA du jour est atteint : il te répondra demain (ou augmente le budget).")
+    if budget.api_exhausted() or budget.owner_exhausted():
+        raise HTTPException(400, "Même la rallonge du jour est utilisée : il te répondra demain (ou augmente le budget "
+                                 "dans 💰 Argent).")
     db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)", (time.time(), agent, OWNER, text))
     budget.note_owner_active()
     asyncio.create_task(runner.dm_reply(BY_NAME[agent], scheduler.wake))

@@ -102,6 +102,18 @@ def api_exhausted() -> bool:
     return api_spent_eur() >= settings()["api_budget_eur"]
 
 
+OWNER_EXTRA = 1.0  # rallonge : quand Patron parle (ou qu'un client écrit), jusqu'à 2 fois le budget du jour
+
+
+def owner_cap_usd() -> float:
+    return daily_cap_usd() * (1 + OWNER_EXTRA)
+
+
+def owner_exhausted() -> bool:
+    """Même la rallonge du jour est utilisée : là seulement, on ne répond plus à Patron avant demain."""
+    return db.cost_today() >= owner_cap_usd()
+
+
 def today_exhausted() -> bool:
     return db.cost_today() >= daily_cap_usd()
 

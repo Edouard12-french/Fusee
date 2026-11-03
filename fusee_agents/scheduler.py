@@ -75,7 +75,7 @@ class Scheduler:
                         reason = " | ".join(self.deferred[name] + [reason])
                         self.deferred[name] = []
                     async with self.sem:
-                        await run_cycle(agent, reason, self.wake)
+                        await run_cycle(agent, reason, self.wake, for_owner=why in ("patron", "client"))
             # attendre le prochain cycle (ou une mention), avec un délai minimum anti ping-pong
             await asyncio.sleep(agent.min_gap_s)
             if not self.reasons[name]:

@@ -717,6 +717,8 @@ async function renderCostBox() {
     <div style="color:var(--text)">💤 <b>Par défaut, ils travaillent seulement quand tu leur parles</b> (Iris répond quand même aux clients).
       Pour les laisser avancer seuls (la nuit, 2 jours…) : bouton <b>💤 / ▶️</b> en haut. Même là, ils gardent toujours
       <b>${c.reserve_pct} %</b> du budget du jour pour quand tu leur parles.</div>
+    <div style="color:var(--text);margin-top:6px">🆘 <b>Budget du jour fini ? Tu peux quand même leur parler</b> : ils prennent une
+      rallonge, jusqu'à ${eur(c.owner_cap_eur)} ce jour-là (pris sur ton budget total), et te répondent plus court.</div>
     <div class="muted" style="margin-top:8px">💡 Pour dépenser <b>moins au total</b> : 💰 Argent → baisse « Dont IA ». Le plan « Éco » (🚀 Démarrage) est le moins cher. Une 🗣️ réunion fait parler les 14 agents d'un coup : garde-la pour les grandes décisions.</div>`;
 }
 

@@ -9,7 +9,8 @@ import anthropic
 
 from . import budget, db, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
-from .config import MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, WEB_SEARCH_COST, model_for
+from .config import (MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, USD_EUR, WEB_SEARCH_COST,
+                     model_for)
 from .tools import execute, products_overview, skills, tool_defs, toolbox
 
 client = anthropic.AsyncAnthropic(max_retries=4)
@@ -108,6 +109,10 @@ def build_context(agent: Agent, reason: str) -> str:
                   f"IA : {b['api_spent_eur']:.2f} € dépensés sur {b['api_budget_eur']:.0f} € prévus "
                   f"(aujourd'hui {b['api_today_eur']:.2f} / {b['api_daily_cap_eur']:.2f} €). "
                   f"Disponible pour de vraies dépenses (hors IA) : {b['free_to_spend_eur']:.2f} €.")
+    if budget.today_exhausted():
+        budget_txt += (f"\n⚠️ Budget IA du jour dépassé : vous utilisez la RALLONGE de {OWNER} (jusqu'à "
+                       f"{budget.owner_cap_usd() * USD_EUR:.2f} €). Réponds-lui court et utile, sans recherche web "
+                       "inutile ; garde les gros travaux pour demain, sauf s'il te les demande expressément.")
     my_tasks = workflow.agent_context(agent.name)
     private = dm_thread(agent.name, 8)
     private_txt = "\n".join(f"[{_fmt_ts(m['ts'])}] {m['sender']}: {m['content'][:500]}" for m in private) or "(aucune)"
@@ -209,15 +214,18 @@ Raison du réveil : {reason}
 Travaille maintenant sur ton rôle. Agis avec les outils, puis termine en mettant à jour ta mémoire."""
 
 
-async def run_cycle(agent: Agent, reason: str, wake) -> None:
+async def run_cycle(agent: Agent, reason: str, wake, for_owner: bool = False) -> None:
+    """for_owner : Patron (ou un client) attend la réponse → l'agent peut utiliser la rallonge du jour."""
+    limit_hit = budget.owner_exhausted if for_owner else budget.today_exhausted
     if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
         db.set_state(agent.name, status="en attente de la clé API (onglet 🚀 Démarrage)")
         return
     if budget.api_exhausted():
         db.set_state(agent.name, status="budget IA épuisé")
         return
-    if budget.today_exhausted():
-        db.set_state(agent.name, status="budget du jour atteint")
+    if limit_hit():
+        db.set_state(agent.name, status="rallonge du jour utilisée : reprend demain" if for_owner
+                     else "budget du jour atteint")
         return
     model, effort = model_for(agent.tier)
     db.set_state(agent.name, status="travaille", last_run=time.time())
@@ -291,7 +299,7 @@ async def run_cycle(agent: Agent, reason: str, wake) -> None:
                 messages.append({"role": "user", "content": "Ta réponse a été coupée. Termine plus brièvement."})
             else:
                 break
-            if budget.today_exhausted() or budget.api_exhausted():
+            if limit_hit() or budget.api_exhausted():
                 db.log(agent.name, "budget", "budget IA atteint, arrêt du cycle")
                 break
         db.set_state(agent.name, status="en attente")

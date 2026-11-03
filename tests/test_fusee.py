@@ -435,3 +435,29 @@ def test_netlify_token_applies_without_restart(tmp_path, monkeypatch):
     assert r["applied"] and integrations.NETLIFY_TOKEN == "nfp_test_1234567890"
     assert TestClient(web.app).get("/api/state").json()["capabilities"]["netlify"] is True
     monkeypatch.delenv("NETLIFY_TOKEN", raising=False)
+
+
+def test_owner_can_still_talk_after_the_daily_budget(monkeypatch):
+    """Budget du jour fini : le travail en solo s'arrête, mais Patron peut encore parler (rallonge limitée)."""
+    from fastapi.testclient import TestClient
+    from fusee_agents import runner, web
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setattr(budget, "api_exhausted", lambda: False)
+    cap = budget.daily_cap_usd()
+    calls = []
+
+    async def fake(**kw):
+        calls.append(kw["messages"][0]["content"])
+        return NS(usage=NS(input_tokens=1, output_tokens=1, cache_read_input_tokens=0, cache_creation_input_tokens=0,
+                           server_tool_use=None), stop_reason="end_turn", model=kw["model"], content=[NS(type="text", text="ok")])
+
+    monkeypatch.setattr(runner, "client", NS(beta=NS(messages=NS(create=fake))))
+    monkeypatch.setattr(db, "cost_today", lambda: 1.5 * cap)  # budget du jour dépassé, rallonge pas encore finie
+    asyncio.run(runner.run_cycle(BY_NAME["Neo"], "cycle régulier", lambda *a: None))
+    assert not calls and db.get_states()["Neo"]["status"] == "budget du jour atteint"
+    asyncio.run(runner.run_cycle(BY_NAME["Neo"], "message de Patron : tu es là ?", lambda *a: None, for_owner=True))
+    assert len(calls) == 1 and "RALLONGE" in calls[0]
+    assert TestClient(web.app).post("/api/dm/Neo", json={"content": "Salut"}).status_code == 200
+    monkeypatch.setattr(db, "cost_today", lambda: 2.1 * cap)  # même la rallonge est utilisée
+    r = TestClient(web.app).post("/api/dm/Neo", json={"content": "Salut"})
+    assert r.status_code == 400 and "rallonge" in r.json()["detail"]

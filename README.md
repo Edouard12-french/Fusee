@@ -293,6 +293,9 @@ dépenses que tu as validées, revenus (Stripe + ce que tu ajoutes), et ce qu'il
 - **Pour les laisser avancer seuls**, bouton **💤 / ▶️** en haut : *cette nuit* (jusqu'à 7 h), *2 heures*,
   *24 heures* ou *2 jours*, et **⏹️ Stop** à tout moment. Même là, ils s'arrêtent à **60 % du budget du jour** :
   les 40 % restants sont toujours gardés pour quand tu leur parles.
+- **Budget du jour fini ? Tu peux quand même leur parler** : quand c'est toi qui parles (ou un client qui écrit),
+  ils prennent une **rallonge** jusqu'à 2 fois le budget du jour (prise sur ton budget total) et répondent plus court.
+  Le travail en solo, lui, s'arrête au budget du jour.
 
 ## Ta stratégie d'investissement 📈
 
