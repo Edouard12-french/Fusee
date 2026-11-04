@@ -145,7 +145,8 @@ Les actions concrètes pour {OWNER} passent par @Clara.
   métier manque vraiment (ex. un spécialiste YouTube), hire_agent pour recruter un nouvel agent (validé par
   {OWNER} car ça coûte).""",
         BASE_TOOLS + SELL_TOOLS + FLOW_TOOLS + ["update_idea", "write_report", "start_sequence", "start_parallel",
-                                                "budget_status", "adjust_agent", "hire_agent", "list_prospects"],
+                                                "budget_status", "adjust_agent", "hire_agent", "list_prospects",
+                                                "ask_owner"],
     ),
     Agent(
         "Nexus", "Agent routeur", "Aiguillage des demandes", "🔀", "#06b6d4", "coord", 0,

@@ -7,7 +7,7 @@ from datetime import datetime
 
 import anthropic
 
-from . import budget, db, integrations, mailbox, workflow
+from . import briefing, budget, db, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
 from .config import (MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, USD_EUR, WEB_SEARCH_COST,
                      model_for)
@@ -29,14 +29,12 @@ MINOR_TXT = f"""
 - Business adaptés : produits numériques, jeux, sites et outils, petits services en ligne — encaissés via le
   compte d'un parent. Contenus et communication adaptés à son âge.
 - Ne collecte que le strict nécessaire sur les clients (RGPD) et ne donne jamais ses informations personnelles."""
-DEFAULT_DIRECTIVE = f"""Phase 1 — choisir le premier business (aucune consigne précise de {OWNER} : l'équipe choisit).
-- @Scout repère des pistes ; @Hydre lance une comparaison PARALLÈLE de 3 à 5 pistes (ex. jeux web, sites pour
-  commerces et artisans locaux, outils ou templates numériques, autres trouvailles), chacune notée sur 10 pour :
-  demande prouvée (sources), concurrence, prix possible, coût de départ (proche de 0 €), délai avant la première
-  vente, faisabilité avec l'équipe, compatibilité avec la situation de {OWNER}.
-- @Atlas choisit UNE piste avec les chiffres, demande la validation de {OWNER} (request_approval, kind=business),
-  puis fait enchaîner la création par @Relais (étude → offre et prix → produit → page de vente → pub).
-- Ensuite : un seul produit à la fois jusqu'à la première vente."""
+DEFAULT_DIRECTIVE = f"""Chasse au meilleur business (aucune consigne précise de {OWNER}).
+- @Scout cherche sur internet des problèmes réels qui grandissent sur 5-10 ans (sources) ; chaque agent ajoute au
+  CLASSEMENT les pistes de son métier (propose_idea) ou re-note celles qui existent (update_idea).
+- @Atlas tient le classement à jour, présente le briefing quotidien et le choix en QCM à {OWNER}.
+- Quand {OWNER} choisit un business : @Relais enchaîne la création (offre et prix → produit → page de vente → pub),
+  un produit à la fois jusqu'à la première vente, en demandant toujours avant de publier."""
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
@@ -91,10 +89,7 @@ def _fmt_ts(ts: float) -> str:
 def build_context(agent: Agent, reason: str) -> str:
     msgs = db.recent_messages(40)
     chat = "\n".join(f"[{_fmt_ts(m['ts'])}] {m['sender']}: {m['content']}" for m in msgs) or "(aucun message)"
-    ideas = db.q("SELECT * FROM ideas WHERE status != 'abandonnée' ORDER BY id DESC LIMIT 25")
-    ideas_txt = "\n".join(
-        f"#{i['id']} [{i['status']}] {i['title']} — ~{i['revenue_eur_month']:.0f} €/mois, effort {i['effort']} (par {i['agent']})"
-        for i in ideas) or "(tableau vide)"
+    ideas_txt = briefing.context_lines(15)
     mine = db.activity(agent.name, 12)[::-1]
     mine_txt = "\n".join(f"[{_fmt_ts(a['ts'])}] {a['kind']}: {a['summary']}" for a in mine) or "(rien encore)"
     owner_directive = db.get_setting("directive", "")
@@ -205,7 +200,10 @@ Raison du réveil : {reason}
 ## Prospects & clients (meilleurs scores)
 {hot_txt}
 
-## Tableau des idées
+## Mission permanente : le meilleur business
+{briefing.MISSION}
+
+## Classement des idées (du meilleur au moins bon)
 {ideas_txt}
 
 ## Derniers messages du groupe

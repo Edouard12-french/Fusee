@@ -200,7 +200,7 @@ const post = (u, body) => fetch(u, {method:"POST", headers:{"Content-Type":"appl
 const wpath = p => "/w/" + p.split("/").map(encodeURIComponent).join("/");
 let openProduct = null, S = {agents:[]}, lastId = 0, selected = null, tab = "agent", lastSig = "", openContact = null;
 const TABS = {setup:"🚀 Démarrage", owner:"📥 Demandes", agent:"🤖 Agent", approvals:"✅ Validations", products:"📦 Produits", content:"📅 Contenus", outreach:"🎯 Prospection", contacts:"👥 Prospects", money:"💰 Argent",
-  vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"💡 Idées", reports:"📄 Rapports", pf:"📈 Bourse",
+  vitrine:"🖼️ Vitrine", flows:"⛓️ Workflows", box:"🧰 Boîte", ideas:"🏆 Classement", reports:"📄 Rapports", pf:"📈 Bourse",
   notifs:"🔔 Notifs", settings:"⚙️ Réglages", feed:"⚡ Tout"};
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
 const emojiOf = n => (S.agents.find(a => a.name === n) || {}).emoji || "👤";
@@ -565,10 +565,32 @@ async function renderPane(soft) {
           ${s.payment_links.map(l => `<div class="act">${esc(l.name)} — <b>${l.price_eur} €</b> <a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>`).join("")}
           ${s.deployments.map(d => `<div class="act">🌍 ${esc(d.site)} <a class="lnk" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.url)}</a></div>`).join("")}</div>`;
     } else if (tab === "ideas") {
-      const ideas = await api("/api/ideas");
-      pane.innerHTML = ideas.map(i => `<div class="card"><h4>#${i.id} ${esc(i.title)}</h4>
-        <span class="tag">${esc(i.status)}</span> <span class="tag">~${Math.round(i.revenue_eur_month)} €/mois</span> <span class="tag">effort ${esc(i.effort)}</span> <span class="muted">par ${i.agent}</span>
-        <p>${esc(i.description)}</p></div>`).join("") || "<p class=muted>Aucune idée pour l'instant.</p>";
+      if (soft) return;  // pas de rafraîchissement auto : les réglages du briefing restent sous ton doigt
+      const d = await api("/api/ideas"), medals = ["🥇", "🥈", "🥉"];
+      const hours = sel => Array.from({length: 24}, (_, h) => `<option value="${h}" ${sel === h ? "selected" : ""}>${h} h</option>`).join("");
+      const link = u => /^https?:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\/(www\.)?/, "").slice(0, 40))}</a>` : "";
+      const card = (i, k) => `<div class="card" style="${k < 3 ? "border-left:4px solid " + ["#f59e0b", "#94a3b8", "#b45309"][k] : ""}">
+        <h4>${k < 3 ? medals[k] : (k + 1) + "."} ${esc(i.title)} <span class="tag" style="font-size:13px">${i.score || 0}/100</span></h4>
+        <span class="tag">${esc(i.status)}</span> <span class="tag">~${Math.round(i.revenue_eur_month)} €/mois</span> <span class="tag">départ ${Math.round(i.start_cost_eur || 0)} €</span> <span class="tag">effort ${esc(i.effort)}</span> <span class="muted">par ${esc(i.agent)}</span>
+        ${i.problem ? `<p><b>Problème :</b> ${esc(i.problem)}</p>` : ""}
+        <p><b>${i.problem ? "Solution" : "Idée"} :</b> ${esc(i.solution || i.description || "")}</p>
+        ${i.future ? `<p><b>Dans 5-10 ans :</b> ${esc(i.future)}</p>` : ""}
+        ${(i.sources || []).length ? `<div class="muted">Sources : ${i.sources.map(link).filter(Boolean).join(" · ")}</div>` : `<div class="muted">⚠️ Pas encore de source</div>`}</div>`;
+      pane.innerHTML = `<div class="card" style="border-left:4px solid var(--accent)"><h4>🏆 Classement des meilleurs business</h4>
+          <div class="muted">L'équipe cherche en permanence des problèmes réels qui vont grandir dans les 5 à 10 ans, avec leur solution, et les note sur 100.</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+            <button class="primary" id="brNow">📋 Briefing maintenant</button>
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="brOn" ${d.briefing.enabled ? "checked" : ""}> Briefing chaque jour à</label>
+            <select id="brHour">${hours(d.briefing.hour)}</select></div>
+          <div class="muted" id="brMsg" style="margin-top:6px">${d.last_briefing ? `Dernier briefing : ${time(d.last_briefing.ts)} — onglet 📄 Rapports.` : "Pas encore de briefing."}
+            Si Atlas n'a pas le temps de le rédiger, Fusée publie quand même le classement.</div></div>`
+        + (d.ranked.map(card).join("") || "<p class=muted>Le classement est vide pour l'instant : demande un briefing, ou écris à @Scout.</p>")
+        + (d.abandoned.length ? `<details class="card"><summary class="muted">${d.abandoned.length} idée(s) abandonnée(s)</summary>${d.abandoned.map(i => `<div class="muted">#${i.id} ${esc(i.title)}</div>`).join("")}</details>` : "");
+      $("#brNow").onclick = async () => {
+        const r = await post("/api/briefing"); const j = await r.json().catch(() => ({}));
+        $("#brMsg").textContent = r.ok ? `📋 Atlas prépare le briefing : il arrive dans 📄 Rapports (au plus tard dans ${j.fallback_min} min).` : (j.detail || "Impossible");
+      };
+      ["brOn", "brHour"].forEach(id => $("#" + id).onchange = () => post("/api/briefing_settings", {enabled: $("#brOn").checked, hour: +$("#brHour").value}));
     } else if (tab === "reports") {
       const reps = await api("/api/reports");
       pane.innerHTML = reps.map((r, k) => `<details class="card" ${k===0?"open":""}><summary><b>${esc(r.title)}</b> <span class="muted">${time(r.ts)} · ${r.agent}</span></summary><div class="md">${md(r.content)}</div></details>`).join("") || "<p class=muted>Pas encore de rapport. Atlas en rédige régulièrement.</p>";

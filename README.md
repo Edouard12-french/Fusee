@@ -269,6 +269,14 @@ Une interface colorée (chaque agent a sa couleur), en thème sombre ou clair (b
   - 🧰 **Boîte** : les outils de Forge et les fiches de compétences de Sage
   - 💡 Idées · 📄 Rapports · 📈 Bourse (simulée) · 🔔 Notifs · ⚙️ Réglages · ⚡ Tout
 
+## 🏆 Chasse au meilleur business
+
+En permanence, l'équipe cherche des **problèmes réels qui vont grandir dans les 5 à 10 ans**, avec leur solution.
+Chaque piste va dans l'onglet **🏆 Classement**, notée sur 100 (avenir, argent, facilité, rapidité, risque), avec ses
+**sources** : sans source, la note est plafonnée à 50. Chaque jour à **17 h** (réglable), Atlas te présente le
+**📋 briefing** (tableau classé, le meilleur en détail, choix en QCM), et le bouton **📋 Briefing maintenant** le
+demande tout de suite. Si Atlas n'a pas le temps ou le budget, Fusée publie quand même le classement dans 📄 Rapports.
+
 ## Budget et coûts 💰
 
 Fusée suit ton **argent réel** (onglet 💰 Argent) : budget de départ (100 € par défaut), dépenses d'IA, autres

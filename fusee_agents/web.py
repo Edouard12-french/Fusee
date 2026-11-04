@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, budget, db, integrations, knowledge, mailbox, outreach, runner
+from . import analytics, briefing, budget, db, integrations, knowledge, mailbox, outreach, runner
 from . import setup as setup_mod
 from .agents import (BY_NAME, OWNER, PROFILE_LABELS, TEAM, add_agent, agent_settings, make_custom, owner_profile,
                      save_team_config, team_config)
@@ -181,9 +181,33 @@ def activity(agent: str | None = None, limit: int = 150):
 
 @app.get("/api/ideas")
 def ideas():
-    return db.q("SELECT * FROM ideas ORDER BY CASE status WHEN 'en ligne' THEN 0 WHEN 'en cours' THEN 1 "
-                "WHEN 'prête à vendre' THEN 2 WHEN 'validée' THEN 3 WHEN 'proposée' THEN 4 ELSE 5 END, "
-                "revenue_eur_month DESC")
+    """Le classement des business, du meilleur au moins bon (les idées abandonnées à la fin)."""
+    gone = db.q("SELECT * FROM ideas WHERE status = 'abandonnée' ORDER BY id DESC LIMIT 50")
+    return {"ranked": briefing.ranked(200), "abandoned": gone, "briefing": briefing.settings(),
+            "last_briefing": (db.q("SELECT id, ts, title FROM reports WHERE title LIKE '%Briefing%' "
+                                   "ORDER BY id DESC LIMIT 1") or [None])[0]}
+
+
+@app.post("/api/briefing")
+async def briefing_now():  # async : le briefing de secours est une tâche de la boucle principale
+    """Patron veut le briefing tout de suite."""
+    if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
+        raise HTTPException(400, "Il faut d'abord la clé API (onglet 🚀 Démarrage).")
+    db.post_message(OWNER, "📋 @Atlas, fais-moi le briefing maintenant : le classement des meilleurs business, "
+                           "le meilleur en détail et le choix en QCM.")
+    scheduler.briefing()
+    return {"ok": True, "fallback_min": briefing.FALLBACK_AFTER_S // 60}
+
+
+@app.post("/api/briefing_settings")
+async def briefing_settings(request: Request):
+    d = await request.json()
+    if "enabled" in d:
+        db.set_setting("briefing_enabled", "1" if d["enabled"] else "0")
+    if "hour" in d and 0 <= int(d["hour"]) <= 23:
+        db.set_setting("briefing_hour", str(int(d["hour"])))
+        db.set_setting("briefing_last", "")  # la nouvelle heure compte dès aujourd'hui
+    return briefing.settings()
 
 
 @app.get("/api/reports")

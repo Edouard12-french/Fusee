@@ -78,7 +78,11 @@ CREATE TABLE IF NOT EXISTS usage_agent (day TEXT, agent TEXT, cost_usd REAL DEFA
 )
 for _sql in ("ALTER TABLE payment_links ADD COLUMN product_id INTEGER",
              "ALTER TABLE owner_questions ADD COLUMN via TEXT", "ALTER TABLE owner_questions ADD COLUMN need_ids TEXT",
-             "ALTER TABLE owner_tasks ADD COLUMN via TEXT", "ALTER TABLE owner_tasks ADD COLUMN need_ids TEXT"):
+             "ALTER TABLE owner_tasks ADD COLUMN via TEXT", "ALTER TABLE owner_tasks ADD COLUMN need_ids TEXT",
+             # classement des business : problème, solution, avenir 5-10 ans, note /100, sources, coût de départ
+             "ALTER TABLE ideas ADD COLUMN problem TEXT", "ALTER TABLE ideas ADD COLUMN solution TEXT",
+             "ALTER TABLE ideas ADD COLUMN future TEXT", "ALTER TABLE ideas ADD COLUMN score INTEGER DEFAULT 0",
+             "ALTER TABLE ideas ADD COLUMN sources TEXT", "ALTER TABLE ideas ADD COLUMN start_cost_eur REAL DEFAULT 0"):
     try:
         _conn.execute(_sql)
     except sqlite3.OperationalError:

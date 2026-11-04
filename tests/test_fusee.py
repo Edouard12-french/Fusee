@@ -531,3 +531,52 @@ def test_connected_key_closes_old_requests_and_tells_the_team(tmp_path, monkeypa
     assert web.close_connected_requests(web.CONNECTED, announce=False) == 0
     assert db.q("SELECT COUNT(*) n FROM messages")[0]["n"] == n
     monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
+
+
+# --- chasse au meilleur business : classement + briefing garanti --------------------------------------------
+
+def test_ranking_board_and_guaranteed_briefing(monkeypatch):
+    from fastapi.testclient import TestClient
+    from fusee_agents import briefing, runner, web
+    from fusee_agents.scheduler import Scheduler, why_may_work
+    db.x("DELETE FROM ideas")
+    run = lambda name, args: asyncio.run(tools.execute("Scout", name, args, lambda *a: None))  # noqa: E731
+    r1 = run("propose_idea", {"title": "Aide numérique aux seniors", "problem": "Les seniors galèrent avec les démarches en ligne",
+                              "solution": "Guides vidéo + site d'aide", "future": "Population âgée en hausse jusqu'en 2035",
+                              "score": 82, "sources": ["https://www.insee.fr/exemple"], "start_cost_eur": 0,
+                              "revenue_eur_month": 150, "effort": "moyen"})
+    r2 = run("propose_idea", {"title": "Idée sans preuve", "problem": "?", "solution": "?", "future": "?", "score": 95,
+                              "sources": [], "start_cost_eur": 0, "revenue_eur_month": 1000, "effort": "faible"})
+    assert "rang n°1" in r1 and "plafonnée à 50" in r2  # pas de source = pas de grosse note
+    assert "déjà dans le classement" in run("propose_idea", {"title": "aide numérique aux seniors", "problem": "", "solution": "",
+                                            "future": "", "score": 10, "sources": [], "start_cost_eur": 0,
+                                            "revenue_eur_month": 0, "effort": "faible"})
+    ranked = briefing.ranked()
+    assert [i["title"] for i in ranked] == ["Aide numérique aux seniors", "Idée sans preuve"]
+    assert ranked[0]["sources"] == ["https://www.insee.fr/exemple"] and ranked[1]["score"] == 50
+    run("update_idea", {"idea_id": ranked[1]["id"], "status": "", "score": 90, "reason": "sources trouvées"})
+    assert briefing.ranked()[0]["title"] == "Idée sans preuve"
+    # tout le monde voit le classement et la mission
+    ctx = runner.build_context(BY_NAME["Neo"], "test")
+    assert "Mission permanente" in ctx and "🥇" in ctx and "Aide numérique aux seniors" in ctx
+    assert "| Rang |" in briefing.table_md() and "[1](https://www.insee.fr/exemple)" in briefing.table_md()
+    # le briefing réveille Atlas comme si Patron parlait (donc même avec le budget du soir)
+    s = Scheduler()
+    reason = briefing.BRIEFING_REASON.format(day="04/11")
+    assert why_may_work("Atlas", reason) == "patron" and "ask_owner" in BY_NAME["Atlas"].tools
+    # Atlas n'a rien rendu : Fusée publie quand même le classement, une seule fois
+    since = time.time() - 1
+    assert briefing.fallback_report(since) and not briefing.fallback_report(since)
+    rep = db.q("SELECT * FROM reports ORDER BY id DESC LIMIT 1")[0]
+    assert "Briefing" in rep["title"] and "Aide numérique aux seniors" in rep["content"]
+    # appli : classement, réglage de l'heure
+    c = TestClient(web.app)
+    d = c.get("/api/ideas").json()
+    assert d["ranked"][0]["score"] == 90 and d["last_briefing"]["title"] == rep["title"]
+    assert c.post("/api/briefing_settings", json={"hour": 18, "enabled": True}).json() == {"enabled": True, "hour": 18}
+    db.set_setting("briefing_hour", "17")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    web.scheduler.reasons["Atlas"].clear()
+    r = c.post("/api/briefing")
+    assert r.status_code == 200 and any("BRIEFING" in x for x in web.scheduler.reasons["Atlas"])
+    del s

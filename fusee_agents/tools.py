@@ -45,19 +45,30 @@ CLIENT_TOOLS: dict[str, dict] = {
         "input_schema": _schema({"task": S}),
     },
     "propose_idea": {
-        "description": "Ajoute une idée de business au tableau commun des idées.",
+        "description": ("Ajoute une piste de business au CLASSEMENT commun (vérifie d'abord qu'elle n'y est pas déjà : "
+                        "sinon update_idea). Un vrai problème qui grandit sur 5-10 ans + sa solution, notée sur 100."),
         "input_schema": _schema({
-            "title": S, "description": S,
+            "title": S,
+            "problem": {"type": "string", "description": "Le problème réel : qui l'a, et combien ces gens paient déjà"},
+            "solution": {"type": "string", "description": "Ce que l'équipe construit et vend pour le résoudre"},
+            "future": {"type": "string", "description": "Pourquoi ce problème va grandir dans les 5-10 ans (chiffres)"},
+            "score": {"type": "integer", "description": "Note /100 : avenir 25, argent 25, facilité 20, rapidité 15, risque 15"},
+            "sources": {"type": "array", "items": S, "description": "Liens (URL) qui prouvent le problème et le marché"},
+            "start_cost_eur": {"type": "number", "description": "Coût de départ en EUR (proche de 0)"},
             "revenue_eur_month": {"type": "number", "description": "Estimation prudente du revenu mensuel en EUR"},
             "effort": {"type": "string", "enum": ["faible", "moyen", "élevé"]},
-        }),
+            "description": S,
+        }, required=["title", "problem", "solution", "future", "score", "sources", "start_cost_eur",
+                     "revenue_eur_month", "effort"]),
     },
     "update_idea": {
-        "description": "Change le statut d'une idée du tableau.",
+        "description": "Change le statut et/ou la note d'une idée du classement (score 1-100 ; 0 = ne pas changer).",
         "input_schema": _schema({
             "idea_id": I,
-            "status": {"type": "string", "enum": ["proposée", "validée", "en cours", "prête à vendre", "en ligne", "abandonnée"]},
-        }),
+            "status": {"type": "string", "enum": ["", "proposée", "validée", "en cours", "prête à vendre", "en ligne", "abandonnée"]},
+            "score": I,
+            "reason": S,
+        }, required=["idea_id"]),
     },
     "write_report": {
         "description": f"Publie un rapport destiné à {OWNER} (markdown) : résumé, résultats, prospects, actions à faire.",
@@ -632,15 +643,29 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         db.set_state(agent, task=args["task"][:200])
         return "Statut mis à jour."
     if name == "propose_idea":
-        i = db.x("INSERT INTO ideas (ts, agent, title, description, revenue_eur_month, effort) VALUES "
-                 "(CAST(strftime('%s','now') AS REAL),?,?,?,?,?)",
-                 (agent, args["title"], args["description"], args["revenue_eur_month"], args["effort"]))
-        return f"Idée #{i} ajoutée au tableau."
+        same = db.q("SELECT id FROM ideas WHERE lower(title)=lower(?) AND status != 'abandonnée'", (args["title"].strip(),))
+        if same:
+            return f"Cette idée est déjà dans le classement (#{same[0]['id']}) : utilise update_idea pour la re-noter."
+        score = max(0, min(100, int(args.get("score") or 0)))
+        sources = [s for s in (args.get("sources") or []) if str(s).startswith("http")][:8]
+        if not sources:
+            score = min(score, 50)  # pas de preuve = pas de grosse note
+        i = db.x("INSERT INTO ideas (ts, agent, title, description, revenue_eur_month, effort, problem, solution, "
+                 "future, score, sources, start_cost_eur) VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?,?,?,?,?,?)",
+                 (agent, args["title"].strip(), args.get("description") or args.get("solution", ""),
+                  args["revenue_eur_month"], args["effort"], args.get("problem", ""), args.get("solution", ""),
+                  args.get("future", ""), score, json.dumps(sources), float(args.get("start_cost_eur") or 0)))
+        rank = db.q("SELECT COUNT(*) n FROM ideas WHERE status != 'abandonnée' AND COALESCE(score,0) > ?", (score,))[0]["n"] + 1
+        return f"Idée #{i} ajoutée au classement : note {score}/100, rang n°{rank}." + (
+            "" if sources else " (note plafonnée à 50 : ajoute des sources avec update_idea)")
     if name == "update_idea":
         if not db.q("SELECT id FROM ideas WHERE id=?", (args["idea_id"],)):
             return "Erreur : idée introuvable."
-        db.x("UPDATE ideas SET status=? WHERE id=?", (args["status"], args["idea_id"]))
-        return "Statut de l'idée mis à jour."
+        if args.get("status"):
+            db.x("UPDATE ideas SET status=? WHERE id=?", (args["status"], args["idea_id"]))
+        if args.get("score"):
+            db.x("UPDATE ideas SET score=? WHERE id=?", (max(1, min(100, int(args["score"]))), args["idea_id"]))
+        return "Idée mise à jour."
     if name == "write_report":
         db.x("INSERT INTO reports (ts, agent, title, content) VALUES (CAST(strftime('%s','now') AS REAL),?,?,?)",
              (agent, args["title"], args["content"]))

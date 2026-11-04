@@ -1,7 +1,9 @@
 """Fait tourner chaque agent en continu : un cycle à intervalle régulier, ou dès qu'il est mentionné."""
 import asyncio
+import time
+from datetime import date, datetime
 
-from . import budget, db, mailbox, markets, outreach, sales
+from . import briefing, budget, db, mailbox, markets, outreach, sales
 from .agents import BY_NAME, OWNER, TEAM, Agent, agent_settings
 from .config import INTERVAL_MULTIPLIER, MAX_PARALLEL_AGENTS
 from .runner import run_cycle
@@ -106,6 +108,27 @@ class Scheduler:
                 self.wake(a.name, f"autorisation : {OWNER} vous laisse travailler seuls jusqu'à {label} — avancez sur "
                                   "vos projets en équipe (toujours request_approval avant de publier)")
 
+    def briefing(self) -> float:
+        """Atlas rédige le briefing maintenant (avec la rallonge si besoin). Si rien n'est rendu à temps, Fusée
+        publie elle-même le classement : Patron a toujours son briefing."""
+        since = time.time()
+        self.wake("Atlas", briefing.BRIEFING_REASON.format(day=date.today().strftime("%d/%m")))
+
+        async def fallback() -> None:
+            await asyncio.sleep(briefing.FALLBACK_AFTER_S)
+            briefing.fallback_report(since)
+        self.tasks.append(asyncio.create_task(fallback()))
+        return since
+
+    async def _briefings(self) -> None:
+        """Chaque jour à l'heure choisie (17 h par défaut) : le briefing pour Patron."""
+        while True:
+            await asyncio.sleep(60)
+            s, today = briefing.settings(), date.today().isoformat()
+            if s["enabled"] and datetime.now().hour == s["hour"] and db.get_setting("briefing_last", "") != today:
+                db.set_setting("briefing_last", today)
+                self.briefing()
+
     async def _work_watch(self) -> None:
         """Chaque minute : une période programmée (« demain 8 h → 17 h ») qui commence réveille l'équipe."""
         while True:
@@ -163,6 +186,7 @@ class Scheduler:
         self.tasks.append(asyncio.create_task(sales.poll_forever(self.wake)))
         self.tasks.append(asyncio.create_task(self._mark_prices()))
         self.tasks.append(asyncio.create_task(self._work_watch()))
+        self.tasks.append(asyncio.create_task(self._briefings()))
         self.tasks.append(asyncio.create_task(self._followups()))
         self.tasks.append(asyncio.create_task(self._backups()))
         self.tasks.append(asyncio.create_task(mailbox.poll_forever(
