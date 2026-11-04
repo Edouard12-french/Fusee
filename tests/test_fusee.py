@@ -642,3 +642,42 @@ def test_vice_patron_leads_when_the_owner_is_away():
     ctx = runner.build_context(v, "cycle régulier")
     assert "agence d'automatisation IA" in ctx  # ses consignes privées sont dans son contexte
     assert "Vice (vice-patron)" in system_prompt(BY_NAME["Neo"])  # les autres savent qui il est
+
+
+# --- images et fichiers envoyés par Patron ---------------------------------------------------------------
+
+def test_owner_can_send_images_and_files_that_agents_can_see(monkeypatch):
+    import base64
+    from fastapi.testclient import TestClient
+    from fusee_agents import runner, web
+    c = TestClient(web.app)
+    png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+    r = c.post("/api/upload", json={"name": "Photo écran.PNG", "data": "data:image/png;base64," + base64.b64encode(png).decode()})
+    assert r.status_code == 200 and r.json()["path"].startswith("de-patron/") and r.json()["path"].endswith("Photo-ecran.png")
+    path = r.json()["path"]
+    assert c.post("/api/upload", json={"name": "virus.exe", "data": "AAAA"}).status_code == 400
+    assert c.post("/api/upload", json={"name": "x.png", "data": "pas du base64 !!"}).status_code == 400
+    # dans le groupe : la pièce jointe est gardée et l'agent sait où la regarder
+    web.scheduler.reasons["Nexus"].clear()
+    assert c.post("/api/message", json={"content": "", "attachments": [path, "../../etc/passwd", "sites/x.html"]}).status_code == 200
+    m = db.recent_messages(1)[0]
+    assert json.loads(m["attachments"])["files"] == [path]  # seulement ses fichiers à lui
+    assert any("view_file" in x and path in x for x in web.scheduler.reasons["Nexus"])
+    # l'agent VOIT l'image
+    blocks = asyncio.run(tools.execute("Neo", "view_file", {"path": path}, lambda *a: None))
+    assert isinstance(blocks, list) and blocks[1]["type"] == "image" and blocks[1]["source"]["media_type"] == "image/png"
+    assert "view_file" in BY_NAME["Neo"].tools and "view_file" in BY_NAME["Vice"].tools
+    # en privé : l'image est mise directement sous les yeux de l'agent
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    seen = []
+
+    async def fake(**kw):
+        seen.append(kw["messages"][-1]["content"])
+        return NS(usage=NS(input_tokens=1, output_tokens=1, cache_read_input_tokens=0, cache_creation_input_tokens=0,
+                           server_tool_use=None), stop_reason="end_turn", model=kw["model"], content=[NS(type="text", text="Jolie photo !")])
+
+    monkeypatch.setattr(runner, "client", NS(beta=NS(messages=NS(create=fake))))
+    assert c.post("/api/dm/Pixel", json={"content": "Regarde mon dessin", "attachments": [path]}).status_code == 200
+    asyncio.run(runner.dm_reply(BY_NAME["Pixel"], lambda *a: None))
+    last = seen[-1]
+    assert isinstance(last, list) and any(b.get("type") == "image" for b in last) and "Regarde mon dessin" in last[0]["text"]

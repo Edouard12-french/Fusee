@@ -11,7 +11,7 @@ from . import briefing, budget, db, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
 from .config import (MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, USD_EUR, WEB_SEARCH_COST,
                      model_for)
-from .tools import execute, products_overview, skills, tool_defs, toolbox
+from .tools import execute, file_blocks, products_overview, skills, tool_defs, toolbox
 
 client = anthropic.AsyncAnthropic(max_retries=4)
 
@@ -419,6 +419,20 @@ async def dm_reply(agent: Agent, wake) -> None:
         return
     memory = db.get_memory(agent.name)[:2000] or "(vide)"
     messages[0]["content"] = f"(Contexte — ta mémoire : {memory})\n\n" + messages[0]["content"]
+    # pièces jointes des derniers messages de Patron (depuis la dernière réponse de l'agent) : il les voit
+    blocks: list = []
+    for m in reversed(history):
+        if m["sender"] != OWNER:
+            break
+        try:
+            files = json.loads(m.get("attachments") or "{}").get("files", [])
+        except ValueError:
+            files = []
+        for f in files[:4]:
+            got = file_blocks(f)
+            blocks = (got if isinstance(got, list) else [{"type": "text", "text": f"{f} : {got}"}]) + blocks
+    if blocks:
+        messages[-1]["content"] = [{"type": "text", "text": messages[-1]["content"]}] + blocks
     extra = ({"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
              if ("opus" in model or "sonnet-5-5" in model or "fable" in model) else {})
     db.set_state(agent.name, status="en discussion privée")

@@ -119,7 +119,8 @@ class Agent:
 
 
 WORK = ["post_message", "save_memory", "set_status", "complete_task", "list_skills", "read_skill",
-        "list_toolbox", "run_tool", "list_files", "read_file", "write_file", "remember", "recall", "submit_need",
+        "list_toolbox", "run_tool", "list_files", "read_file", "view_file", "write_file", "remember", "recall",
+        "submit_need",
         "message_owner_private"]
 BASE_TOOLS = WORK + ["propose_idea", "request_approval", "screenshot", "browse", "web_search", "web_fetch",
                      "youtube_search", "youtube_video", "list_products", "site_stats"]
@@ -172,7 +173,7 @@ qui avance, ce qui attend sa décision. @Atlas reste l'orchestrateur : travaille
 en son absence.""",
         ["post_message", "save_memory", "set_status", "remember", "recall", "list_needs", "resolve_need",
          "list_owner_items", "budget_status", "adjust_agent", "write_report", "update_idea", "list_files", "read_file",
-         "complete_task"],
+         "view_file", "complete_task"],
     ),
     Agent(
         "Nexus", "Agent routeur", "Aiguillage des demandes", "🔀", "#06b6d4", "coord", 0,

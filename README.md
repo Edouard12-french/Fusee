@@ -278,6 +278,13 @@ Chaque piste va dans l'onglet **🏆 Classement**, notée sur 100 (avenir, argen
 **📋 briefing** (tableau classé, le meilleur en détail, choix en QCM), et le bouton **📋 Briefing maintenant** le
 demande tout de suite. Si Atlas n'a pas le temps ou le budget, Fusée publie quand même le classement dans 📄 Rapports.
 
+## 📎 Images, fichiers et voix
+
+- **📎** (dans le groupe et en privé) : envoie une photo, une capture, un PDF ou un fichier (15 Mo max). Les photos
+  sont allégées automatiquement. Les agents **voient** vraiment les images et les PDF (outil `view_file`).
+- **🎤** : parle au lieu d'écrire (dictée), appuie à nouveau pour arrêter, puis Envoyer.
+- **🔊** (en privé) : l'agent te lit ses réponses à voix haute.
+
 ## Budget et coûts 💰
 
 Fusée suit ton **argent réel** (onglet 💰 Argent) : budget de départ (100 € par défaut), dépenses d'IA, autres

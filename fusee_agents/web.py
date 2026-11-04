@@ -316,7 +316,65 @@ def contact(cid: int):
 
 
 class Msg(BaseModel):
-    content: str
+    content: str = ""
+    attachments: list[str] = []  # fichiers déjà envoyés avec /api/upload (dans de-patron/)
+
+
+UPLOAD_DIR = "de-patron"
+UPLOAD_MAX = 15_000_000  # 15 Mo par fichier
+UPLOAD_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic", ".pdf", ".txt", ".md", ".csv", ".json",
+              ".docx", ".xlsx", ".pptx", ".mp3", ".m4a", ".wav", ".mp4", ".mov", ".zip"}
+
+
+class Upload(BaseModel):
+    name: str
+    data: str  # contenu en base64 (ou « data:…;base64,… »)
+
+
+@app.post("/api/upload")
+def upload(u: Upload):
+    """Patron envoie une image ou un fichier : il est rangé dans workspace/de-patron/<date>/."""
+    import base64
+    import binascii
+    import unicodedata
+    stem, dot, ext = u.name.rpartition(".")
+    ext = ("." + ext.lower()) if dot else ""
+    if ext not in UPLOAD_EXT:
+        raise HTTPException(400, f"Type de fichier non accepté ({ext or 'sans extension'}). Images, PDF, textes, "
+                                 "documents Office, sons, vidéos ou ZIP.")
+    try:
+        raw = base64.b64decode(u.data.split(",", 1)[-1], validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(400, "fichier illisible")
+    if len(raw) > UPLOAD_MAX:
+        raise HTTPException(400, "Fichier trop lourd (15 Mo maximum).")
+    safe = unicodedata.normalize("NFKD", stem or "fichier").encode("ascii", "ignore").decode()
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", safe).strip("-")[:50] or "fichier"
+    folder = WORKSPACE / UPLOAD_DIR / time.strftime("%Y-%m-%d")
+    folder.mkdir(parents=True, exist_ok=True)
+    dest = folder / f"{time.strftime('%H%M%S')}-{safe}{ext}"
+    n = 1
+    while dest.exists():
+        dest, n = folder / f"{time.strftime('%H%M%S')}-{safe}-{n}{ext}", n + 1
+    dest.write_bytes(raw)
+    return {"path": str(dest.relative_to(WORKSPACE)), "size": len(raw)}
+
+
+def _owner_files(paths: list[str]) -> list[str]:
+    """Seulement des fichiers envoyés par Patron (de-patron/), qui existent vraiment."""
+    out = []
+    for p in paths[:8]:
+        try:
+            full = _safe_path(p)
+        except ValueError:
+            continue
+        if full.is_file() and str(p).startswith(UPLOAD_DIR + "/"):
+            out.append(str(p))
+    return out
+
+
+def _files_note(files: list[str]) -> str:
+    return (f" [pièce(s) jointe(s) de {OWNER} : {', '.join(files)} — regarde-les avec view_file]" if files else "")
 
 
 @app.post("/api/contacts/{cid}/reply")
@@ -334,13 +392,14 @@ async def owner_reply(cid: int, msg: Msg):
 # --- discussion d'équipe & réglages ------------------------------------------
 @app.post("/api/message")
 def send(msg: Msg):
-    text = msg.content.strip()
-    if not text:
+    text, files = msg.content.strip(), _owner_files(msg.attachments)
+    if not text and not files:
         raise HTTPException(400, "message vide")
-    db.post_message(OWNER, text)
+    text = text or "📎 Regardez ce que je vous envoie."
+    db.post_message(OWNER, text, json.dumps({"files": files, "links": []}) if files else "")
     targets = mentions(text) or ["Nexus"]  # sans mention, le routeur aiguille la demande
     for t in targets:
-        scheduler.wake(t, f"message de {OWNER} : {text[:500]}")
+        scheduler.wake(t, f"message de {OWNER} : {text[:500]}{_files_note(files)}")
     return {"ok": True, "woken": targets}
 
 
@@ -980,15 +1039,17 @@ def dm_get(agent: str):
 async def dm_send(agent: str, msg: Msg):
     if agent not in BY_NAME:
         raise HTTPException(404)
-    text = msg.content.strip()
-    if not text:
+    text, files = msg.content.strip(), _owner_files(msg.attachments)
+    if not text and not files:
         raise HTTPException(400, "message vide")
+    text = text or "📎 Regarde ce que je t'envoie."
     if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
         raise HTTPException(400, "Il faut d'abord la clé API (onglet 🚀 Démarrage).")
     if budget.api_exhausted() or budget.owner_exhausted():
         raise HTTPException(400, "Même la rallonge du jour est utilisée : il te répondra demain (ou augmente le budget "
                                  "dans 💰 Argent).")
-    db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)", (time.time(), agent, OWNER, text))
+    db.x("INSERT INTO dms (ts, agent, sender, content, attachments, read) VALUES (?,?,?,?,?,1)",
+         (time.time(), agent, OWNER, text, json.dumps({"files": files, "links": []}) if files else ""))
     budget.note_owner_active()
     asyncio.create_task(runner.dm_reply(BY_NAME[agent], scheduler.wake))
     return {"ok": True}

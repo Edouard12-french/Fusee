@@ -65,6 +65,12 @@ aside,section{min-height:0;overflow:auto}
 .lnk{display:inline-block;background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(236,72,153,.18));border:1px solid rgba(167,139,250,.45);border-radius:10px;
   padding:3px 9px;font-size:12px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 form.send{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--panel)}
+.ctools{display:flex;flex-direction:column;gap:6px}.ctools button{padding:6px 9px;font-size:17px;line-height:1}
+.ctools button.rec{background:#ef4444!important;color:#fff;border-color:#ef4444;animation:recp 1s infinite}
+@keyframes recp{50%{box-shadow:0 0 0 6px rgba(239,68,68,.25)}}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px 0}.chips[hidden]{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;font-size:12px}
+.chip img{width:26px;height:26px;object-fit:cover;border-radius:6px}.chip button{padding:0 6px;border:0;background:none;color:var(--muted)}
 textarea,input,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
 textarea:focus,input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--accent) 60%,transparent);border-color:transparent}
 textarea{flex:1;resize:none}
@@ -165,7 +171,8 @@ nav#bottom{display:none}
   <section id="chat">
     <div id="msgs"></div>
     <div id="meetBar" hidden></div>
-    <form class="send" id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo pour un agent) — ou 🎙️ Réunion : toute l'équipe te répond en même temps"></textarea>
+    <div id="fChips" class="chips" hidden></div>
+    <form class="send" id="f"><div class="ctools"><button type="button" id="fClip" title="Envoyer une image ou un fichier">📎</button><button type="button" id="fMic" title="Parler au lieu d'écrire">🎤</button><input type="file" id="fFile" multiple hidden></div><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo pour un agent) — ou 🎙️ Réunion : toute l'équipe te répond en même temps"></textarea>
       <div style="display:flex;flex-direction:column;gap:6px"><button class="primary">Envoyer</button><button type="button" id="meetBtn" class="meet" title="Tous les agents répondent en même temps, en quelques secondes">🎙️ Réunion</button></div></form>
   </section>
   <aside id="side">
@@ -205,6 +212,82 @@ const TABS = {setup:"🚀 Démarrage", owner:"📥 Demandes", agent:"🤖 Agent"
 const colorOf = n => (S.agents.find(a => a.name === n) || {}).color || "#22c55e";
 const emojiOf = n => (S.agents.find(a => a.name === n) || {}).emoji || "👤";
 const SENT = {"très positif":"😍", "positif":"🙂", "neutre":"😐", "hésitant":"🤔", "négatif":"😠", "inconnu":"❔"};
+
+// --- 📎 pièces jointes, 🎤 dictée, 🔊 voix -------------------------------------------------------------
+let dmSpeak = false; try { dmSpeak = localStorage.getItem("fusee_dm_speak") === "1"; } catch (e) {}
+const dmSeen = {};
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  let t = String(text).replace(/https?:\/\/\S+/g, "");
+  try { t = t.replace(new RegExp("[\\p{Extended_Pictographic}\\uFE0F\\u200D]", "gu"), ""); } catch (e) {}
+  t = t.replace(/[*_#>`•|]/g, " ").replace(/\s+/g, " ").trim(); if (!t) return;
+  const u = new SpeechSynthesisUtterance(t); u.lang = "fr-FR";
+  const v = speechSynthesis.getVoices().find(x => (x.lang || "").toLowerCase().startsWith("fr")); if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+const SRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+function setupMic(btn, ta) {
+  if (!btn) return;
+  if (!SRec) { btn.title = "Dictée : utilise le 🎤 du clavier de ton téléphone ou de ton Mac"; btn.onclick = () => { ta.focus(); }; return; }
+  let rec = null;
+  btn.onclick = () => {
+    if (rec) { rec.stop(); return; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    const before = ta.value.trim();
+    rec = new SRec(); rec.lang = "fr-FR"; rec.interimResults = true; rec.continuous = true;
+    rec.onresult = e => { let s = ""; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; ta.value = (before ? before + " " : "") + s.trim(); };
+    rec.onerror = e => { if (e.error === "not-allowed" || e.error === "service-not-allowed") alert("Le micro est bloqué : autorise-le pour Fusée dans les réglages du navigateur."); };
+    rec.onend = () => { rec = null; btn.classList.remove("rec"); btn.textContent = "🎤"; };
+    try { rec.start(); btn.classList.add("rec"); btn.textContent = "⏹️"; } catch (e) { rec = null; }
+  };
+}
+async function shrinkImage(file) {  // photos du téléphone : plus légères (et moins chères à regarder pour l'IA)
+  if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)) return file;
+  const bmp = await createImageBitmap(file).catch(() => null); if (!bmp) return file;
+  const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  if (k === 1 && file.size < 1.5e6 && /jpeg|png|webp/i.test(file.type)) return file;
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+  return blob ? new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", {type: "image/jpeg"}) : file;
+}
+const toDataUrl = f => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(f); });
+class Composer {
+  constructor() { this.files = []; this.ids = null; }
+  bind(prefix) {
+    this.ids = {clip: "#" + prefix + "Clip", file: "#" + prefix + "File", chips: "#" + prefix + "Chips"};
+    const input = $(this.ids.file); if (!input) return;
+    $(this.ids.clip).onclick = () => input.click();
+    input.onchange = async () => {
+      for (const f of input.files) {
+        if (this.files.length >= 8) break;
+        const small = await shrinkImage(f);
+        if (small.size > 15e6) { alert(`« ${f.name} » est trop lourd (15 Mo maximum).`); continue; }
+        this.files.push({file: small, url: /^image\//.test(small.type) ? URL.createObjectURL(small) : ""});
+      }
+      input.value = ""; this.render();
+    };
+    this.render();
+  }
+  render() {
+    const box = this.ids && $(this.ids.chips); if (!box) return;
+    box.hidden = !this.files.length;
+    box.innerHTML = this.files.map((x, i) => `<span class="chip">${x.url ? `<img src="${x.url}" alt="">` : "📎"} ${esc(x.file.name.slice(0, 28))}<button type="button" data-i="${i}" title="Retirer">✕</button></span>`).join("");
+    box.querySelectorAll("button[data-i]").forEach(b => b.onclick = () => { this.files.splice(+b.dataset.i, 1); this.render(); });
+  }
+  async uploadAll() {
+    const paths = [];
+    for (const x of this.files) {
+      const r = await post("/api/upload", {name: x.file.name, data: await toDataUrl(x.file)});
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail || "Envoi du fichier impossible");
+      paths.push(j.path);
+    }
+    return paths;
+  }
+  clear() { this.files.forEach(x => x.url && URL.revokeObjectURL(x.url)); this.files = []; this.render(); }
+}
+const composers = {group: new Composer(), dm: new Composer()};
 
 function attHtml(att) {
   if (!att) return "";
@@ -321,6 +404,11 @@ async function renderPane(soft) {
     if (tab === "agent") {
       const a = S.agents.find(x => x.name === selected); if (!a) return;
       const dm = await api("/api/dm/" + a.name);
+      const lastIn = dm.messages.filter(m => m.sender !== "Patron").pop();
+      if (lastIn) {
+        if (dmSpeak && dmSeen[a.name] !== undefined && lastIn.id > dmSeen[a.name]) speak(lastIn.content);
+        dmSeen[a.name] = lastIn.id;
+      } else if (dmSeen[a.name] === undefined) dmSeen[a.name] = 0;
       const thread = dm.messages.map(m => `<div class="bub ${m.sender === "Patron" ? "out" : "in"}">${esc(m.content)}${attHtml(m.attachments)}<br><span class="muted">${time(m.ts)}</span></div>`).join("")
         + (dm.typing ? `<div class="bub in muted">${a.emoji} ${a.name} écrit…</div>` : "");
       const input = pane.querySelector("#dmInput");
@@ -334,19 +422,25 @@ async function renderPane(soft) {
         <div class="muted">${esc(a.title)} · statut : ${esc(a.status)} · ${a.interval_min ? (S.work && S.work.authorized ? "travaille seul : cycle toutes les " + a.interval_min + " min" : "travaille quand tu lui parles (ou quand tu l'autorises à travailler seul : cycle toutes les " + a.interval_min + " min)") : "à la demande"} · dernier : ${a.last_run ? time(a.last_run) : "jamais"}</div>
         <p><b>En ce moment :</b> ${esc(a.task || "—")}</p>
         <button onclick="post('/api/wake/${a.name}')">⚡ Lancer un cycle maintenant</button></div>
-        <div class="card" style="--ag:${a.color};border-color:color-mix(in srgb,${a.color} 45%,transparent)"><h4>💬 Discussion privée avec ${a.name}</h4>
+        <div class="card" style="--ag:${a.color};border-color:color-mix(in srgb,${a.color} 45%,transparent)"><h4 style="display:flex;align-items:center;gap:8px">💬 Discussion privée avec ${a.name}
+          ${window.speechSynthesis ? `<button type="button" id="dmSpeak" style="margin-left:auto;padding:4px 9px" title="Lire ses réponses à voix haute">${dmSpeak ? "🔊" : "🔇"}</button>` : ""}</h4>
           <div id="dmThread" class="thread" style="max-height:340px;overflow:auto">${thread || `<p class="muted">Écris-lui en privé : les autres agents ne verront pas cette discussion.</p>`}</div>
-          <form class="send" id="dmForm" style="padding:0;border:0;background:none"><textarea id="dmInput" rows="2" placeholder="${a.name === "Vice" ? "Avant de partir : dis à Vice ce que l'équipe doit faire pendant ton absence…" : "Message privé à " + a.name + "…"}"></textarea><button class="primary">Envoyer</button></form></div>
+          <div id="dmChips" class="chips" hidden style="padding:6px 0 0"></div>
+          <form class="send" id="dmForm" style="padding:0;border:0;background:none"><div class="ctools"><button type="button" id="dmClip" title="Envoyer une image ou un fichier">📎</button><button type="button" id="dmMic" title="Parler au lieu d'écrire">🎤</button><input type="file" id="dmFile" multiple hidden></div><textarea id="dmInput" rows="2" placeholder="${a.name === "Vice" ? "Avant de partir : dis à Vice ce que l'équipe doit faire pendant ton absence…" : "Message privé à " + a.name + "…"}"></textarea><button class="primary">Envoyer</button></form></div>
         ${a.learned ? `<div class="card"><b>📘 Consignes apprises</b><div class="md">${md(a.learned)}</div></div>` : ""}
         <details class="card" id="memd" ${open?"open":""}><summary><b>🧠 Mémoire / plan</b></summary><div class="md">${md(mem.content || "(vide)")}</div></details>
         <h4>Ce qu'il a fait</h4>${acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>"}`;
       const th = pane.querySelector("#dmThread"); th.scrollTop = th.scrollHeight;
       $("#dmInput").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#dmForm").requestSubmit(); } };
+      composers.dm.bind("dm"); setupMic($("#dmMic"), $("#dmInput"));
+      if ($("#dmSpeak")) $("#dmSpeak").onclick = () => { dmSpeak = !dmSpeak; try { localStorage.setItem("fusee_dm_speak", dmSpeak ? "1" : "0"); } catch (e) {}
+        $("#dmSpeak").textContent = dmSpeak ? "🔊" : "🔇"; if (!dmSpeak) speechSynthesis.cancel(); else speak(" "); };
       $("#dmForm").onsubmit = async e => {
-        e.preventDefault(); const t = $("#dmInput").value.trim(); if (!t) return;
-        const r = await post("/api/dm/" + a.name, {content: t});
+        e.preventDefault(); const t = $("#dmInput").value.trim(); if (!t && !composers.dm.files.length) return;
+        let attachments; try { attachments = await composers.dm.uploadAll(); } catch (err) { alert(err.message); return; }
+        const r = await post("/api/dm/" + a.name, {content: t, attachments});
         if (!r.ok) { alert((await r.json().catch(() => ({}))).detail || "Envoi impossible"); return; }
-        $("#dmInput").value = ""; $("#dmInput").blur(); renderPane();
+        composers.dm.clear(); $("#dmInput").value = ""; $("#dmInput").blur(); renderPane();
       };
     } else if (tab === "feed") {
       pane.innerHTML = (await api("/api/activity?limit=200")).map(actHtml).join("") || "<p class=muted>Rien encore.</p>";
@@ -891,9 +985,13 @@ document.addEventListener("click", e => {
 });
 $("#lightbox").onclick = () => $("#lightbox").classList.remove("open");
 $("#f").onsubmit = async e => {
-  e.preventDefault(); const t = $("#txt").value.trim(); if (!t) return;
-  $("#txt").value = ""; await post("/api/message", {content: t}); poll();
+  e.preventDefault(); const t = $("#txt").value.trim(); if (!t && !composers.group.files.length) return;
+  let attachments; try { attachments = await composers.group.uploadAll(); } catch (err) { alert(err.message); return; }
+  const r = await post("/api/message", {content: t, attachments});
+  if (!r.ok) { alert((await r.json().catch(() => ({}))).detail || "Envoi impossible"); return; }
+  $("#txt").value = ""; composers.group.clear(); poll();
 };
+composers.group.bind("f"); setupMic($("#fMic"), $("#txt"));
 $("#meetBtn").onclick = async () => {
   const t = $("#txt").value.trim(); if (!t) { $("#txt").placeholder = "Écris d'abord ce que tu veux dire à toute l'équipe, puis 🎙️ Réunion"; $("#txt").focus(); return; }
   const r = await post("/api/meeting", {content: t});

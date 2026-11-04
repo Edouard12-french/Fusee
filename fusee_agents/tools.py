@@ -102,6 +102,11 @@ CLIENT_TOOLS: dict[str, dict] = {
         "description": "Lit un fichier texte du workspace partagé.",
         "input_schema": _schema({"path": S}),
     },
+    "view_file": {
+        "description": (f"Regarde un fichier du workspace : une IMAGE (photo, capture) ou un PDF que tu vois vraiment, "
+                        f"ou un texte. Les fichiers envoyés par {OWNER} sont dans de-patron/."),
+        "input_schema": _schema({"path": S}),
+    },
     "write_file": {
         "description": "Crée ou remplace un fichier texte dans le workspace partagé (crée les dossiers).",
         "input_schema": _schema({"path": S, "content": S}),
@@ -546,6 +551,37 @@ def _attach_json(attachments: list[str], links: list[str]) -> str:
     return json.dumps({"files": _clean_attachments(attachments), "links": links}, ensure_ascii=False)
 
 
+IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+               ".webp": "image/webp"}
+TEXT_EXT = {".txt", ".md", ".csv", ".json", ".html", ".css", ".js", ".py", ".xml", ".yaml", ".yml"}
+
+
+def file_blocks(rel: str) -> list[dict] | str:
+    """Contenu d'un fichier pour l'IA : image ou PDF « vus » (blocs), texte lu, sinon une explication."""
+    import base64
+    p = _safe_path(rel)
+    if not p.is_file():
+        return "Erreur : fichier introuvable."
+    ext, size = p.suffix.lower(), p.stat().st_size
+    if ext in IMAGE_TYPES:
+        if size > 5_000_000:
+            return "Image trop lourde pour être regardée (plus de 5 Mo)."
+        return [{"type": "text", "text": f"Image {rel} :"},
+                {"type": "image", "source": {"type": "base64", "media_type": IMAGE_TYPES[ext],
+                                             "data": base64.b64encode(p.read_bytes()).decode()}}]
+    if ext == ".pdf":
+        if size > 20_000_000:
+            return "PDF trop lourd pour être lu (plus de 20 Mo)."
+        return [{"type": "text", "text": f"PDF {rel} :"},
+                {"type": "document", "source": {"type": "base64", "media_type": "application/pdf",
+                                                "data": base64.b64encode(p.read_bytes()).decode()}}]
+    if ext in TEXT_EXT:
+        text = p.read_text(errors="replace")
+        return text if len(text) < 60000 else text[:60000] + "\n…[tronqué]"
+    return (f"Fichier {rel} ({size // 1024} Ko, format {ext or 'inconnu'}) : je ne peux pas le lire directement. "
+            f"Demande à {OWNER} une capture d'écran, un PDF ou un texte.")
+
+
 def _describe(p: Path) -> str:
     for line in p.read_text(errors="replace").splitlines():
         line = line.strip().strip('#"\' ').strip()
@@ -708,6 +744,8 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         files = [str(p.relative_to(WORKSPACE)) + ("/" if p.is_dir() else f" ({p.stat().st_size} o)")
                  for p in sorted(base.rglob("*")) if "__pycache__" not in p.parts]
         return "\n".join(files[:300]) or "Dossier vide."
+    if name == "view_file":
+        return file_blocks(args["path"])
     if name == "read_file":
         p = _safe_path(args["path"])
         if not p.is_file():
