@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import analytics, browser, budget, db, integrations, mailbox, markets, outreach, sites, workflow, youtube
 from .agents import BY_NAME, OWNER, save_team_config, team_config
-from .config import ALLOW_CODE_EXEC, PORT, WORKSPACE
+from .config import ALLOW_CODE_EXEC, OWNER_MINOR, PORT, WORKSPACE
 from .notify import notify
 
 
@@ -84,6 +84,9 @@ CLIENT_TOOLS: dict[str, dict] = {
             "title": S, "details": S,
             "amount_eur": {"type": "number", "description": "Argent réel engagé (0 si aucun)"},
             "attachments": LIST, "links": LIST,
+            "parent": {"type": "boolean", "description": (
+                "true si un PARENT doit donner son accord (compte ou paiement à son nom, vraie dépense, contrat, "
+                "données personnelles) : il valide dans l'appli avec son code parent secret")},
         }),
     },
     "notify_owner": {
@@ -682,11 +685,15 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
                 return (f"Refusé : {args['amount_eur']:.2f} € dépasse l'argent disponible hors IA ({free:.2f} €). "
                         "Trouve une option moins chère ou gratuite.")
         att = _attach_json(args["attachments"], args["links"])
-        i = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, payload) "
-                 "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?)",
-                 (agent, args["kind"], args["title"], args["details"], args["amount_eur"], att))
+        # Patron mineur : une vraie dépense ou un investissement demande toujours l'accord d'un parent
+        needs_parent = bool(args.get("parent")) or (OWNER_MINOR and (args["amount_eur"] > 0
+                                                                     or args["kind"] in ("dépense", "investissement")))
+        i = db.x("INSERT INTO approvals (ts, agent, kind, title, details, amount_eur, payload, needs_parent) "
+                 "VALUES (CAST(strftime('%s','now') AS REAL),?,?,?,?,?,?,?)",
+                 (agent, args["kind"], args["title"], args["details"], args["amount_eur"], att, int(needs_parent)))
         money = f" — {args['amount_eur']:.0f} € engagés" if args["amount_eur"] else ""
-        db.post_message(agent, f"🙋 Demande de validation #{i} pour @{OWNER} ({args['kind']}) : {args['title']}{money}", att)
+        who = " — 👪 accord d'un parent requis (code parent)" if needs_parent else ""
+        db.post_message(agent, f"🙋 Demande de validation #{i} pour @{OWNER} ({args['kind']}) : {args['title']}{money}{who}", att)
         notify("validation", f"{agent} demande ton accord : {args['title']}",
                f"{args['kind']}{money}\n\n{args['details'][:1500]}", priority="high")
         return f"Demande #{i} envoyée à {OWNER}. N'agis pas avant sa réponse ; continue sur autre chose."

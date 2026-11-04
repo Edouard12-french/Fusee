@@ -355,9 +355,11 @@ async function renderPane(soft) {
       if (soft && pane.querySelector("input:focus")) return;
       pane.innerHTML = `<p class="muted">Rien n'est lancé sans ton accord. Accepte ou refuse (commentaire facultatif) : l'agent est réveillé avec ta réponse.</p>` +
         (list.map(a => `<div class="card ${a.status==="en attente"?"pending":""}"><h4>#${a.id} ${esc(a.title)}</h4>
-          <span class="tag">${esc(a.kind)}</span> <span class="tag">${esc(a.status)}</span> ${a.amount_eur ? `<span class="tag">💶 ${a.amount_eur} €</span>` : ""} <span class="muted">par ${a.agent} · ${time(a.ts)}</span>
+          <span class="tag">${esc(a.kind)}</span> <span class="tag">${esc(a.status)}</span> ${a.amount_eur ? `<span class="tag">💶 ${a.amount_eur} €</span>` : ""} ${a.needs_parent ? `<span class="tag" style="background:#fde68a;color:#78350f">👪 accord d'un parent</span>` : ""} <span class="muted">par ${a.agent} · ${time(a.ts)}</span>
+          ${a.decided_by && a.decided_by !== "Patron" ? `<div class="muted">Décidé par ${esc(a.decided_by)}</div>` : ""}
           <div class="md" style="margin:8px 0">${md(a.details)}</div>${attHtml(a.attachments)}
           ${a.status === "en attente" ? `<input id="c${a.id}" placeholder="Commentaire (optionnel)" style="width:100%;margin:6px 0">
+            ${a.needs_parent ? `<input id="p${a.id}" type="password" inputmode="numeric" autocomplete="off" placeholder="👪 Code parent (c'est le parent qui le tape)" style="width:100%;margin:0 0 6px">` : ""}
             <button class="primary" onclick="decide(${a.id},true)">✅ Accepter</button> <button onclick="decide(${a.id},false)">❌ Refuser</button>`
             : (a.response ? `<div class="muted">Ton commentaire : ${esc(a.response)}</div>` : "")}</div>`).join("") || "<p class=muted>Aucune demande.</p>");
     } else if (tab === "contacts") {
@@ -619,6 +621,7 @@ async function renderPane(soft) {
             ${ns.phone ? "📱 Aussi envoyées sur ton téléphone (ntfy)." : "Pour les recevoir aussi sur ton téléphone : étape « Notifications sur ton téléphone » dans 🚀 Démarrage (optionnel)."}</div>
           <button style="margin-top:8px" onclick="testNotif(this)">🔔 Envoyer une notification de test</button></div>
         <div class="card" style="border-left:4px solid #f59e0b"><h4>💸 Dépenses de l'IA</h4><div id="costBox" class="muted">…</div></div>
+        <div class="card" style="border-left:4px solid #fbbf24"><h4>👪 Accord d'un parent</h4><div id="parentBox" class="muted">…</div></div>
         <div class="card" style="border-left:4px solid #0ea5e9"><h4>📱 Fusée sur ton iPhone et ton iPad</h4><div id="devBox" class="muted">…</div></div>
         <div class="card" style="border-left:4px solid #22c55e"><h4>📱 Notifications sur cet appareil (iPhone…)</h4>
           <div id="pushBox" class="muted">…</div></div>
@@ -632,7 +635,7 @@ async function renderPane(soft) {
         <div class="card"><h4>Réponses aux clients (Iris)</h4>
           <select id="smode"><option value="auto">Réponse automatique + notification</option><option value="validation">Je valide chaque réponse avant envoi</option></select></div>
         <div class="card"><h4>📲 Installer l'application</h4><p class="muted">Sur téléphone : ouvre cette page dans Chrome (Android) → menu ⋮ → « Installer l'application », ou Safari (iPhone) → Partager → « Sur l'écran d'accueil ». Sur ordinateur : icône d'installation dans la barre d'adresse de Chrome/Edge.</p></div>`;
-      renderPushBox(); renderDeviceBox(); renderCostBox();
+      renderPushBox(); renderDeviceBox(); renderCostBox(); renderParentBox();
       ["nMac", "nSound", "nQuiet", "nFrom", "nTo"].forEach(id => $("#" + id).onchange = () => post("/api/notif_settings", {
         mac: $("#nMac").checked, sound: $("#nSound").checked, quiet: $("#nQuiet").checked, quiet_from: +$("#nFrom").value, quiet_to: +$("#nTo").value})
         .then(() => { S._sound = $("#nSound").checked; }));
@@ -738,6 +741,36 @@ async function saveOwnerProfile(btn) {
 }
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+async function renderParentBox() {
+  const box = $("#parentBox"); if (!box) return;
+  const p = await api("/api/parent");
+  const field = (id, ph, type = "password") => `<input id="${id}" type="${type}" ${type === "password" ? 'inputmode="numeric" autocomplete="off"' : ""} placeholder="${ph}" style="width:100%;margin:3px 0">`;
+  box.innerHTML = p.set
+    ? `<div style="color:var(--text)">✅ Code parent de <b>${esc(p.name)}</b> actif. Les demandes marquées 👪 (comptes, vraies dépenses, contrats) ne s'acceptent qu'avec ce code.</div>
+       <h4 style="margin:10px 0 4px">💬 ${esc(p.name)} écrit à l'équipe</h4>
+       <textarea id="pmText" rows="2" style="width:100%" placeholder="Message du parent (ex. « J'autorise le compte Stripe à mon nom »)"></textarea>
+       ${field("pmPin", "Code parent")}
+       <button class="primary" id="pmSend">Envoyer en tant que ${esc(p.name)} 👪</button> <span id="pmMsg" class="muted"></span>
+       <details style="margin-top:8px"><summary class="muted">Changer le code parent</summary>
+         ${field("psName", "Prénom du parent", "text")}${field("psOld", "Ancien code")}${field("psPin", "Nouveau code (4 à 12 chiffres)")}
+         <button id="psSave">Changer le code</button> <span id="psMsg" class="muted"></span></details>`
+    : `<div style="color:var(--text)">Pour ce qui doit être accepté par un parent (compte Stripe à son nom, vraie dépense, contrat…), <b>le parent choisit un code secret</b>, que lui seul connaît. Les agents savent alors que c'est vraiment lui.</div>
+       <div class="muted" style="margin:6px 0">👉 À faire <b>par le parent lui-même</b>.</div>
+       ${field("psName", "Prénom du parent (ex. Muriel)", "text")}${field("psPin", "Code secret (4 à 12 chiffres)")}${field("psPin2", "Retape le code")}
+       <button class="primary" id="psSave">Créer le code parent</button> <span id="psMsg" class="muted"></span>`;
+  $("#psSave").onclick = async () => {
+    if ($("#psPin2") && $("#psPin2").value !== $("#psPin").value) { $("#psMsg").textContent = "Les deux codes ne sont pas pareils."; return; }
+    const r = await post("/api/parent/setup", {name: $("#psName").value || p.name, pin: $("#psPin").value, old_pin: ($("#psOld") || {}).value || ""});
+    if (r.ok) renderParentBox(); else $("#psMsg").textContent = (await r.json().catch(() => ({}))).detail || "Erreur";
+  };
+  if ($("#pmSend")) $("#pmSend").onclick = async () => {
+    const r = await post("/api/parent/message", {pin: $("#pmPin").value, content: $("#pmText").value});
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { $("#pmText").value = ""; $("#pmPin").value = ""; $("#pmMsg").textContent = "✅ Envoyé dans le groupe avec le badge 👪."; }
+    else $("#pmMsg").textContent = j.detail || "Erreur";
+  };
+}
+
 async function renderCostBox() {
   const box = $("#costBox"); if (!box) return;
   const c = await api("/api/costs"), eur = v => (+v).toFixed(2).replace(".", ",") + " €";
@@ -842,9 +875,9 @@ async function addLedger() {
 }
 async function delLedger(id) { await fetch("/api/ledger/" + id, {method: "DELETE"}); renderPane(); }
 async function decide(id, approve) {
-  const comment = ($("#c" + id) || {}).value || "";
-  const r = await post("/api/approvals/" + id, {approve, comment});
-  if (!r.ok) alert("Erreur : " + (await r.text()));
+  const comment = ($("#c" + id) || {}).value || "", parent_pin = ($("#p" + id) || {}).value || "";
+  const r = await post("/api/approvals/" + id, {approve, comment, parent_pin});
+  if (!r.ok) alert((await r.json().catch(() => ({}))).detail || "Erreur");
   await poll(); renderPane();
 }
 function setView(v) {

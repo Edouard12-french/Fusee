@@ -314,6 +314,11 @@ Wolf ne passe jamais d'ordre réel : tout investissement réel passe par ta vali
 
 ## Si tu as moins de 18 ans
 
+**👪 Code parent** (⚙️ Réglages → 👪 Accord d'un parent) : le parent choisit un code secret (4 à 12 chiffres,
+jamais enregistré en clair). Les demandes marquées 👪 (compte Stripe à son nom, vraie dépense, contrat…) ne
+s'acceptent qu'avec ce code, et le parent peut écrire à l'équipe en son nom (badge 👪). Les agents savent ainsi
+que c'est vraiment lui. Le parent peut aussi confier son code à son enfant, s'il le souhaite.
+
 Mets `OWNER_MINOR=true` dans `.env` : les agents en tiennent compte (pas de bourse ni de crypto, démarches
 préparées avec un parent). La clé API Anthropic, Stripe et les plateformes de vente demandent d'avoir 18 ans :
 **un parent ouvre ces comptes à son nom** et reçoit l'argent. Avant de vendre régulièrement, vérifiez ensemble le

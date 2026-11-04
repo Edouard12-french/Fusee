@@ -580,3 +580,51 @@ def test_ranking_board_and_guaranteed_briefing(monkeypatch):
     r = c.post("/api/briefing")
     assert r.status_code == 200 and any("BRIEFING" in x for x in web.scheduler.reasons["Atlas"])
     del s
+
+
+# --- accord d'un parent : code secret ---------------------------------------------------------------------
+
+def test_parent_code_for_approvals_and_messages(monkeypatch):
+    from fastapi.testclient import TestClient
+    from fusee_agents import parent, web
+    from fusee_agents.scheduler import why_may_work
+    for k in ("parent_pin_hash", "parent_salt", "parent_name"):
+        db.set_setting(k, "")
+    parent._fails.clear()
+    c = TestClient(web.app)
+    # une demande qui a besoin d'un parent
+    out = asyncio.run(tools.execute("Victor", "request_approval", {
+        "kind": "business", "title": "Ouvrir le compte Stripe au nom de Muriel", "details": "pour encaisser",
+        "amount_eur": 0, "attachments": [], "links": [], "parent": True}, lambda *a: None))
+    aid = db.q("SELECT id FROM approvals ORDER BY id DESC LIMIT 1")[0]["id"]
+    assert "Demande" in out and db.q("SELECT needs_parent FROM approvals WHERE id=?", (aid,))[0]["needs_parent"] == 1
+    r = c.post(f"/api/approvals/{aid}", json={"approve": True})
+    assert r.status_code == 403 and "créer son code parent" in r.json()["detail"]
+    # le parent crée son code (jamais stocké en clair)
+    assert c.post("/api/parent/setup", json={"name": "Muriel", "pin": "12"}).status_code == 400
+    assert c.post("/api/parent/setup", json={"name": "Muriel", "pin": "2468"}).json()["set"] is True
+    assert "2468" not in db.get_setting("parent_pin_hash")
+    assert c.post("/api/parent/setup", json={"name": "X", "pin": "1111", "old_pin": "0000"}).status_code == 400
+    # mauvais code : refusé ; bon code : accepté au nom du parent
+    assert c.post(f"/api/approvals/{aid}", json={"approve": True, "parent_pin": "9999"}).json()["detail"] == "Code parent incorrect."
+    assert c.post(f"/api/approvals/{aid}", json={"approve": True, "parent_pin": "2468"}).status_code == 200
+    row = db.q("SELECT status, decided_by FROM approvals WHERE id=?", (aid,))[0]
+    assert row["status"] == "acceptée" and row["decided_by"] == "👪 Muriel (parent)"
+    assert any("ACCORD PARENT de Muriel vérifié" in x for x in web.scheduler.reasons["Victor"])
+    # une demande normale : Patron seul suffit
+    asyncio.run(tools.execute("Neo", "request_approval", {"kind": "publication", "title": "Publier le site démo",
+                "details": "", "amount_eur": 0, "attachments": [], "links": [], "parent": False}, lambda *a: None))
+    aid2 = db.q("SELECT id FROM approvals ORDER BY id DESC LIMIT 1")[0]["id"]
+    assert c.post(f"/api/approvals/{aid2}", json={"approve": True}).status_code == 200
+    # le parent écrit à l'équipe avec son badge, et ça réveille Atlas comme un message de Patron
+    assert c.post("/api/parent/message", json={"pin": "0000", "content": "coucou"}).status_code == 403
+    r = c.post("/api/parent/message", json={"pin": "2468", "content": "J'autorise le compte Stripe à mon nom."})
+    assert r.status_code == 200 and db.recent_messages(1)[0]["sender"] == "👪 Muriel (parent)"
+    reason = [x for x in web.scheduler.reasons["Atlas"] if x.startswith("message du parent")][-1]
+    assert why_may_work("Atlas", reason) == "patron"
+    # 5 erreurs : bloqué 15 min, même avec le bon code
+    parent._fails.clear()
+    for _ in range(5):
+        parent.check("0000")
+    assert parent.locked() and not parent.check("2468")
+    parent._fails.clear()

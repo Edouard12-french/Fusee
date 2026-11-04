@@ -10,7 +10,8 @@ from .runner import run_cycle
 
 
 # Réveils qui viennent de Patron : ils font toujours travailler l'agent concerné
-OWNER_WAKES = (f"message de {OWNER}", f"{OWNER} a ", f"en privé, {OWNER}", "pendant la réunion", "la clé API vient")
+OWNER_WAKES = (f"message de {OWNER}", f"{OWNER} a ", f"en privé, {OWNER}", "pendant la réunion", "la clé API vient",
+               "message du parent")
 IDLE = ("cycle régulier", "démarrage")
 
 

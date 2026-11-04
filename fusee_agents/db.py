@@ -82,7 +82,10 @@ for _sql in ("ALTER TABLE payment_links ADD COLUMN product_id INTEGER",
              # classement des business : problème, solution, avenir 5-10 ans, note /100, sources, coût de départ
              "ALTER TABLE ideas ADD COLUMN problem TEXT", "ALTER TABLE ideas ADD COLUMN solution TEXT",
              "ALTER TABLE ideas ADD COLUMN future TEXT", "ALTER TABLE ideas ADD COLUMN score INTEGER DEFAULT 0",
-             "ALTER TABLE ideas ADD COLUMN sources TEXT", "ALTER TABLE ideas ADD COLUMN start_cost_eur REAL DEFAULT 0"):
+             "ALTER TABLE ideas ADD COLUMN sources TEXT", "ALTER TABLE ideas ADD COLUMN start_cost_eur REAL DEFAULT 0",
+             # accord d'un parent (code parent) : demande qui en a besoin, et qui a décidé
+             "ALTER TABLE approvals ADD COLUMN needs_parent INTEGER DEFAULT 0",
+             "ALTER TABLE approvals ADD COLUMN decided_by TEXT"):
     try:
         _conn.execute(_sql)
     except sqlite3.OperationalError:

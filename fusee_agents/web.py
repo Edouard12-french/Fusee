@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, briefing, budget, db, integrations, knowledge, mailbox, outreach, runner
+from . import analytics, briefing, budget, db, integrations, knowledge, mailbox, outreach, parent, runner
 from . import setup as setup_mod
 from .agents import (BY_NAME, OWNER, PROFILE_LABELS, TEAM, add_agent, agent_settings, make_custom, owner_profile,
                      save_team_config, team_config)
@@ -519,6 +519,7 @@ def approvals():
 class Decision(BaseModel):
     approve: bool
     comment: str = ""
+    parent_pin: str = ""  # code parent, pour les demandes qui ont besoin de l'accord d'un parent
 
 
 @app.post("/api/approvals/{aid}")
@@ -530,6 +531,15 @@ async def decide(aid: int, d: Decision):
     if a["status"] != "en attente":
         raise HTTPException(409, "déjà décidée")
     status = "acceptée" if d.approve else "refusée"
+    by_parent = False
+    if d.approve and a.get("needs_parent"):
+        if not parent.is_set():
+            raise HTTPException(403, "Cette demande a besoin de l'accord d'un parent : il doit d'abord créer son code "
+                                     "parent dans ⚙️ Réglages → 👪 Accord d'un parent.")
+        if not parent.check(d.parent_pin):
+            raise HTTPException(403, "Trop d'essais : réessaie dans 15 minutes." if parent.locked()
+                                else "Code parent incorrect.")
+        by_parent = True
     if d.approve and (a["amount_eur"] or 0) > 0:
         free = budget.summary()["free_to_spend_eur"]
         if a["amount_eur"] > free:
@@ -553,15 +563,62 @@ async def decide(aid: int, d: Decision):
             await deliver_reply(json.loads(a["payload"])["contact_id"], a["details"], a["agent"])
         except RuntimeError as e:
             raise HTTPException(400, str(e))
-    db.x("UPDATE approvals SET status=?, response=?, decided_ts=CAST(strftime('%s','now') AS REAL) WHERE id=?",
-         (status, d.comment.strip(), aid))
+    decided_by = parent.sender() if by_parent else OWNER
+    db.x("UPDATE approvals SET status=?, response=?, decided_by=?, decided_ts=CAST(strftime('%s','now') AS REAL) "
+         "WHERE id=?", (status, d.comment.strip(), decided_by, aid))
     emoji = "✅" if d.approve else "❌"
-    db.post_message(OWNER, f"{emoji} Demande #{aid} {status} : {a['title']}"
+    db.post_message(decided_by, f"{emoji} Demande #{aid} {status} : {a['title']}"
+                    + (" — accord du parent donné avec son code" if by_parent else "")
                     + (f" — {d.comment.strip()}" if d.comment.strip() else ""))
     for t in {a["agent"], "Atlas"}:
         scheduler.wake(t, f"{OWNER} a {'accepté' if d.approve else 'refusé'} la demande #{aid} « {a['title']} »"
+                          + (f" — ✅ ACCORD PARENT de {parent.name()} vérifié (code parent)" if by_parent else "")
                           + (f" avec ce commentaire : {d.comment}" if d.comment else ""))
     return {"ok": True}
+
+
+@app.get("/api/parent")
+def parent_state():
+    return {"set": parent.is_set(), "name": parent.name() if parent.is_set() else "", "locked": parent.locked()}
+
+
+class ParentSetup(BaseModel):
+    name: str
+    pin: str
+    old_pin: str = ""
+
+
+@app.post("/api/parent/setup")
+def parent_setup(p: ParentSetup):
+    first = not parent.is_set()
+    try:
+        parent.setup(p.name, p.pin, p.old_pin)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if first:
+        db.post_message("Fusée", f"👪 {parent.name()} a créé son code parent. Pour ce qui a besoin de l'accord d'un "
+                                 "parent, utilisez request_approval avec parent=true : il validera avec son code.")
+    return parent_state()
+
+
+class ParentMsg(BaseModel):
+    pin: str
+    content: str
+
+
+@app.post("/api/parent/message")
+def parent_message(m: ParentMsg):
+    """Le parent écrit à l'équipe EN SON NOM (badge 👪), après avoir tapé son code."""
+    text = m.content.strip()
+    if not text:
+        raise HTTPException(400, "message vide")
+    if not parent.check(m.pin):
+        raise HTTPException(403, "Trop d'essais : réessaie dans 15 minutes." if parent.locked() else "Code parent incorrect.")
+    db.post_message(parent.sender(), text)
+    targets = mentions(text) or ["Atlas"]
+    for t in targets:
+        scheduler.wake(t, f"message du parent {parent.name()} (code parent vérifié) : {text[:500]}")
+    return {"ok": True, "woken": targets}
 
 
 @app.get("/api/notifications")
