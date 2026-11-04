@@ -29,9 +29,46 @@ STATIC = Path(__file__).parent / "static"
 PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
 
 
+# Clé enregistrée dans 🚀 Démarrage → ce qu'on annonce à l'équipe, et les demandes qu'on peut clore
+CONNECTED = {
+    "STRIPE_SECRET_KEY": ("Stripe (paiements)", re.compile(r"stripe", re.I)),
+    "NETLIFY_TOKEN": ("Netlify (mise en ligne des sites)", re.compile(r"netlify", re.I)),
+    "EMAIL_PASSWORD": ("la boîte e-mail", re.compile(r"\b(e-?mail|smtp|imap|gmail)\b", re.I)),
+}
+
+
+def close_connected_requests(keys, announce: bool) -> int:
+    """Quand une clé est branchée, les agents ne doivent plus la demander : on clôt leurs besoins et les tâches
+    de Patron qui la réclament, et on le dit dans le groupe. Renvoie le nombre de demandes closes."""
+    closed, labels = 0, []
+    for key in keys:
+        if key not in CONNECTED or not os.getenv(key, "").strip():
+            continue
+        label, rx = CONNECTED[key]
+        n = 0
+        for r in db.q("SELECT id, need FROM needs WHERE status != 'résolu'"):
+            if rx.search(r["need"] or ""):
+                db.x("UPDATE needs SET status='résolu', result=?, resolved_ts=? WHERE id=?",
+                     (f"fait : {OWNER} a branché {label} dans 🚀 Démarrage", time.time(), r["id"]))
+                n += 1
+        for r in db.q("SELECT id, title, steps FROM owner_tasks WHERE done=0"):
+            if rx.search((r["title"] or "") + " " + (r["steps"] or "")):
+                db.x("UPDATE owner_tasks SET done=1, done_ts=? WHERE id=?", (time.time(), r["id"]))
+                n += 1
+        closed += n
+        if announce or n:
+            labels.append(label)
+    if labels:
+        db.post_message("Fusée", f"✅ {' et '.join(labels)} : c'est branché ({OWNER} a enregistré la clé dans 🚀 "
+                                 "Démarrage). Ne lui redemandez plus cette clé et utilisez-le directement — en "
+                                 "demandant toujours avant de publier ou de créer un lien de paiement.")
+    return closed
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     knowledge.install()
+    close_connected_requests(CONNECTED, announce=False)  # clés déjà là : on clôt les vieilles demandes
     scheduler.start()
     yield
 
@@ -748,6 +785,7 @@ async def setup_save(request: Request):
         integrations.NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN", "").strip()
         integrations.STRIPE_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
         applied = True
+    close_connected_requests([k for k in changed if k in CONNECTED], announce=True)
     return {"ok": True, "changed": changed, "applied": applied}
 
 

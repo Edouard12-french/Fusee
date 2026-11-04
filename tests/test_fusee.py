@@ -502,3 +502,32 @@ def test_mac_uses_certifi_certificates():
     env = {"SSL_CERT_FILE": "/mon/certificat.pem"}
     assert not use_certifi_on_mac("darwin", env) and env["SSL_CERT_FILE"] == "/mon/certificat.pem"  # on ne touche à rien
     assert not use_certifi_on_mac("linux", {})
+
+
+def test_connected_key_closes_old_requests_and_tells_the_team(tmp_path, monkeypatch):
+    """Patron a branché Stripe : les agents ne doivent plus le lui redemander."""
+    from fastapi.testclient import TestClient
+    from fusee_agents import integrations, runner, setup, web
+    monkeypatch.setattr(setup, "ENV", tmp_path / ".env")
+    monkeypatch.setattr(setup, "EXAMPLE", tmp_path / "absent")
+    monkeypatch.setattr(integrations, "STRIPE_KEY", "")
+    monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
+    nid = db.x("INSERT INTO needs (ts, agent, need, why, urgency, status) VALUES (?,?,?,?,?,?)",
+               (time.time(), "Victor", "Ajouter la clé API Stripe dans Démarrage", "liens de paiement", "haute", "nouveau"))
+    other = db.x("INSERT INTO needs (ts, agent, need, why, urgency, status) VALUES (?,?,?,?,?,?)",
+                 (time.time(), "Neo", "Choisir les couleurs du site", "", "basse", "nouveau"))
+    tid = db.x("INSERT INTO owner_tasks (ts, agent, title, steps, priority) VALUES (?,?,?,?,?)",
+               (time.time(), "Clara", "Créer le compte Stripe avec un parent", "", "haute"))
+    c = TestClient(web.app, client=("127.0.0.1", 50000))
+    assert c.post("/api/setup/save", json={"STRIPE_SECRET_KEY": "sk_test_1234567890abcdef"}).json()["applied"]
+    status = {r["id"]: r["status"] for r in db.q("SELECT id, status FROM needs")}
+    assert status[nid] == "résolu" and status[other] == "nouveau"
+    assert db.q("SELECT done FROM owner_tasks WHERE id=?", (tid,))[0]["done"] == 1
+    last = db.recent_messages(1)[0]
+    assert last["sender"] == "Fusée" and "Stripe" in last["content"] and "Ne lui redemandez plus" in last["content"]
+    assert "Stripe déjà branché" in runner.build_context(BY_NAME["Victor"], "test")
+    # au redémarrage, rien à clore : pas de nouveau message
+    n = db.q("SELECT COUNT(*) n FROM messages")[0]["n"]
+    assert web.close_connected_requests(web.CONNECTED, announce=False) == 0
+    assert db.q("SELECT COUNT(*) n FROM messages")[0]["n"] == n
+    monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)

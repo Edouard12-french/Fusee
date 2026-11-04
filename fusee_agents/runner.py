@@ -139,8 +139,8 @@ def build_context(agent: Agent, reason: str) -> str:
             profile += "\n\n## Stratégie actuelle\n" + (strat[:6000] if strat else "(aucune — à rédiger)")
     caps = "\n".join([
         f"- Navigateur web (browse, captures d'URL) : {'AUTORISÉ' if db.get_setting('browser_enabled', '1') == '1' else f'désactivé par {OWNER}'}",
-        f"- Mise en ligne de sites (publish_site) : {'disponible' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
-        f"- Liens de paiement (create_payment_link) : {'disponibles' if integrations.STRIPE_KEY else f'non configurés ({OWNER} doit ajouter STRIPE_SECRET_KEY)'}",
+        f"- Mise en ligne de sites (publish_site) : {f'DISPONIBLE (Netlify déjà branché par {OWNER} : ne lui redemande pas la clé)' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
+        f"- Liens de paiement (create_payment_link) : {f'DISPONIBLES (Stripe déjà branché par {OWNER} : ne lui redemande pas la clé)' if integrations.STRIPE_KEY else f'non configurés ({OWNER} doit ajouter STRIPE_SECRET_KEY)'}",
         f"- E-mail clients : {'connecté (' + mailbox.EMAIL_USER + ')' if mailbox.ENABLED else 'non configuré'}",
         (f"- Chat sur les sites : ajoute avant </body> : <script src=\"{PUBLIC_URL}/public/chat.js\" data-site=\"NOM-DU-SITE\"></script>"
          if PUBLIC_URL else "- Chat sur les sites : indisponible (pas d'adresse publique) — mets un lien e-mail de contact"
