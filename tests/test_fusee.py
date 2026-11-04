@@ -491,3 +491,14 @@ def test_schedule_work_for_tomorrow_and_keep_half_for_the_owner():
     assert any(r.startswith("autorisation") for r in sch.reasons["Neo"])
     assert db.get_setting("work_kicked") == str(budget.work_from())
     budget.stop_work(); db.set_setting("owner_reserve_pct", "40")
+
+
+def test_mac_uses_certifi_certificates():
+    """Sur Mac : sans ça, « Tester » Netlify/Stripe échouait avec CERTIFICATE_VERIFY_FAILED."""
+    import certifi
+    from fusee_agents import use_certifi_on_mac
+    env = {}
+    assert use_certifi_on_mac("darwin", env) and env["SSL_CERT_FILE"] == certifi.where()
+    env = {"SSL_CERT_FILE": "/mon/certificat.pem"}
+    assert not use_certifi_on_mac("darwin", env) and env["SSL_CERT_FILE"] == "/mon/certificat.pem"  # on ne touche à rien
+    assert not use_certifi_on_mac("linux", {})

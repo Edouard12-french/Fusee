@@ -8,3 +8,4 @@ yt-dlp>=2025.1
 youtube-transcript-api>=1.0
 cryptography>=42
 qrcode>=7.4
+certifi>=2024.2.2
