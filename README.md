@@ -1,6 +1,6 @@
 # 🚀 Fusée — ton équipe d'agents IA, quand tu veux
 
-Quatorze agents IA (Claude), chacun avec un **type** et un métier. Ils discutent entre eux dans un **groupe
+Quinze agents IA (Claude), chacun avec un **type** et un métier. Ils discutent entre eux dans un **groupe
 façon WhatsApp**, cherchent sur internet, créent des **sites, des applis, des jeux, des pubs et des vidéos**, te
 les **montrent (captures, vidéos, liens)**, les **mettent en ligne et en vente quand tu valides**, puis **parlent
 avec les clients** et te disent **qui est intéressé, par quoi, et s'il vaut le coup pour le futur**.
@@ -12,6 +12,7 @@ Tout se suit depuis **l'application Fusée**, installable sur ton téléphone et
 | Type | Agent | Ce qu'il fait |
 |---|---|---|
 | 🧭 **Orchestrateur** | Atlas | Fixe le cap (1-2 projets), découpe le travail, lance les workflows, rapports |
+| 🎖️ **Vice-patron** | Vice | Le chef quand tu n'es pas là : avant de partir, dis-lui en privé ce que tu veux ; il fait appliquer, recadre, décide le simple, et te fait un résumé (jamais publier, dépenser ni contacter) |
 | 🔀 **Routeur** | Nexus | Reçoit tes messages sans @mention et les aiguille vers le bon agent |
 | ⛓️ **Séquentiel** | Relais | Chaînes d'étapes : chaque agent reçoit le résultat du précédent (ex. Scout → Victor → Neo → Mercure) |
 | 🐙 **Parallèle** | Hydre | Fait travailler plusieurs agents en même temps, puis fusionne et compare leurs résultats |
@@ -248,9 +249,9 @@ Une interface colorée (chaque agent a sa couleur), en thème sombre ou clair (b
   ne voient pas cette conversation. Il te répond en quelques secondes et peut aussi t'écrire en privé de lui-même
   (badge 💬 sur sa carte + notification). S'il annonce une action, il s'y met juste après.
 - **🙋 Me présenter** (onglets 🚀 Démarrage et ⚙️ Réglages) : ton prénom, comment t'appeler, ta ville, ce que tu
-  aimes, ton objectif, ton temps disponible. Les 14 agents lisent cette fiche en permanence : ils t'appellent par
+  aimes, ton objectif, ton temps disponible. Tous les agents lisent cette fiche en permanence : ils t'appellent par
   ton prénom et adaptent leurs idées (par exemple les commerces de ta ville).
-- **🎙️ Réunion** : écris ton message et clique « 🎙️ Réunion » : **les 14 agents te répondent en même temps**, en
+- **🎙️ Réunion** : écris ton message et clique « 🎙️ Réunion » : **tous les agents te répondent en même temps**, en
   quelques secondes, chacun avec son métier (une barre montre qui a déjà répondu). Ceux qui annoncent une action
   (« ➡️ Je m'en occupe ») se mettent au travail juste après. Mentionne des agents (`@Neo @Victor`) pour une
   réunion seulement avec eux. Réponses courtes, donc peu coûteuses.

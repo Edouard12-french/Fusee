@@ -165,7 +165,7 @@ nav#bottom{display:none}
   <section id="chat">
     <div id="msgs"></div>
     <div id="meetBar" hidden></div>
-    <form class="send" id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo pour un agent) — ou 🎙️ Réunion : les 14 te répondent en même temps"></textarea>
+    <form class="send" id="f"><textarea id="txt" rows="2" placeholder="Écris au groupe… (@Neo pour un agent) — ou 🎙️ Réunion : toute l'équipe te répond en même temps"></textarea>
       <div style="display:flex;flex-direction:column;gap:6px"><button class="primary">Envoyer</button><button type="button" id="meetBtn" class="meet" title="Tous les agents répondent en même temps, en quelques secondes">🎙️ Réunion</button></div></form>
   </section>
   <aside id="side">
@@ -336,7 +336,7 @@ async function renderPane(soft) {
         <button onclick="post('/api/wake/${a.name}')">⚡ Lancer un cycle maintenant</button></div>
         <div class="card" style="--ag:${a.color};border-color:color-mix(in srgb,${a.color} 45%,transparent)"><h4>💬 Discussion privée avec ${a.name}</h4>
           <div id="dmThread" class="thread" style="max-height:340px;overflow:auto">${thread || `<p class="muted">Écris-lui en privé : les autres agents ne verront pas cette discussion.</p>`}</div>
-          <form class="send" id="dmForm" style="padding:0;border:0;background:none"><textarea id="dmInput" rows="2" placeholder="Message privé à ${a.name}…"></textarea><button class="primary">Envoyer</button></form></div>
+          <form class="send" id="dmForm" style="padding:0;border:0;background:none"><textarea id="dmInput" rows="2" placeholder="${a.name === "Vice" ? "Avant de partir : dis à Vice ce que l'équipe doit faire pendant ton absence…" : "Message privé à " + a.name + "…"}"></textarea><button class="primary">Envoyer</button></form></div>
         ${a.learned ? `<div class="card"><b>📘 Consignes apprises</b><div class="md">${md(a.learned)}</div></div>` : ""}
         <details class="card" id="memd" ${open?"open":""}><summary><b>🧠 Mémoire / plan</b></summary><div class="md">${md(mem.content || "(vide)")}</div></details>
         <h4>Ce qu'il a fait</h4>${acts.map(actHtml).join("") || "<p class=muted>Rien encore.</p>"}`;
@@ -728,7 +728,7 @@ const PROFILE_FIELDS = [["prenom", "Ton prénom", "text", ""], ["appel", "Commen
 async function profileCard() {
   const p = (await api("/api/owner_profile")).profile || {};
   return `<div class="card" style="border-left:4px solid var(--accent2)"><h4>🙋 Me présenter à l'équipe</h4>
-    <p class="muted">Les 14 agents liront cette fiche en permanence : ils t'appelleront par ton prénom et adapteront leurs idées à ta ville, tes goûts et ton temps. Ne mets pas ton adresse, ton école ou d'infos très personnelles.</p>
+    <p class="muted">Tous les agents liront cette fiche en permanence : ils t'appelleront par ton prénom et adapteront leurs idées à ta ville, tes goûts et ton temps. Ne mets pas ton adresse, ton école ou d'infos très personnelles.</p>
     <div style="display:grid;gap:6px">${PROFILE_FIELDS.map(([k, label, type, extra]) => `<label class="muted">${label}</label>` + (type === "select"
       ? `<select data-p="${k}">${extra.map(o => `<option ${p[k] === o ? "selected" : ""} value="${esc(o)}">${o || "—"}</option>`).join("")}</select>`
       : `<input data-p="${k}" value="${esc(p[k] || "")}" placeholder="${esc(extra)}">`)).join("")}</div>

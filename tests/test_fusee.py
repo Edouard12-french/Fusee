@@ -628,3 +628,17 @@ def test_parent_code_for_approvals_and_messages(monkeypatch):
         parent.check("0000")
     assert parent.locked() and not parent.check("2468")
     parent._fails.clear()
+
+
+def test_vice_patron_leads_when_the_owner_is_away():
+    from fusee_agents import runner
+    v = BY_NAME["Vice"]
+    assert v.interval_min and "resolve_need" in v.tools and "adjust_agent" in v.tools
+    for forbidden in ("request_approval", "publish_site", "create_payment_link", "send_prospect_email",
+                      "reply_to_contact", "start_campaign"):
+        assert forbidden not in v.tools  # il ne peut ni publier, ni dépenser, ni contacter
+    db.x("INSERT INTO dms (ts, agent, sender, content, read) VALUES (?,?,?,?,1)",
+         (time.time(), "Vice", "Patron", "Cette nuit : tout le monde sur l'agence d'automatisation IA."))
+    ctx = runner.build_context(v, "cycle régulier")
+    assert "agence d'automatisation IA" in ctx  # ses consignes privées sont dans son contexte
+    assert "Vice (vice-patron)" in system_prompt(BY_NAME["Neo"])  # les autres savent qui il est
