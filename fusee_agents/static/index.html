@@ -145,26 +145,34 @@ nav#bottom{display:none}
   <button id="directiveBtn" title="Consigne permanente lue par tous les agents">🎯<span class="lbl"> Consigne</span></button>
   <button id="pauseBtn"></button>
 </header>
-<div id="workMenu" class="card" hidden style="position:fixed;top:60px;right:12px;z-index:60;width:min(340px,calc(100vw - 24px));display:grid;gap:6px;background:var(--bg2);box-shadow:0 12px 40px rgba(0,0,0,.45)">
+<div id="workMenu" class="card" hidden style="position:fixed;top:60px;right:12px;z-index:60;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 80px);overflow:auto;display:grid;gap:6px;background:var(--bg2);box-shadow:0 12px 40px rgba(0,0,0,.45)">
   <b>▶️ Laisser l'équipe travailler seule…</b>
   <div class="muted">Sinon, ils travaillent seulement quand tu leur parles (Iris répond toujours aux clients).</div>
   <button data-w="nuit">🌙 Cette nuit (jusqu'à 7 h)</button>
   <button data-w="2h">⏱️ Pendant 2 heures</button>
   <button data-w="24h">☀️ Pendant 24 heures</button>
-  <button data-w="2j">📅 Pendant 2 jours</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+    <button data-w="2j">📅 2 jours</button><button data-w="3j">📅 3 jours</button><button data-w="7j">🗓️ 1 semaine</button></div>
   <div style="border-top:1px solid var(--line);padding-top:8px;display:grid;gap:6px">
     <b>📅 Programmer à l'avance</b>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Début :
       <select id="wDay"><option value="demain">demain</option><option value="aujourdhui">aujourd'hui</option></select>
-      de <select id="wFrom"><option value="0">0 h</option><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="11">11 h</option><option value="12">12 h</option><option value="13">13 h</option><option value="14">14 h</option><option value="15">15 h</option><option value="16">16 h</option><option value="17">17 h</option><option value="18">18 h</option><option value="19">19 h</option><option value="20">20 h</option><option value="21">21 h</option><option value="22">22 h</option><option value="23">23 h</option></select> à <select id="wTo"><option value="0">0 h</option><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="11">11 h</option><option value="12">12 h</option><option value="13">13 h</option><option value="14">14 h</option><option value="15">15 h</option><option value="16">16 h</option><option value="17">17 h</option><option value="18">18 h</option><option value="19">19 h</option><option value="20">20 h</option><option value="21">21 h</option><option value="22">22 h</option><option value="23">23 h</option></select></div>
+      à <select id="wFrom"><option value="0">0 h</option><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="11">11 h</option><option value="12">12 h</option><option value="13">13 h</option><option value="14">14 h</option><option value="15">15 h</option><option value="16">16 h</option><option value="17">17 h</option><option value="18">18 h</option><option value="19">19 h</option><option value="20">20 h</option><option value="21">21 h</option><option value="22">22 h</option><option value="23">23 h</option></select></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Fin :
+      <select id="wEnd"><option value="">le même jour (ou le lendemain matin)</option><option value="1">le lendemain</option><option value="2">2 jours après</option><option value="3">3 jours après</option><option value="4">4 jours après</option><option value="5">5 jours après</option><option value="6">6 jours après</option><option value="7">7 jours après</option></select>
+      à <select id="wTo"><option value="0">0 h</option><option value="1">1 h</option><option value="2">2 h</option><option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="11">11 h</option><option value="12">12 h</option><option value="13">13 h</option><option value="14">14 h</option><option value="15">15 h</option><option value="16">16 h</option><option value="17">17 h</option><option value="18">18 h</option><option value="19">19 h</option><option value="20">20 h</option><option value="21">21 h</option><option value="22">22 h</option><option value="23">23 h</option></select></div>
     <button data-w="plan">✅ Programmer</button>
-    <div class="muted">Par exemple « demain de 8 h à 17 h » pendant l'école : ils démarrent tout seuls à l'heure prévue.</div>
+    <div class="muted">Ex. « demain à 8 h » → « 3 jours après à 20 h ». Ils démarrent tout seuls à l'heure prévue.</div>
   </div>
   <button data-w="stop">⏹️ Stop : seulement quand je leur parle</button>
-  <div style="border-top:1px solid var(--line);padding-top:8px">🛡️ Garder pour moi
-    <select id="wRes"><option value="10">10 %</option><option value="20">20 %</option><option value="30">30 %</option><option value="40">40 %</option><option value="50">50 %</option><option value="60">60 %</option><option value="70">70 %</option><option value="80">80 %</option><option value="90">90 %</option></select>
-    du budget du jour
-    <div class="muted">Quand ils travaillent seuls, ils s'arrêtent avant : ce qui est gardé sert quand tu leur parles.</div></div>
+  <div style="border-top:1px solid var(--line);padding-top:8px;display:grid;gap:6px">
+    <label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="wWeb"><span>🌐 <b>Internet, YouTube et navigateur</b> pour se renseigner<br><span class="muted" id="wWebNote">Les recherches internet et YouTube marchent toujours ; ceci autorise aussi le vrai navigateur (ouvrir des pages, captures).</span></span></label>
+    <div>💶 Budget : <b id="wBudget">…</b> <button type="button" id="wPerm" style="margin-left:4px">🔐 Autorisations et budget sans limite</button></div>
+    <div>🛡️ Garder pour moi
+      <select id="wRes"><option value="10">10 %</option><option value="20">20 %</option><option value="30">30 %</option><option value="40">40 %</option><option value="50">50 %</option><option value="60">60 %</option><option value="70">70 %</option><option value="80">80 %</option><option value="90">90 %</option></select>
+      du budget du jour
+      <div class="muted">Quand ils travaillent seuls, ils s'arrêtent avant : ce qui est gardé sert quand tu leur parles.</div></div>
+  </div>
 </div>
 <main>
   <aside id="agents"></aside>
@@ -1053,16 +1061,26 @@ $("#txt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDe
 $("#pauseBtn").onclick = async () => { await post("/api/pause?on=" + !S.paused); poll(); };
 $("#workBtn").onclick = e => {
   e.stopPropagation(); if (!S.work) return;
-  if ($("#workMenu").hidden && S.work.reserve_pct) $("#wRes").value = String(S.work.reserve_pct);
+  if ($("#workMenu").hidden) {
+    if (S.work.reserve_pct) $("#wRes").value = String(S.work.reserve_pct);
+    $("#wWeb").checked = !!S.browser_enabled;
+    $("#wBudget").textContent = S.budget && S.budget.unlimited ? "sans limite par jour ∞" : "limité chaque jour";
+  }
   $("#workMenu").hidden = !$("#workMenu").hidden;
 };
 $("#wFrom").value = "8"; $("#wTo").value = "17";
 $("#wRes").onchange = () => post("/api/work", {reserve: +$("#wRes").value}).then(poll);
+$("#wWeb").onchange = () => post("/api/browser?on=" + $("#wWeb").checked).then(poll);
+$("#wPerm").onclick = () => {
+  $("#workMenu").hidden = true; location.hash = "#settings";
+  setTimeout(() => { const b = $("#permBox"); if (b) b.parentElement.scrollIntoView({behavior: "smooth", block: "start"}); }, 1200);
+};
 document.addEventListener("click", e => { if (!$("#workMenu").hidden && !$("#workMenu").contains(e.target)) $("#workMenu").hidden = true; });
 $("#workMenu").querySelectorAll("button[data-w]").forEach(b => b.onclick = async () => {
   $("#workMenu").hidden = true;
   const body = {choice: b.dataset.w};
-  if (b.dataset.w === "plan") Object.assign(body, {day: $("#wDay").value, h_from: +$("#wFrom").value, h_to: +$("#wTo").value});
+  if (b.dataset.w === "plan") Object.assign(body, {day: $("#wDay").value, h_from: +$("#wFrom").value, h_to: +$("#wTo").value,
+    end_days: $("#wEnd").value === "" ? null : +$("#wEnd").value});
   const r = await post("/api/work", body);
   if (!r.ok) alert((await r.json().catch(() => ({}))).detail || "Impossible");
   poll();

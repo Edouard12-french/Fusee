@@ -536,6 +536,7 @@ class WorkReq(BaseModel):
     h_from: int = 8
     h_to: int = 17
     reserve: int | None = None  # % du budget du jour gardé pour Patron
+    end_days: int | None = None  # pour « plan » : fin N jours après le début (None = le jour même ou le lendemain)
 
 
 @app.post("/api/work")
@@ -550,7 +551,9 @@ def set_work(w: WorkReq):
     if w.choice == "plan":
         if not (0 <= w.h_from <= 23 and 0 <= w.h_to <= 23) or w.h_from == w.h_to:
             raise HTTPException(400, "heures invalides")
-        start, end = budget.planned_window(w.day, w.h_from, w.h_to)
+        start, end = budget.planned_window(w.day, w.h_from, w.h_to, end_days=w.end_days)
+        if end <= start:
+            raise HTTPException(400, "La fin doit être après le début.")
         if end <= time.time():
             raise HTTPException(400, "cette période est déjà passée")
         label = scheduler.authorize(end, max(start, time.time()))
@@ -563,7 +566,7 @@ def set_work(w: WorkReq):
         budget.stop_work()
         db.post_message(OWNER, "⏹️ Stop : maintenant vous travaillez seulement quand je vous parle.")
         return _work_state()
-    hours = {"2h": 2, "24h": 24, "2j": 48}.get(w.choice)
+    hours = {"2h": 2, "24h": 24, "2j": 48, "3j": 72, "7j": 168}.get(w.choice)
     if w.choice == "nuit":
         until = budget.next_morning(7).timestamp()
     elif hours:

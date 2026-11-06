@@ -86,13 +86,17 @@ def stop_work() -> None:
     db.set_setting("work_until", "0")
 
 
-def planned_window(day: str, h_from: int, h_to: int, now: datetime | None = None) -> tuple[float, float]:
-    """« demain de 8 h à 17 h » → (début, fin). Une fin plus tôt que le début = le lendemain (ex. 22 h → 7 h)."""
+def planned_window(day: str, h_from: int, h_to: int, now: datetime | None = None,
+                   end_days: int | None = None) -> tuple[float, float]:
+    """« demain de 8 h à 17 h » → (début, fin). Sans end_days, une fin plus tôt que le début = le lendemain
+    (ex. 22 h → 7 h). Avec end_days (0 à 7) : la fin est ce nombre de jours après le jour de début."""
     now = now or datetime.now()
     base = (now + timedelta(days=1 if day == "demain" else 0)).replace(minute=0, second=0, microsecond=0)
     start = base.replace(hour=h_from)
     end = base.replace(hour=h_to)
-    if end <= start:
+    if end_days is not None:
+        end += timedelta(days=max(0, min(7, int(end_days))))
+    elif end <= start:
         end += timedelta(days=1)
     return start.timestamp(), end.timestamp()
 

@@ -816,3 +816,24 @@ def test_permissions_vice_decisions_undo_and_unlimited_budget(monkeypatch):
     delegation.save(publish=False, unlimited=False)
     assert budget.today_exhausted()
     budget.stop_work()
+
+
+def test_solo_work_for_several_days():
+    from datetime import datetime
+    from fastapi.testclient import TestClient
+    from fusee_agents import web
+    now = datetime(2026, 11, 6, 20, 0)
+    s, e = budget.planned_window("demain", 8, 20, now, end_days=3)
+    assert (datetime.fromtimestamp(s), datetime.fromtimestamp(e)) == (datetime(2026, 11, 7, 8), datetime(2026, 11, 10, 20))
+    s, e = budget.planned_window("aujourdhui", 22, 7, now)  # sans fin choisie : le lendemain matin
+    assert datetime.fromtimestamp(e) == datetime(2026, 11, 7, 7)
+    c = TestClient(web.app)
+    w = c.post("/api/work", json={"choice": "7j"}).json()
+    assert w["authorized"] and budget.work_until() - time.time() > 6.9 * 86400
+    w = c.post("/api/work", json={"choice": "3j"}).json()
+    assert 2.9 * 86400 < budget.work_until() - time.time() < 3.1 * 86400
+    r = c.post("/api/work", json={"choice": "plan", "day": "demain", "h_from": 9, "h_to": 8, "end_days": 0})
+    assert r.status_code == 400  # la fin avant le début
+    w = c.post("/api/work", json={"choice": "plan", "day": "demain", "h_from": 8, "h_to": 20, "end_days": 2}).json()
+    assert w["scheduled"] and w["range_label"].startswith("demain 8 h →")
+    budget.stop_work()
