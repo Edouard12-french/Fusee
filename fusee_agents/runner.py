@@ -7,7 +7,7 @@ from datetime import datetime
 
 import anthropic
 
-from . import briefing, budget, db, integrations, mailbox, workflow
+from . import briefing, budget, db, delegation, integrations, mailbox, workflow
 from .agents import OWNER, Agent, system_prompt
 from .config import (MAX_STEPS_PER_CYCLE, OWNER_MINOR, PRICING, PUBLIC_URL, USD_EUR, WEB_SEARCH_COST,
                      model_for)
@@ -173,7 +173,7 @@ Raison du réveil : {reason}
 
 ## Mode de travail
 {mode_txt}
-
+{"" if agent.name != "Vice" else chr(10) + "## Délégation de " + OWNER + chr(10) + delegation.context_text() + chr(10)}
 ## Consigne permanente de {OWNER}
 {owner_directive or DEFAULT_DIRECTIVE}
 

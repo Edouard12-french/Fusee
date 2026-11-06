@@ -26,11 +26,18 @@ def daily_cap_usd() -> float:
     return min(cap, DAILY_BUDGET_USD) if DAILY_BUDGET_USD > 0 else cap
 
 
+def unlimited() -> bool:
+    """« Sans limite par jour » (réglé avec le code parent) : seul le budget IA total arrête les agents."""
+    return db.get_setting("budget_unlimited", "0") == "1"
+
+
 def web_search_limit() -> int:
     """Recherches web autorisées par jour : la plus grosse dépense des petits modèles, donc plafonnée."""
     forced = os.getenv("WEB_SEARCH_DAILY_LIMIT", "").strip()
     if forced.isdigit():
         return int(forced)
+    if unlimited():
+        return 300
     return max(5, int(daily_cap_usd() * SEARCH_SHARE / WEB_SEARCH_COST))
 
 
@@ -139,7 +146,7 @@ def owner_active() -> bool:
 
 
 def autonomous_budget_used() -> bool:
-    return db.cost_today() >= autonomous_share() * daily_cap_usd()
+    return not unlimited() and db.cost_today() >= autonomous_share() * daily_cap_usd()
 
 
 def api_spent_eur() -> float:
@@ -159,11 +166,11 @@ def owner_cap_usd() -> float:
 
 def owner_exhausted() -> bool:
     """Même la rallonge du jour est utilisée : là seulement, on ne répond plus à Patron avant demain."""
-    return db.cost_today() >= owner_cap_usd()
+    return not unlimited() and db.cost_today() >= owner_cap_usd()
 
 
 def today_exhausted() -> bool:
-    return db.cost_today() >= daily_cap_usd()
+    return not unlimited() and db.cost_today() >= daily_cap_usd()
 
 
 def summary() -> dict:
@@ -179,6 +186,7 @@ def summary() -> dict:
         "api_spent_eur": api,
         "api_today_eur": db.cost_today() * USD_EUR,
         "api_daily_cap_eur": daily_cap_usd() * USD_EUR,
+        "unlimited": unlimited(),
         "api_left_eur": max(0.0, s["api_budget_eur"] - api),
         "expenses_eur": expenses,
         "revenues_eur": revenues,

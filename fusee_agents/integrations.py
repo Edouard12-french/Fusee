@@ -80,6 +80,14 @@ def deploy_site(folder: Path, site_name: str, site_id: str | None) -> dict:
 
 
 # --- Stripe ------------------------------------------------------------------
+def unpublish_site(site_id: str) -> None:
+    """Retire un site d'internet (Netlify) — pour annuler une mise en ligne."""
+    if not NETLIFY_TOKEN:
+        raise RuntimeError("NETLIFY_TOKEN manquant dans .env")
+    _req(f"https://api.netlify.com/api/v1/sites/{urllib.parse.quote(site_id, safe='')}",
+         headers={"Authorization": f"Bearer {NETLIFY_TOKEN}"}, method="DELETE")
+
+
 def _stripe(path: str, params: dict | None = None, method: str = "POST") -> dict:
     if not STRIPE_KEY:
         raise RuntimeError("STRIPE_SECRET_KEY manquante dans .env")

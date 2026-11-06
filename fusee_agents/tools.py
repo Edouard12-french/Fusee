@@ -9,7 +9,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from . import analytics, browser, budget, db, integrations, mailbox, markets, outreach, sites, workflow, youtube
+from . import (analytics, browser, budget, db, delegation, integrations, mailbox, markets, outreach, sites, workflow,
+               youtube)
 from .agents import BY_NAME, OWNER, save_team_config, team_config
 from .config import ALLOW_CODE_EXEC, OWNER_MINOR, PORT, WORKSPACE
 from .notify import notify
@@ -101,6 +102,17 @@ CLIENT_TOOLS: dict[str, dict] = {
     "read_file": {
         "description": "Lit un fichier texte du workspace partagé.",
         "input_schema": _schema({"path": S}),
+    },
+    "list_approvals": {
+        "description": (f"Les demandes d'accord en attente (pour {OWNER}), avec ce que tu as le droit de décider à sa "
+                        "place selon ses autorisations (🔐)."),
+        "input_schema": _schema({}),
+    },
+    "decide_approval": {
+        "description": (f"Accepte ou refuse une demande À LA PLACE de {OWNER}, seulement si ses autorisations le "
+                        "permettent. Vérifie d'abord la qualité (captures, audit, textes honnêtes, mentions légales). "
+                        "En cas de doute : refuse et explique, ou laisse pour lui."),
+        "input_schema": _schema({"approval_id": I, "approve": {"type": "boolean"}, "comment": S}),
     },
     "itch_games": {
         "description": (f"Les jeux du compte itch.io de {OWNER}, avec leurs chiffres réels : vues, téléchargements, "
@@ -761,6 +773,40 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         files = [str(p.relative_to(WORKSPACE)) + ("/" if p.is_dir() else f" ({p.stat().st_size} o)")
                  for p in sorted(base.rglob("*")) if "__pycache__" not in p.parts]
         return "\n".join(files[:300]) or "Dossier vide."
+    if name == "list_approvals":
+        rows = db.q("SELECT * FROM approvals WHERE status='en attente' ORDER BY id")
+        if not rows:
+            return "Aucune demande en attente."
+        out = [delegation.context_text()]
+        for a in rows:
+            ok, why = delegation.can_decide(a)
+            out.append(f"#{a['id']} [{a['kind']}] {a['title']} (par {a['agent']}) — "
+                       + ("✅ tu peux décider" if ok else f"⛔ pour {OWNER} : {why}") + f"\n  {a['details'][:400]}")
+        return "\n".join(out)
+    if name == "decide_approval":
+        rows = db.q("SELECT * FROM approvals WHERE id=?", (args["approval_id"],))
+        if not rows:
+            return "Erreur : demande introuvable."
+        a = rows[0]
+        ok, why = delegation.can_decide(a)
+        if not ok:
+            return f"Refusé : tu ne peux pas décider la demande #{a['id']} ({why}). Elle attend {OWNER}."
+        status = "acceptée" if args["approve"] else "refusée"
+        if a["kind"] == "prospection":
+            camp_id = json.loads(a["payload"])["campaign_id"]
+            db.x("UPDATE campaigns SET status=? WHERE id=?", ("active" if args["approve"] else "refusée", camp_id))
+        db.x("UPDATE approvals SET status=?, response=?, decided_by=?, decided_ts=? WHERE id=?",
+             (status, (args.get("comment") or "").strip(), delegation.VICE, time.time(), a["id"]))
+        db.post_message(agent, f"{'✅' if args['approve'] else '❌'} 🎖️ À la place de {OWNER} : demande #{a['id']} "
+                               f"{status} — {a['title']}" + (f" ({args['comment']})" if args.get("comment") else "")
+                               + f". {OWNER} pourra l'annuler.")
+        notify("validation", f"🎖️ Vice a {status} à ta place : {a['title']}",
+               f"Tu peux l'annuler dans ✅ Validations.\n\n{args.get('comment') or ''}")
+        for t in {a["agent"], "Atlas"}:
+            if t != agent:
+                wake(t, f"🎖️ Vice a {status} À LA PLACE de {OWNER} la demande #{a['id']} « {a['title']} »"
+                        + (f" : {args['comment']}" if args.get("comment") else "") + " — continue.")
+        return f"Demande #{a['id']} {status} à la place de {OWNER}. Ce sera dans son récap ; il peut annuler."
     if name == "itch_games":
         try:
             games = await asyncio.to_thread(integrations.itch_games)

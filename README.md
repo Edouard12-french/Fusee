@@ -300,6 +300,17 @@ prépare un **kit** (`prepare_itch_kit`) : le ZIP prêt pour itch.io, une couver
 textes et les étapes ; il te demande ton accord, puis **c'est toi qui publies** en 5 minutes. Jeu payant : les
 paiements doivent être au nom d'un parent.
 
+## 🔐 Autorisations (code parent)
+
+Dans ⚙️ Réglages → **🔐 Autorisations**, avec le **code parent**, tu choisis ce que **🎖️ Vice** peut accepter **à ta
+place** : 🌐 mettre des sites en ligne (annulable : le site est retiré d'internet), 🚀 lancer un business sans argent,
+📧 contacter des entreprises (un e-mail envoyé ne se reprend pas ; 20 par jour max) — seulement quand tu les laisses
+travailler seuls, ou tout le temps. **Jamais** : argent, compte, accord parent 👪, réponse à un client. Tout ce que Vice
+décide est dans le ☀️ récap du matin, avec **↩️ Annuler** dans ✅ Validations.
+
+**💶 Sans limite par jour** (même carte) : les agents ne s'arrêtent plus chaque jour ; seul le budget IA total
+(💰 Argent → « Dont IA ») les arrête, et en dernier recours le crédit restant sur la Claude Console.
+
 ## Budget et coûts 💰
 
 Fusée suit ton **argent réel** (onglet 💰 Argent) : budget de départ (100 € par défaut), dépenses d'IA, autres

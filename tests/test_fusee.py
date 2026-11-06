@@ -763,3 +763,56 @@ def test_itchio_stats_and_publication_kit(monkeypatch):
         "folder": "jeux", "title": "x", "short_description": "", "description": "", "tags": [], "genre": "", "price_eur": 0},
         lambda *a: None))
     assert "prepare_itch_kit" in BY_NAME["Pixel"].tools and "itch_games" in BY_NAME["Atlas"].tools
+
+
+# --- 🔐 autorisations : ce que Vice peut accepter à la place de Patron ------------------------------------
+
+def test_permissions_vice_decisions_undo_and_unlimited_budget(monkeypatch):
+    from fastapi.testclient import TestClient
+    from fusee_agents import delegation, integrations, parent, web
+    for k in ("parent_pin_hash", "parent_salt", "parent_name"):
+        db.set_setting(k, "")
+    parent._fails.clear()
+    c = TestClient(web.app)
+    ask = lambda kind, title, amount=0, par=False: asyncio.run(tools.execute("Neo", "request_approval", {  # noqa: E731
+        "kind": kind, "title": title, "details": "d", "amount_eur": amount, "attachments": [], "links": [],
+        "parent": par}, lambda *a: None)) and db.q("SELECT id FROM approvals ORDER BY id DESC LIMIT 1")[0]["id"]
+    pub, money, par = ask("publication", "Mettre en ligne le site de l'agence"), ask("dépense", "Nom de domaine", 10), \
+        ask("business", "Compte Stripe", 0, True)
+    vice = lambda aid, ok=True: asyncio.run(tools.execute("Vice", "decide_approval",  # noqa: E731
+                                           {"approval_id": aid, "approve": ok, "comment": "ok"}, lambda *a: None))
+    # sans autorisation : Vice ne peut rien
+    budget.stop_work()
+    assert "Refusé" in vice(pub)
+    # les autorisations demandent le code parent
+    assert c.post("/api/permissions", json={"pin": "1234", "publish": True}).status_code == 403
+    c.post("/api/parent/setup", json={"name": "Muriel", "pin": "2468"})
+    assert c.post("/api/permissions", json={"pin": "0000", "publish": True}).json()["detail"] == "Code incorrect."
+    s = c.post("/api/permissions", json={"pin": "2468", "publish": True, "always": False, "unlimited": True}).json()
+    assert s["publish"] and not s["outreach"] and s["unlimited"]
+    # seulement pendant le travail en solo
+    assert "Refusé" in vice(pub)
+    budget.authorize_work(time.time() + 3600)
+    assert delegation.active() and "acceptée à la place" in vice(pub)
+    row = db.q("SELECT status, decided_by FROM approvals WHERE id=?", (pub,))[0]
+    assert row == {"status": "acceptée", "decided_by": "🎖️ Vice (à ta place)"}
+    assert "Refusé" in vice(money) and "Refusé" in vice(par)  # argent et accord parent : jamais
+    listing = asyncio.run(tools.execute("Vice", "list_approvals", {}, lambda *a: None))
+    assert "DÉLÉGATION ACTIVE" in listing and "⛔" in listing
+    # le récap du matin le montre, et Patron peut annuler (le site est retiré d'internet)
+    assert "Ce que Vice a décidé à ta place" in __import__("fusee_agents.briefing", fromlist=["x"]).morning_recap(time.time() - 60)
+    db.x("INSERT INTO deployments (ts, agent, site, provider_id, url, approval_id) VALUES (?,?,?,?,?,?)",
+         (time.time(), "Neo", "sites/agence", "site-123", "https://agence.netlify.app", pub))
+    removed = []
+    monkeypatch.setattr(integrations, "unpublish_site", lambda sid: removed.append(sid))
+    r = c.post(f"/api/approvals/{pub}/undo").json()
+    assert removed == ["site-123"] and "site retiré" in r["notes"][0]
+    assert db.q("SELECT status FROM approvals WHERE id=?", (pub,))[0]["status"] == "annulée par Patron"
+    assert c.post(f"/api/approvals/{money}/undo").status_code == 409  # pas une décision de Vice
+    # sans limite par jour : plus d'arrêt quotidien (le total compte toujours)
+    monkeypatch.setattr(db, "cost_today", lambda: 99.0)
+    assert not budget.today_exhausted() and not budget.owner_exhausted() and not budget.autonomous_budget_used()
+    assert c.get("/api/state").json()["budget"]["unlimited"] is True
+    delegation.save(publish=False, unlimited=False)
+    assert budget.today_exhausted()
+    budget.stop_work()

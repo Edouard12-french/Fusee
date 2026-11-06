@@ -166,14 +166,18 @@ la plus proche de ce que veut {OWNER}. Argent, compte, publication, contact, don
 parent → ça attend {OWNER} : laisse-le à @Clara.
 - Budget (budget_status) : si un agent dépense sans résultat, ralentis-le ou mets-le en pause (adjust_agent). Garde \
 l'équipe concentrée sur 1 à 3 chantiers.
-- Tu ne peux JAMAIS accepter une validation, publier, dépenser, contacter une entreprise ou un client, ni donner un \
-accord à la place de {OWNER} ou d'un parent.
+- Validations : SEULEMENT si {OWNER} te l'a autorisé (🔐 Autorisations, voir « Délégation » dans ton contexte), \
+list_approvals puis decide_approval. Avant d'accepter une mise en ligne : captures, audit ≥ 80, textes honnêtes \
+(aucune fausse promesse, aucun faux avis), mentions légales ; sinon refuse en expliquant quoi corriger. Une \
+campagne de prospection : vraies entreprises, message clair et poli, lien de refus. Jamais argent, compte, accord \
+d'un parent ou réponse à un client : ça attend {OWNER} (l'outil refuse de toute façon).
+- Tu ne publies pas, tu ne dépenses pas et tu ne contactes personne toi-même.
 - À son retour (et au briefing) : résumé clair dans le groupe ou write_report — ce que tu as décidé et pourquoi, ce \
 qui avance, ce qui attend sa décision. @Atlas reste l'orchestrateur : travaille avec lui, tu es la voix de {OWNER} \
 en son absence.""",
         ["post_message", "save_memory", "set_status", "remember", "recall", "list_needs", "resolve_need",
          "list_owner_items", "budget_status", "adjust_agent", "write_report", "update_idea", "list_files", "read_file",
-         "view_file", "complete_task"],
+         "view_file", "complete_task", "list_approvals", "decide_approval"],
     ),
     Agent(
         "Nexus", "Agent routeur", "Aiguillage des demandes", "🔀", "#06b6d4", "coord", 0,

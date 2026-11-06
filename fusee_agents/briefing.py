@@ -155,6 +155,12 @@ def morning_recap(since_ts: float) -> str:
             if top else "- Classement encore vide."]
     if reports:
         out += ["", "## 📄 Rapports"] + [f"- {r['title']} ({r['agent']})" for r in reports[:6]]
+    vice = db.q("SELECT id, title, status FROM approvals WHERE decided_by=? AND decided_ts >= ? ORDER BY id",
+                ("🎖️ Vice (à ta place)", since_ts))
+    if vice:
+        out += ["", "## 🎖️ Ce que Vice a décidé à ta place"]
+        out += [f"- #{v['id']} {v['title'][:80]} : **{v['status']}**" for v in vice]
+        out += ["- Pas d'accord ? ✅ Validations → **↩️ Annuler**."]
     out += ["", "## ⏳ Ce qui t'attend"]
     out += ([f"- ✅ {len(approvals)} demande(s) d'accord : " + " ; ".join(
         f"#{a['id']} {a['title'][:60]}" + (" 👪" if a.get("needs_parent") else "") for a in approvals[:5])]

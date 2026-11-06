@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, briefing, budget, db, integrations, knowledge, mailbox, outreach, parent, runner
+from . import analytics, briefing, budget, db, delegation, integrations, knowledge, mailbox, outreach, parent, runner
 from . import setup as setup_mod
 from .agents import (BY_NAME, OWNER, PROFILE_LABELS, TEAM, add_agent, agent_settings, make_custom, owner_profile,
                      save_team_config, team_config)
@@ -154,7 +154,7 @@ def state(after: int = 0):
         "messages": [_msg(m) for m in db.recent_messages(200, after)],
         "plan": PLAN,
         "budget": {k: b[k] for k in ("remaining_eur", "initial_eur", "api_today_eur", "api_daily_cap_eur",
-                                     "api_spent_eur", "api_budget_eur")},
+                                     "api_spent_eur", "api_budget_eur", "unlimited")},
         "open_questions": db.q("SELECT COUNT(*) n FROM owner_questions WHERE answer IS NULL")[0]["n"],
         "open_owner_tasks": db.q("SELECT COUNT(*) n FROM owner_tasks WHERE done=0")[0]["n"],
         "unread_dms": {r["agent"]: r["n"] for r in db.q(
@@ -659,6 +659,73 @@ async def decide(aid: int, d: Decision):
                           + (f" — ✅ ACCORD PARENT de {parent.name()} vérifié (code parent)" if by_parent else "")
                           + (f" avec ce commentaire : {d.comment}" if d.comment else ""))
     return {"ok": True}
+
+
+@app.get("/api/permissions")
+def permissions_state():
+    return {**delegation.settings(), "parent_set": parent.is_set(), "active": delegation.active()}
+
+
+class Permissions(BaseModel):
+    pin: str
+    publish: bool = False
+    business: bool = False
+    outreach: bool = False
+    always: bool = False
+    unlimited: bool = False
+
+
+@app.post("/api/permissions")
+def permissions_save(p: Permissions):
+    """🔐 Ce que Vice peut accepter à ta place, et le budget sans limite par jour : seulement avec le code parent."""
+    if not parent.is_set():
+        raise HTTPException(403, "Crée d'abord le code parent (⚙️ Réglages → 👪 Accord d'un parent).")
+    if not parent.check(p.pin):
+        raise HTTPException(403, "Trop d'essais : réessaie dans 15 minutes." if parent.locked() else "Code incorrect.")
+    s = delegation.save(publish=p.publish, business=p.business, outreach=p.outreach, always=p.always,
+                        unlimited=p.unlimited)
+    allowed = [delegation.LABELS[k] for k in ("publish", "business", "outreach") if s[k]]
+    db.post_message("Fusée", "🔐 Autorisations mises à jour : "
+                    + (f"🎖️ Vice peut, à la place de {OWNER} ({'tout le temps' if s['always'] else 'pendant le travail en solo'}) : "
+                       + " ; ".join(allowed) if allowed else f"Vice ne valide rien à la place de {OWNER}")
+                    + (". Budget : sans limite par jour (seul le budget IA total arrête l'équipe)." if s["unlimited"] else "."))
+    return permissions_state()
+
+
+@app.post("/api/approvals/{aid}/undo")
+async def undo_vice(aid: int):
+    """Patron annule ce que Vice a décidé à sa place."""
+    rows = db.q("SELECT * FROM approvals WHERE id=?", (aid,))
+    if not rows:
+        raise HTTPException(404)
+    a = rows[0]
+    if a.get("decided_by") != delegation.VICE or a["status"] not in ("acceptée", "refusée"):
+        raise HTTPException(409, "Seules les décisions de Vice s'annulent ici.")
+    notes = []
+    if a["status"] == "refusée":  # refus de Vice annulé : la demande revient à Patron
+        db.x("UPDATE approvals SET status='en attente', decided_by=NULL, response=NULL, decided_ts=NULL WHERE id=?", (aid,))
+        notes.append("la demande t'attend dans ✅ Validations")
+    else:
+        if a["kind"] == "prospection":
+            camp_id = json.loads(a["payload"] or "{}").get("campaign_id")
+            db.x("UPDATE campaigns SET status='stoppée par Patron' WHERE id=?", (camp_id,))
+            sent = db.q("SELECT COUNT(*) n FROM prospects WHERE campaign_id=? AND sends > 0", (camp_id,))[0]["n"]
+            notes.append("campagne stoppée" + (f" ({sent} e-mail(s) déjà envoyé(s), impossibles à reprendre)" if sent else ""))
+        for dep in db.q("SELECT * FROM deployments WHERE approval_id=?", (aid,)):
+            try:
+                await asyncio.to_thread(integrations.unpublish_site, dep["provider_id"])
+                db.x("UPDATE deployments SET url=? WHERE id=?", (f"(retiré) {dep['url']}", dep["id"]))
+                db.x("UPDATE products SET status='prêt' WHERE site_folder=? AND status='en ligne'", (dep["site"],))
+                notes.append(f"site retiré d'internet ({dep['url']})")
+            except Exception as e:  # noqa: BLE001
+                notes.append(f"site à retirer à la main ({dep['url']}) : {str(e)[:120]}")
+        db.x("UPDATE approvals SET status='annulée par Patron' WHERE id=?", (aid,))
+    db.post_message(OWNER, f"↩️ J'annule la décision de Vice sur la demande #{aid} « {a['title']} »"
+                    + (f" : {', '.join(notes)}" if notes else "") + ".")
+    for t in {a["agent"], "Vice", "Atlas"}:
+        scheduler.wake(t, f"{OWNER} a annulé la décision de Vice sur la demande #{aid} « {a['title']} »"
+                          + (f" ({', '.join(notes)})" if notes else "") + " : tiens-en compte.")
+    return {"ok": True, "notes": notes}
 
 
 @app.get("/api/parent")
