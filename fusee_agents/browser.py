@@ -76,6 +76,20 @@ async def screenshot(target: str, name: str, mobile: bool = False, full_page: bo
         await page.close()
 
 
+async def cover(target: str, out: Path, width: int = 630, height: int = 500) -> None:
+    """Capture au format d'une couverture itch.io (630 × 500)."""
+    b = await _get_browser()
+    page = await b.new_page(viewport={"width": width, "height": height})
+    await _no_tracking(page)
+    try:
+        await page.goto(_target(target), wait_until="networkidle", timeout=45000)
+        await page.wait_for_timeout(1200)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        await page.screenshot(path=str(out))
+    finally:
+        await page.close()
+
+
 async def browse(url: str) -> dict:
     """Ouvre une page web (lecture seule) : texte, liens et capture d'écran."""
     if not re.match(r"^https?://", url):

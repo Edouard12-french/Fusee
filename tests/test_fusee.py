@@ -716,3 +716,50 @@ def test_morning_recap_tells_what_happened_overnight():
         {"enabled": True, "hour": 6, "ai_word": False}
     assert c.post("/api/recap").json()["word_by"] == ""  # sans le mot de Vice : 0 centime
     db.set_setting("recap_hour", "7"); db.set_setting("recap_ai", "1")
+
+
+# --- itch.io : chiffres des jeux + kit de publication -------------------------------------------------------
+
+def test_itchio_stats_and_publication_kit(monkeypatch):
+    import zipfile
+    from fusee_agents import browser, config, integrations, runner, setup
+    calls = []
+
+    def fake_req(url, **kw):
+        calls.append(url)
+        if url.endswith("/me"):
+            return {"user": {"username": "edjeux", "url": "https://edjeux.itch.io"}}
+        return {"games": [{"title": "Robot Run", "url": "https://edjeux.itch.io/robot-run", "published": True,
+                           "views_count": 120, "downloads_count": 30, "purchases_count": 2,
+                           "earnings": [{"amount_formatted": "$4.00"}], "min_price": 0}]}
+
+    monkeypatch.setattr(integrations, "_req", fake_req)
+    assert setup.test("itchio", {"ITCHIO_API_KEY": "cle-test"})["ok"]
+    monkeypatch.setattr(integrations, "ITCHIO_KEY", "cle-test")
+    out = asyncio.run(tools.execute("Pixel", "itch_games", {}, lambda *a: None))
+    assert "Robot Run (publié) : 120 vues, 30 téléchargements, 2 achats, gains $4.00" in out
+    assert "itch.io : connecté" in runner.build_context(BY_NAME["Pixel"], "test")
+    # le kit : ZIP avec index.html à la racine, fiche, couverture
+    game = config.WORKSPACE / "jeux" / "robot-run"
+    (game / "img").mkdir(parents=True, exist_ok=True)
+    (game / "index.html").write_text("<canvas></canvas>")
+    (game / "img" / "robot.png").write_bytes(b"png")
+    (game / ".cache").write_text("x")
+
+    async def fake_cover(target, out, width=630, height=500):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"cover")
+    monkeypatch.setattr(browser, "cover", fake_cover)
+    res = asyncio.run(tools.execute("Pixel", "prepare_itch_kit", {
+        "folder": "jeux/robot-run", "title": "Robot Run !", "short_description": "Cours, saute, survis.",
+        "description": "Un jeu de plateforme.", "tags": ["platformer", "robot"], "genre": "Platformer", "price_eur": 0},
+        lambda *a: None))
+    assert "Kit itch.io prêt" in res and "itch/robot-run/robot-run.zip" in res and "couverture.png" in res
+    names = zipfile.ZipFile(config.WORKSPACE / "itch" / "robot-run" / "robot-run.zip").namelist()
+    assert sorted(names) == ["img/robot.png", "index.html"]  # pas de fichiers cachés, index.html à la racine
+    fiche = (config.WORKSPACE / "itch" / "robot-run" / "fiche-itch.md").read_text()
+    assert "This file will be played in the browser" in fiche and "platformer, robot" in fiche
+    assert "Erreur" in asyncio.run(tools.execute("Pixel", "prepare_itch_kit", {
+        "folder": "jeux", "title": "x", "short_description": "", "description": "", "tags": [], "genre": "", "price_eur": 0},
+        lambda *a: None))
+    assert "prepare_itch_kit" in BY_NAME["Pixel"].tools and "itch_games" in BY_NAME["Atlas"].tools

@@ -17,6 +17,11 @@ def _price(v: float) -> str:
     return "" if not v else (f"{v:.2f}".replace(".00", "").replace(".", ",") + " €")
 
 
+def slugify(text: str) -> str:
+    plain = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9-]+", "-", plain.lower()).strip("-")[:50]
+
+
 async def create(template: str, folder: str, name: str, emoji: str, color: str, tagline: str, description: str,
                  points: list[dict], price_eur: float, price_detail: str, button_text: str, payment_link: str,
                  contact_email: str, address: str, hours: str, editor: str) -> dict:

@@ -20,6 +20,7 @@ FIELDS = {
     "DASHBOARD_URL": {"secret": False}, "IMAP_HOST": {"secret": False}, "SMTP_HOST": {"secret": False},
     "SMTP_PORT": {"secret": False}, "EMAIL_USER": {"secret": False}, "EMAIL_PASSWORD": {"secret": True},
     "EMAIL_SIGNATURE": {"secret": False}, "FUSEE_PLAN": {"secret": False}, "OWNER_MINOR": {"secret": False},
+    "ITCHIO_API_KEY": {"secret": True}, "ITCHIO_USERNAME": {"secret": False},
     "HOST": {"secret": False},
 }
 
@@ -113,6 +114,13 @@ def test(service: str, given: dict) -> dict:
             import anthropic
             models = anthropic.Anthropic(api_key=key, max_retries=0, timeout=20).models.list(limit=5)
             return {"ok": True, "message": f"Clé valide ✅ ({len(models.data)} modèles accessibles)."}
+        if service == "itchio":
+            from . import integrations
+            key = _value("ITCHIO_API_KEY", given.get("ITCHIO_API_KEY", ""))
+            if not key:
+                return {"ok": False, "message": "Colle d'abord ta clé API itch.io."}
+            user = integrations.itch_me(key)
+            return {"ok": True, "message": f"Compte itch.io connecté ✅ : {user.get('username') or user.get('display_name')}"}
         if service == "ntfy":
             topic = _value("NTFY_TOPIC", given.get("NTFY_TOPIC", ""))
             if len(topic) < 12:

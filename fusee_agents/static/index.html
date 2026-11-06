@@ -776,6 +776,11 @@ const SETUP_STEPS = [
   {title: "Stripe — encaisser les ventes", need: "quand un produit est prêt", test: "stripe",
    help: `**Compte au nom d'un parent** (l'argent arrive sur son compte bancaire). https://dashboard.stripe.com/register → **Développeurs** → **Clés API** → *Clé secrète*. Commence par une clé **sk_test_** pour tout essayer sans vrai paiement.`,
    fields: [{k: "STRIPE_SECRET_KEY", label: "Clé secrète Stripe", type: "password"}]},
+  {title: "🎮 itch.io — publier et suivre les jeux de Pixel", need: "pour les jeux", test: "itchio",
+   help: `Gratuit. Sur l'ordinateur : https://itch.io (connecte-toi) → ta photo en haut à droite → **Settings** → **API keys** (https://itch.io/user/settings/api-keys) → **Generate new API key** → copie-la ici.
+Les agents voient alors les vrais chiffres de tes jeux (vues, téléchargements, achats) et te préparent un **kit prêt à publier** (ZIP, couverture, textes, étapes). **C'est toi qui publies**, en 5 minutes.
+Jeux gratuits : aucun souci. Jeux **payants** : les paiements (PayPal ou Stripe) doivent être **au nom d'un parent**.`,
+   fields: [{k: "ITCHIO_API_KEY", label: "Clé API itch.io", type: "password"}, {k: "ITCHIO_USERNAME", label: "Ton nom d'utilisateur itch.io", ph: "ex. monpseudo"}]},
   {title: "📱 Fusée sur ton iPhone et ton iPad (privé, rien que pour toi)", need: "conseillé", test: "dashboard_url",
    help: `1. Installe **Tailscale** (gratuit) sur ton Mac (https://tailscale.com/download/mac), ton iPhone et ton iPad (App Store), connecte-toi **avec le même compte** partout.
 2. Sur le Mac : Finder → dossier **Fusee** → double-clique **« Activer iPhone et iPad »** — ton adresse privée **https://…ts.net** s'enregistre ici toute seule.

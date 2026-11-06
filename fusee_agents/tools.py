@@ -102,6 +102,23 @@ CLIENT_TOOLS: dict[str, dict] = {
         "description": "Lit un fichier texte du workspace partagé.",
         "input_schema": _schema({"path": S}),
     },
+    "itch_games": {
+        "description": (f"Les jeux du compte itch.io de {OWNER}, avec leurs chiffres réels : vues, téléchargements, "
+                        "achats, gains. Sert à savoir quels jeux marchent."),
+        "input_schema": _schema({}),
+    },
+    "prepare_itch_kit": {
+        "description": (f"Prépare tout pour publier un jeu web sur itch.io : le ZIP du jeu (index.html à la racine), "
+                        f"une image de couverture 630×500 et la fiche (titre, textes, tags, prix) avec les étapes "
+                        f"pour {OWNER}. Ensuite : request_approval (kind=publication) avec le ZIP et la couverture."),
+        "input_schema": _schema({
+            "folder": {"type": "string", "description": "Dossier du jeu dans le workspace (avec index.html)"},
+            "title": S, "short_description": {"type": "string", "description": "Une phrase d'accroche"},
+            "description": {"type": "string", "description": "Description complète de la page (markdown)"},
+            "tags": LIST, "genre": S,
+            "price_eur": {"type": "number", "description": "0 = gratuit (ou « prix libre »)"},
+        }),
+    },
     "view_file": {
         "description": (f"Regarde un fichier du workspace : une IMAGE (photo, capture) ou un PDF que tu vois vraiment, "
                         f"ou un texte. Les fichiers envoyés par {OWNER} sont dans de-patron/."),
@@ -744,6 +761,72 @@ async def execute(agent: str, name: str, args: dict, wake) -> str:
         files = [str(p.relative_to(WORKSPACE)) + ("/" if p.is_dir() else f" ({p.stat().st_size} o)")
                  for p in sorted(base.rglob("*")) if "__pycache__" not in p.parts]
         return "\n".join(files[:300]) or "Dossier vide."
+    if name == "itch_games":
+        try:
+            games = await asyncio.to_thread(integrations.itch_games)
+        except RuntimeError as e:
+            return f"itch.io indisponible : {e}"
+        if not games:
+            return "Aucun jeu sur le compte itch.io pour l'instant."
+        return "\n".join(f"- {g['title']} ({'publié' if g['published'] else 'brouillon'}) : {g['views']} vues, "
+                         f"{g['downloads']} téléchargements, {g['purchases']} achats, gains {g['earnings']} — {g['url']}"
+                         for g in games)
+    if name == "prepare_itch_kit":
+        import zipfile
+        src = _safe_path(args["folder"])
+        if src.is_file():
+            src = src.parent
+        if not (src / "index.html").is_file():
+            return "Erreur : il faut un dossier avec index.html à la racine (c'est la page qu'itch.io lance)."
+        files = [p for p in src.rglob("*") if p.is_file() and not any(part.startswith(".") for part in p.relative_to(src).parts)]
+        if len(files) > 1000:
+            return "Erreur : itch.io accepte au plus 1000 fichiers dans un jeu web."
+        slug = sites.slugify(args["title"]) or "jeu"
+        kit = WORKSPACE / "itch" / slug
+        kit.mkdir(parents=True, exist_ok=True)
+        zpath = kit / f"{slug}.zip"
+        with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+            for p in files:
+                z.write(p, p.relative_to(src).as_posix())
+        if zpath.stat().st_size > 500_000_000:
+            return "Erreur : le ZIP dépasse 500 Mo, allège le jeu."
+        cover = kit / "couverture.png"
+        try:
+            await browser.cover(str(src.relative_to(WORKSPACE)), cover)
+        except Exception as e:  # noqa: BLE001 — la couverture se refait à la main au besoin
+            cover = None
+            note = f" (couverture impossible : {type(e).__name__} — fais une capture du jeu)"
+        else:
+            note = ""
+        price = float(args.get("price_eur") or 0)
+        tags = ", ".join(t.strip() for t in (args.get("tags") or [])[:10] if t.strip())
+        rel = lambda p: str(p.relative_to(WORKSPACE))  # noqa: E731
+        page = f"""# {args['title']} — fiche itch.io
+
+**Accroche :** {args.get('short_description', '')}
+**Genre :** {args.get('genre', '')}
+**Tags :** {tags}
+**Prix :** {"gratuit (ou « prix libre » : les joueurs donnent s'ils veulent)" if price <= 0 else f"{price:.2f} € minimum"}
+
+## Description
+{args.get('description', '')}
+
+## Pour {OWNER} : publier en 5 minutes (sur l'ordinateur)
+1. itch.io → ta photo en haut à droite → **Upload new project**.
+2. **Title** : {args['title']} · **Kind of project** : **HTML**.
+3. **Uploads** : envoie `{zpath.name}` puis coche **« This file will be played in the browser »**.
+4. **Embed options** : taille 960 × 600 (ou « Click to launch in fullscreen » si le jeu est grand) ; coche
+   « Mobile friendly » si le jeu marche au doigt.
+5. **Pricing** : {"No payments (gratuit) ou Donations" if price <= 0 else f"Paid, {price:.2f} €"} · **Cover image** : `couverture.png`.
+6. **Description**, **Genre** et **Tags** : copie-colle ceux de cette fiche.
+7. **Visibility** : laisse **Draft**, clique **Save**, puis **View page** pour essayer le jeu. S'il marche :
+   **Public** → Save.
+{"8. Jeu payant : les paiements (PayPal ou Stripe) doivent être au nom d'un parent." if price > 0 else ""}
+"""
+        (kit / "fiche-itch.md").write_text(page, encoding="utf-8")
+        parts = [rel(zpath), rel(kit / "fiche-itch.md")] + ([rel(cover)] if cover else [])
+        return (f"Kit itch.io prêt{note} : {', '.join(parts)}. Demande maintenant l'accord de {OWNER} "
+                "(request_approval, kind=publication) avec ces fichiers en pièces jointes : c'est lui qui publie.")
     if name == "view_file":
         return file_blocks(args["path"])
     if name == "read_file":

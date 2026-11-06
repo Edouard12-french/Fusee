@@ -292,6 +292,14 @@ dernier : ce que chaque agent a fait, les nouvelles idées et le top 3, ce qui t
 tâches), ce qui a été dépensé et les erreurs. Il est construit à partir des données de Fusée : **gratuit**. 🎖️ Vice
 ajoute ensuite un mot de 5 lignes avec le plan du jour (≈ 1 centime, désactivable). Bouton **☀️ Récap maintenant**.
 
+## 🎮 itch.io (les jeux de Pixel)
+
+Dans 🚀 Démarrage → **itch.io**, colle ta clé API (itch.io → Settings → API keys). Les agents voient alors les
+**vrais chiffres** de tes jeux (vues, téléchargements, achats, gains) avec `itch_games`. Pour publier un jeu, Pixel
+prépare un **kit** (`prepare_itch_kit`) : le ZIP prêt pour itch.io, une couverture 630 × 500 et une fiche avec les
+textes et les étapes ; il te demande ton accord, puis **c'est toi qui publies** en 5 minutes. Jeu payant : les
+paiements doivent être au nom d'un parent.
+
 ## Budget et coûts 💰
 
 Fusée suit ton **argent réel** (onglet 💰 Argent) : budget de départ (100 € par défaut), dépenses d'IA, autres

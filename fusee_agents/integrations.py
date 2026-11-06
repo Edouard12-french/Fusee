@@ -11,6 +11,36 @@ from pathlib import Path
 
 NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN", "").strip()
 STRIPE_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+ITCHIO_KEY = os.getenv("ITCHIO_API_KEY", "").strip()
+ITCH_API = "https://itch.io/api/1"
+
+
+def itch_me(key: str = "") -> dict:
+    """Le compte itch.io de Patron (vérifie la clé)."""
+    key = (key or ITCHIO_KEY).strip()
+    if not key:
+        raise RuntimeError("clé API itch.io manquante (🚀 Démarrage)")
+    r = _req(f"{ITCH_API}/{urllib.parse.quote(key, safe='')}/me", headers={"Accept": "application/json"})
+    if r.get("errors") or not r.get("user"):
+        raise RuntimeError("clé itch.io refusée : " + "; ".join(r.get("errors") or ["réponse inattendue"]))
+    return r["user"]
+
+
+def itch_games() -> list[dict]:
+    """Les jeux du compte itch.io avec leurs chiffres (vues, téléchargements, achats, gains)."""
+    if not ITCHIO_KEY:
+        raise RuntimeError("clé API itch.io manquante (🚀 Démarrage)")
+    r = _req(f"{ITCH_API}/{urllib.parse.quote(ITCHIO_KEY, safe='')}/my-games", headers={"Accept": "application/json"})
+    if r.get("errors"):
+        raise RuntimeError("; ".join(r["errors"]))
+    out = []
+    for g in r.get("games") or []:
+        earn = ", ".join(e.get("amount_formatted") or str(e.get("amount", "")) for e in (g.get("earnings") or []))
+        out.append({"title": g.get("title", "?"), "url": g.get("url", ""), "published": bool(g.get("published")),
+                    "views": g.get("views_count", 0), "downloads": g.get("downloads_count", 0),
+                    "purchases": g.get("purchases_count", 0), "earnings": earn or "0",
+                    "price": (g.get("min_price") or 0) / 100})
+    return out
 
 
 def _req(url: str, *, data: bytes | None = None, headers: dict, method: str = "GET") -> dict:

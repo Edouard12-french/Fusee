@@ -34,6 +34,7 @@ CONNECTED = {
     "STRIPE_SECRET_KEY": ("Stripe (paiements)", re.compile(r"stripe", re.I)),
     "NETLIFY_TOKEN": ("Netlify (mise en ligne des sites)", re.compile(r"netlify", re.I)),
     "EMAIL_PASSWORD": ("la boîte e-mail", re.compile(r"\b(e-?mail|smtp|imap|gmail)\b", re.I)),
+    "ITCHIO_API_KEY": ("itch.io (tes jeux)", re.compile(r"itch", re.I)),
 }
 
 
@@ -945,9 +946,10 @@ async def setup_save(request: Request):
             if (agent_settings(a.name).get("interval_min", a.interval_min) or 0) > 0:
                 scheduler.wake(a.name, "la clé API vient d'être ajoutée : l'équipe démarre, présente-toi et commence")
         applied = True
-    if "NETLIFY_TOKEN" in changed or "STRIPE_SECRET_KEY" in changed:  # sites et paiements : tout de suite, sans redémarrer
+    if {"NETLIFY_TOKEN", "STRIPE_SECRET_KEY", "ITCHIO_API_KEY"} & set(changed):  # tout de suite, sans redémarrer
         integrations.NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN", "").strip()
         integrations.STRIPE_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+        integrations.ITCHIO_KEY = os.getenv("ITCHIO_API_KEY", "").strip()
         applied = True
     close_connected_requests([k for k in changed if k in CONNECTED], announce=True)
     return {"ok": True, "changed": changed, "applied": applied}

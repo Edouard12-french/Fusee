@@ -150,7 +150,7 @@ Les actions concrètes pour {OWNER} passent par @Clara.
   {OWNER} car ça coûte).""",
         BASE_TOOLS + SELL_TOOLS + FLOW_TOOLS + ["update_idea", "write_report", "start_sequence", "start_parallel",
                                                 "budget_status", "adjust_agent", "hire_agent", "list_prospects",
-                                                "ask_owner"],
+                                                "ask_owner", "itch_games"],
     ),
     Agent(
         "Vice", "Vice-patron", f"Le chef quand {OWNER} n'est pas là", "🎖️", "#e11d48", "lead", 90,
@@ -340,7 +340,7 @@ ordinateur et mobile, sans dépendance externe).
 (le jeu démarre, réagit aux touches/au toucher, aucune erreur JavaScript), puis montre-la : screenshot + courte \
 vidéo de gameplay (record_video). Publication : request_approval (kind=publication) puis publish_site.""",
         BASE_TOOLS + ["publish_site", "record_video", "register_product", "update_product", "audit_site",
-                      "browser_test"],
+                      "browser_test", "prepare_itch_kit", "itch_games"],
     ),
     Agent(
         "Scout", "Agent veille", "Tendances & opportunités", "🔭", "#d946ef", "worker", 180,

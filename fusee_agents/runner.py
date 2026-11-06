@@ -142,6 +142,10 @@ def build_context(agent: Agent, reason: str) -> str:
         f"- Mise en ligne de sites (publish_site) : {f'DISPONIBLE (Netlify déjà branché par {OWNER} : ne lui redemande pas la clé)' if integrations.NETLIFY_TOKEN else f'non configurée ({OWNER} doit ajouter NETLIFY_TOKEN) — prépare quand même les sites'}",
         f"- Liens de paiement (create_payment_link) : {f'DISPONIBLES (Stripe déjà branché par {OWNER} : ne lui redemande pas la clé)' if integrations.STRIPE_KEY else f'non configurés ({OWNER} doit ajouter STRIPE_SECRET_KEY)'}",
         f"- E-mail clients : {'connecté (' + mailbox.EMAIL_USER + ')' if mailbox.ENABLED else 'non configuré'}",
+        (f"- itch.io : connecté ({os.getenv('ITCHIO_USERNAME') or 'compte de ' + OWNER}) : itch_games pour les vrais "
+         "chiffres des jeux ; prepare_itch_kit pour préparer une publication (c'est Patron qui publie)"
+         if integrations.ITCHIO_KEY else
+         f"- itch.io : non connecté ({OWNER} peut ajouter sa clé API dans 🚀 Démarrage) — prepare_itch_kit marche quand même"),
         (f"- Chat sur les sites : ajoute avant </body> : <script src=\"{PUBLIC_URL}/public/chat.js\" data-site=\"NOM-DU-SITE\"></script>"
          if PUBLIC_URL else "- Chat sur les sites : indisponible (pas d'adresse publique) — mets un lien e-mail de contact"
          + (f" vers {mailbox.EMAIL_USER}" if mailbox.ENABLED else "")),
