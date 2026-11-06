@@ -681,3 +681,38 @@ def test_owner_can_send_images_and_files_that_agents_can_see(monkeypatch):
     asyncio.run(runner.dm_reply(BY_NAME["Pixel"], lambda *a: None))
     last = seen[-1]
     assert isinstance(last, list) and any(b.get("type") == "image" for b in last) and "Regarde mon dessin" in last[0]["text"]
+
+
+def test_morning_recap_tells_what_happened_overnight():
+    from fastapi.testclient import TestClient
+    from fusee_agents import briefing, web
+    from fusee_agents.scheduler import Scheduler, why_may_work
+    db.set_setting("recap_last_ts", str(time.time()))  # les autres tests ne comptent pas
+    time.sleep(0.02)
+    db.log("Neo", "cycle", "début du cycle (autorisation)")
+    db.log("Neo", "outil", "write_file", {})
+    db.log("Neo", "outil", "write_file", {})
+    db.log("Neo", "outil", "screenshot", {})
+    db.log("Neo", "cycle", "fin du cycle — coût 0.020 $")
+    db.log("Scout", "cycle", "début du cycle (autorisation)")
+    db.log("Scout", "web", "web_search: automatisation IA restaurants")
+    db.log("Scout", "erreur", "erreur réseau")
+    db.x("INSERT INTO owner_questions (ts, agent, question, context, options) VALUES (?,?,?,?,?)",
+         (time.time(), "Victor", "Quel prix pour la formule Pro ?", "", "[]"))
+    content = briefing.morning_recap(briefing.recap_since())
+    assert "**Neo** : 1 cycle(s)" in content and "2 fichiers" in content and "1 captures" in content
+    assert "1 recherche(s) web" in content and "Quel prix pour la formule Pro ?" in content and "erreur" in content
+    assert "0.02 €" in content or "0,02" in content or "0.01 €" in content  # ~0,02 $ convertis en €
+    s = Scheduler()
+    who = s.morning()
+    rep = db.q("SELECT * FROM reports ORDER BY id DESC LIMIT 1")[0]
+    assert rep["title"].startswith("☀️ Récap du matin") and "Neo" in rep["content"]
+    reason = s.reasons[who][-1]
+    assert who == "Vice" and why_may_work("Vice", reason) == "patron" and "5 lignes" in reason
+    # le récap suivant repart de maintenant
+    assert "Personne n'a travaillé" in briefing.morning_recap(briefing.recap_since())
+    c = TestClient(web.app)
+    assert c.post("/api/recap_settings", json={"enabled": True, "hour": 6, "ai_word": False}).json() == \
+        {"enabled": True, "hour": 6, "ai_word": False}
+    assert c.post("/api/recap").json()["word_by"] == ""  # sans le mot de Vice : 0 centime
+    db.set_setting("recap_hour", "7"); db.set_setting("recap_ai", "1")

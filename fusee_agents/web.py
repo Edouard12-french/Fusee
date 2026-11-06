@@ -199,6 +199,30 @@ async def briefing_now():  # async : le briefing de secours est une tâche de la
     return {"ok": True, "fallback_min": briefing.FALLBACK_AFTER_S // 60}
 
 
+@app.get("/api/recap")
+def recap_state():
+    return briefing.recap_settings()
+
+
+@app.post("/api/recap")
+def recap_now():
+    """☀️ Le récap maintenant (sans attendre le matin)."""
+    who = scheduler.morning()
+    return {"ok": True, "word_by": who}
+
+
+@app.post("/api/recap_settings")
+async def recap_settings(request: Request):
+    d = await request.json()
+    for k, key in (("enabled", "recap_enabled"), ("ai_word", "recap_ai")):
+        if k in d:
+            db.set_setting(key, "1" if d[k] else "0")
+    if "hour" in d and 0 <= int(d["hour"]) <= 23:
+        db.set_setting("recap_hour", str(int(d["hour"])))
+        db.set_setting("recap_last", "")
+    return briefing.recap_settings()
+
+
 @app.post("/api/briefing_settings")
 async def briefing_settings(request: Request):
     d = await request.json()

@@ -688,8 +688,19 @@ async function renderPane(soft) {
       };
       ["brOn", "brHour"].forEach(id => $("#" + id).onchange = () => post("/api/briefing_settings", {enabled: $("#brOn").checked, hour: +$("#brHour").value}));
     } else if (tab === "reports") {
-      const reps = await api("/api/reports");
-      pane.innerHTML = reps.map((r, k) => `<details class="card" ${k===0?"open":""}><summary><b>${esc(r.title)}</b> <span class="muted">${time(r.ts)} · ${r.agent}</span></summary><div class="md">${md(r.content)}</div></details>`).join("") || "<p class=muted>Pas encore de rapport. Atlas en rédige régulièrement.</p>";
+      if (soft && pane.querySelector("#rcHour")) return;  // ne pas fermer un réglage en cours
+      const [reps, rc] = await Promise.all([api("/api/reports"), api("/api/recap")]);
+      const hrs = sel => Array.from({length: 24}, (_, h) => `<option value="${h}" ${sel === h ? "selected" : ""}>${h} h</option>`).join("");
+      pane.innerHTML = `<div class="card" style="border-left:4px solid #fbbf24"><h4>☀️ Récap du matin</h4>
+          <div class="muted">Tout ce que l'équipe a fait depuis le dernier récap, ce qui t'attend, et le plan du jour : dans ce même onglet, avec une notification.</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+            <button class="primary" id="rcNow">☀️ Récap maintenant</button>
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rcOn" ${rc.enabled ? "checked" : ""}> Chaque matin à</label>
+            <select id="rcHour">${hrs(rc.hour)}</select>
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rcAi" ${rc.ai_word ? "checked" : ""}> + un mot de 🎖️ Vice (≈ 1 centime)</label></div>
+          <div class="muted" id="rcMsg"></div></div>` + reps.map((r, k) => `<details class="card" ${k===0?"open":""}><summary><b>${esc(r.title)}</b> <span class="muted">${time(r.ts)} · ${r.agent}</span></summary><div class="md">${md(r.content)}</div></details>`).join("") || "<p class=muted>Pas encore de rapport. Atlas en rédige régulièrement.</p>";
+      $("#rcNow").onclick = async () => { const r = await post("/api/recap"); $("#rcMsg").textContent = r.ok ? "☀️ Récap publié !" : "Impossible"; setTimeout(() => renderPane(), 600); };
+      ["rcOn", "rcHour", "rcAi"].forEach(id => $("#" + id).onchange = () => post("/api/recap_settings", {enabled: $("#rcOn").checked, hour: +$("#rcHour").value, ai_word: $("#rcAi").checked}));
     } else if (tab === "pf") {
       const p = await api("/api/portfolio"), c = v => v >= 0 ? "pos" : "neg";
       pane.innerHTML = `<div class="card"><h4>Portefeuille SIMULÉ (aucun argent réel)</h4>

@@ -121,12 +121,26 @@ class Scheduler:
         self.tasks.append(asyncio.create_task(fallback()))
         return since
 
+    def morning(self) -> str:
+        """☀️ Récap du matin : Fusée publie ce qui s'est passé (gratuit), puis Vice (ou Atlas) ajoute un mot."""
+        _, content = briefing.publish_morning_recap()
+        if briefing.recap_settings()["ai_word"]:
+            who = "Vice" if "Vice" in self.events and agent_settings("Vice").get("enabled", True) is not False else "Atlas"
+            self.wake(who, briefing.recap_reason(content))
+            return who
+        return ""
+
     async def _briefings(self) -> None:
-        """Chaque jour à l'heure choisie (17 h par défaut) : le briefing pour Patron."""
+        """Chaque jour : le récap du matin (7 h par défaut) et le briefing (17 h par défaut) pour Patron."""
         while True:
             await asyncio.sleep(60)
-            s, today = briefing.settings(), date.today().isoformat()
-            if s["enabled"] and datetime.now().hour == s["hour"] and db.get_setting("briefing_last", "") != today:
+            today, hour = date.today().isoformat(), datetime.now().hour
+            r = briefing.recap_settings()
+            if r["enabled"] and hour == r["hour"] and db.get_setting("recap_last", "") != today:
+                db.set_setting("recap_last", today)
+                self.morning()
+            s = briefing.settings()
+            if s["enabled"] and hour == s["hour"] and db.get_setting("briefing_last", "") != today:
                 db.set_setting("briefing_last", today)
                 self.briefing()
 

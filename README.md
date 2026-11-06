@@ -285,6 +285,13 @@ demande tout de suite. Si Atlas n'a pas le temps ou le budget, Fusée publie qua
 - **🎤** : parle au lieu d'écrire (dictée), appuie à nouveau pour arrêter, puis Envoyer.
 - **🔊** (en privé) : l'agent te lit ses réponses à voix haute.
 
+## ☀️ Récap du matin
+
+Chaque matin à **7 h** (réglable dans 📄 Rapports), Fusée publie le **récap** de tout ce qui s'est passé depuis le
+dernier : ce que chaque agent a fait, les nouvelles idées et le top 3, ce qui t'attend (demandes d'accord, questions,
+tâches), ce qui a été dépensé et les erreurs. Il est construit à partir des données de Fusée : **gratuit**. 🎖️ Vice
+ajoute ensuite un mot de 5 lignes avec le plan du jour (≈ 1 centime, désactivable). Bouton **☀️ Récap maintenant**.
+
 ## Budget et coûts 💰
 
 Fusée suit ton **argent réel** (onglet 💰 Argent) : budget de départ (100 € par défaut), dépenses d'IA, autres
