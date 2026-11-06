@@ -837,3 +837,20 @@ def test_solo_work_for_several_days():
     w = c.post("/api/work", json={"choice": "plan", "day": "demain", "h_from": 8, "h_to": 20, "end_days": 2}).json()
     assert w["scheduled"] and w["range_label"].startswith("demain 8 h →")
     budget.stop_work()
+
+
+def test_unlimited_means_work_fully_but_keep_a_small_reserve(monkeypatch):
+    from fusee_agents import delegation, runner
+    delegation.save(unlimited=True)
+    budget.authorize_work(time.time() + 3600)
+    monkeypatch.setattr(budget, "settings", lambda: {"initial_eur": 100, "api_budget_eur": 18, "api_days": 30})
+    assert abs(budget.total_reserve_eur() - 0.9) < 1e-9  # 5 % de 18 €
+    monkeypatch.setattr(budget, "api_spent_eur", lambda: 10.0)
+    assert not budget.autonomous_budget_used()  # 8 € restants : ils continuent, même au-delà du budget du jour
+    ctx = runner.build_context(BY_NAME["Neo"], "cycle régulier")
+    assert "BUDGET SANS LIMITE PAR JOUR" in ctx and "travaillez À FOND" in ctx and "s'arrête à" not in ctx
+    monkeypatch.setattr(budget, "api_spent_eur", lambda: 17.5)
+    assert budget.autonomous_budget_used()  # il ne reste que la réserve : le travail en solo s'arrête
+    assert not budget.owner_exhausted() and not budget.api_exhausted()  # mais Patron peut encore leur parler
+    delegation.save(unlimited=False)
+    budget.stop_work()

@@ -109,7 +109,10 @@ def build_context(agent: Agent, reason: str) -> str:
                   f"IA : {b['api_spent_eur']:.2f} € dépensés sur {b['api_budget_eur']:.0f} € prévus "
                   f"(aujourd'hui {b['api_today_eur']:.2f} / {b['api_daily_cap_eur']:.2f} €). "
                   f"Disponible pour de vraies dépenses (hors IA) : {b['free_to_spend_eur']:.2f} €.")
-    if budget.today_exhausted():
+    if budget.unlimited():
+        budget_txt += (f"\n💶 Sans limite par jour : ne te restreins pas, travaille à fond (limite : budget IA total, "
+                       f"{budget.api_left_eur():.2f} € restants). Ignore les conseils d'économie : la qualité d'abord.")
+    elif budget.today_exhausted():
         budget_txt += (f"\n⚠️ Budget IA du jour dépassé : vous utilisez la RALLONGE de {OWNER} (jusqu'à "
                        f"{budget.owner_cap_usd() * USD_EUR:.2f} €). Réponds-lui court et utile, sans recherche web "
                        "inutile ; garde les gros travaux pour demain, sauf s'il te les demande expressément.")
@@ -156,11 +159,18 @@ def build_context(agent: Agent, reason: str) -> str:
     hot_txt = ("\n".join(f"#{c['id']} {c['name'] or c['email'] or 'visiteur'} — {c['segment']}, {c['status']}, "
                          f"score {c['score']}, {c['sentiment']} : {c['interest'][:120]}" for c in hot) or "(aucun)")
     hot_txt += f"\n{waiting} contact(s) attendent une réponse." if waiting else ""
+    if budget.unlimited():
+        money_txt = (f"💶 BUDGET SANS LIMITE PAR JOUR : {OWNER} veut que vous travailliez À FOND, sans économiser ni "
+                     "vous restreindre (seule la qualité compte, pas de remplissage). Seule limite : le budget IA total "
+                     f"(il reste {budget.api_left_eur():.2f} €). Fusée garde AUTOMATIQUEMENT une petite réserve "
+                     f"({budget.total_reserve_eur():.2f} €) pour quand {OWNER} vous parle : vous n'avez rien à garder.")
+    else:
+        money_txt = (f"Ce travail en solo s'arrête à {round(budget.autonomous_share() * 100)} % du budget du jour : le "
+                     f"reste est gardé pour quand {OWNER} vous parle.")
     if budget.work_authorized():
         mode_txt = (f"{OWNER} vous a autorisés à travailler SEULS jusqu'à {budget.when_label(budget.work_until())} : "
                     "avancez sur vos projets en équipe sans attendre ses messages (request_approval avant de publier). "
-                    f"Ce travail en solo s'arrête à {round(budget.autonomous_share() * 100)} % du budget du jour : le reste "
-                    f"est gardé pour quand {OWNER} vous parle.")
+                    + money_txt)
     else:
         mode_txt = (f"Vous travaillez QUAND {OWNER} VOUS PARLE : faites ce qu'il demande (à plusieurs si besoin, en "
                     "vous mentionnant), puis arrêtez-vous et attendez son prochain message. Ne lancez pas de nouveau "

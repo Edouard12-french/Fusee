@@ -523,11 +523,12 @@ def costs():
 
 def _work_state() -> dict:
     on, planned = budget.work_authorized(), budget.work_scheduled()
+    extra = {"unlimited": budget.unlimited(), "reserve_total_eur": budget.total_reserve_eur()}
     return {"authorized": on, "until": budget.work_until() if on or planned else 0,
             "label": budget.when_label(budget.work_until()) if on or planned else "",
             "scheduled": planned, "from_label": budget.when_label(budget.work_from()) if planned else "",
             "range_label": budget.range_label(budget.work_from(), budget.work_until()) if planned else "",
-            "reserve_pct": budget.owner_reserve_pct()}
+            "reserve_pct": budget.owner_reserve_pct(), **extra}
 
 
 class WorkReq(BaseModel):

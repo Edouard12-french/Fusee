@@ -168,7 +168,8 @@ nav#bottom{display:none}
   <div style="border-top:1px solid var(--line);padding-top:8px;display:grid;gap:6px">
     <label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="wWeb"><span>🌐 <b>Internet, YouTube et navigateur</b> pour se renseigner<br><span class="muted" id="wWebNote">Les recherches internet et YouTube marchent toujours ; ceci autorise aussi le vrai navigateur (ouvrir des pages, captures).</span></span></label>
     <div>💶 Budget : <b id="wBudget">…</b> <button type="button" id="wPerm" style="margin-left:4px">🔐 Autorisations et budget sans limite</button></div>
-    <div>🛡️ Garder pour moi
+    <div id="wResAuto" class="muted" hidden></div>
+    <div id="wResBox">🛡️ Garder pour moi
       <select id="wRes"><option value="10">10 %</option><option value="20">20 %</option><option value="30">30 %</option><option value="40">40 %</option><option value="50">50 %</option><option value="60">60 %</option><option value="70">70 %</option><option value="80">80 %</option><option value="90">90 %</option></select>
       du budget du jour
       <div class="muted">Quand ils travaillent seuls, ils s'arrêtent avant : ce qui est gardé sert quand tu leur parles.</div></div>
@@ -874,7 +875,7 @@ async function renderPermBox() {
     <label style="display:flex;gap:8px;color:var(--text)"><input type="radio" name="pmWhen" value="solo" ${p.always ? "" : "checked"}> Seulement quand je les laisse travailler seuls (bouton 💤)</label>
     <label style="display:flex;gap:8px;color:var(--text)"><input type="radio" name="pmWhen" value="always" ${p.always ? "checked" : ""}> Tout le temps</label>
     <div style="margin:10px 0 2px;color:var(--text)"><b>💶 Budget</b></div>
-    ${ck("pmUnl", p.unlimited, "Sans limite par jour", "Les agents ne s'arrêtent plus chaque jour : seul le budget IA total (💰 Argent → « Dont IA ») les arrête. Ça peut aller vite !")}
+    ${ck("pmUnl", p.unlimited, "Sans limite par jour", "Les agents travaillent à fond, sans économiser : seul le budget IA total (💰 Argent → « Dont IA ») les arrête. Fusée te garde automatiquement une petite réserve (5 %, au moins 0,50 €) pour leur parler et vérifier. Ça peut aller vite !")}
     <div class="muted" style="margin:8px 0 4px">❌ Jamais à ta place : dépenser de l'argent, ouvrir un compte, un accord parent 👪, répondre à un client.</div>
     <input id="pmPin" type="password" inputmode="numeric" autocomplete="off" placeholder="🔐 Code parent pour enregistrer" style="width:100%;margin:4px 0">
     <button class="primary" id="pmSave">Enregistrer les autorisations</button> <span id="pmMsg2" class="muted"></span>
@@ -1065,6 +1066,8 @@ $("#workBtn").onclick = e => {
     if (S.work.reserve_pct) $("#wRes").value = String(S.work.reserve_pct);
     $("#wWeb").checked = !!S.browser_enabled;
     $("#wBudget").textContent = S.budget && S.budget.unlimited ? "sans limite par jour ∞" : "limité chaque jour";
+    $("#wResBox").hidden = !!S.work.unlimited; $("#wResAuto").hidden = !S.work.unlimited;
+    $("#wResAuto").innerHTML = `🛡️ Sans limite : ils travaillent à fond. Fusée te garde automatiquement <b>${(S.work.reserve_total_eur || 0).toFixed(2).replace(".", ",")} €</b> du budget IA total pour leur parler et vérifier.`;
   }
   $("#workMenu").hidden = !$("#workMenu").hidden;
 };

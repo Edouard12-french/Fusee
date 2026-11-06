@@ -149,8 +149,22 @@ def owner_active() -> bool:
         return False
 
 
+def total_reserve_eur() -> float:
+    """Sans limite par jour : petite réserve gardée sur le budget IA total pour que Patron puisse encore parler
+    à l'équipe et vérifier (5 % du budget IA, au moins 0,50 €)."""
+    return max(0.5, 0.05 * settings()["api_budget_eur"])
+
+
+def api_left_eur() -> float:
+    return max(0.0, settings()["api_budget_eur"] - api_spent_eur())
+
+
 def autonomous_budget_used() -> bool:
-    return not unlimited() and db.cost_today() >= autonomous_share() * daily_cap_usd()
+    """Le travail en solo doit-il s'arrêter ? Limité : à la part du budget du jour. Sans limite : seulement quand il
+    ne reste plus que la petite réserve du budget IA total."""
+    if unlimited():
+        return api_left_eur() <= total_reserve_eur()
+    return db.cost_today() >= autonomous_share() * daily_cap_usd()
 
 
 def api_spent_eur() -> float:
