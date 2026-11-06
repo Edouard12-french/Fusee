@@ -848,7 +848,8 @@ def test_unlimited_means_work_fully_but_keep_a_small_reserve(monkeypatch):
     monkeypatch.setattr(budget, "api_spent_eur", lambda: 10.0)
     assert not budget.autonomous_budget_used()  # 8 € restants : ils continuent, même au-delà du budget du jour
     ctx = runner.build_context(BY_NAME["Neo"], "cycle régulier")
-    assert "BUDGET SANS LIMITE PAR JOUR" in ctx and "travaillez À FOND" in ctx and "s'arrête à" not in ctx
+    mode = ctx.split("## Mode de travail", 1)[1].split("\n## ", 1)[0]
+    assert "BUDGET SANS LIMITE PAR JOUR" in mode and "travailliez À FOND" in mode and "du budget du jour" not in mode
     monkeypatch.setattr(budget, "api_spent_eur", lambda: 17.5)
     assert budget.autonomous_budget_used()  # il ne reste que la réserve : le travail en solo s'arrête
     assert not budget.owner_exhausted() and not budget.api_exhausted()  # mais Patron peut encore leur parler
